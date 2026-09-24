@@ -7,3 +7,4 @@
 
 Validate for free: `npm run evals:validate`. Run for real (costs tokens): `npm run bench -- --host claude --scenario base-simple-screen`.
 - Scenarios may omit `figma` (backend scenarios do), and `category` may be `backend`; such scenarios start only the `frontend-agent` MCP server.
+- `category` may also be `fullstack`; those scenarios need no Figma either and expect a persisted `.dev-agent/tasks/<KEY>.contract.json`.

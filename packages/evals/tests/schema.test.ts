@@ -53,3 +53,11 @@ test('loadScenarios reports every problem at once: id/file mismatch, missing fix
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('a scenario may omit the Figma fixture, and the backend category is valid', () => {
+  const noFigma = { id: 'backend-x', category: 'backend', title: 'Backend scenario', fixture: 'django-app', prompt: 'Do the thing.', expected: [{ type: 'file_exists', path: 'a.py' }] };
+  assert.equal(ScenarioSchema.safeParse(noFigma).success, true);
+  assert.equal(ScenarioSchema.safeParse({ ...noFigma, figma: 'pricing' }).success, true);
+  assert.equal(ScenarioSchema.safeParse({ ...noFigma, figma: 'Not A Name' }).success, false);
+  assert.equal(ScenarioSchema.safeParse({ ...noFigma, category: 'nope' }).success, false);
+});

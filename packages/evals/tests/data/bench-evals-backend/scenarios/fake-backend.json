@@ -1,0 +1,13 @@
+{
+  "id": "fake-backend",
+  "category": "backend",
+  "title": "Fake host writes a file, no Figma",
+  "fixture": "tiny",
+  "prompt": "Write out.txt. Nothing has to be installed or run.",
+  "timeoutSec": 60,
+  "expected": [
+    { "type": "tool_called", "tool": "skill/backend-architecture" },
+    { "type": "file_exists", "path": "out.txt" }
+  ],
+  "forbidden": []
+}

@@ -120,3 +120,18 @@ test('defaultOutDir differs between runs started in the same millisecond', () =>
   assert.notEqual(a, b);
   assert.match(a, /results\/2026-09-24T14-00-00-000Z-[0-9a-f]{6}$/);
 });
+
+test('a scenario without figma starts only the frontend-agent server and still runs', async () => {
+  await withOut(async (out) => {
+    const results = await runBench({
+      kitRoot: findKitRoot(),
+      evalsDir: join(here, 'data', 'bench-evals-backend'),
+      hosts: ['claude'],
+      outDir: out,
+      binaries: { claude: { command: process.execPath, prefixArgs: [join(here, 'data', 'fake-claude-nofigma.mjs')] } }
+    });
+    assert.equal(results.length, 1);
+    assert.equal(results[0].verdict, 'pass', JSON.stringify(results[0].grade, null, 2));
+    assert.equal(results[0].category, 'backend');
+  });
+});

@@ -75,16 +75,18 @@ export function loadScenarios(layout: EvalsLayout): Scenario[] {
     if (!existsSync(fixtureDir) || !statSync(fixtureDir).isDirectory()) {
       errors.push(`${name}: fixture "${scenario.fixture}" not found in ${layout.fixturesDir}`);
     }
-    const figmaFile = path.join(layout.figmaDir, `${scenario.figma}.json`);
-    if (!existsSync(figmaFile)) {
-      errors.push(`${name}: figma "${scenario.figma}" not found in ${layout.figmaDir}`);
-    } else if (!figmaOk.has(scenario.figma)) {
-      try {
-        loadFigmaFixture(figmaFile);
-        figmaOk.set(scenario.figma, true);
-      } catch (error) {
-        figmaOk.set(scenario.figma, false);
-        errors.push((error as Error).message);
+    if (scenario.figma !== undefined) {
+      const figmaFile = path.join(layout.figmaDir, `${scenario.figma}.json`);
+      if (!existsSync(figmaFile)) {
+        errors.push(`${name}: figma "${scenario.figma}" not found in ${layout.figmaDir}`);
+      } else if (!figmaOk.has(scenario.figma)) {
+        try {
+          loadFigmaFixture(figmaFile);
+          figmaOk.set(scenario.figma, true);
+        } catch (error) {
+          figmaOk.set(scenario.figma, false);
+          errors.push((error as Error).message);
+        }
       }
     }
     scenarios.push(scenario);

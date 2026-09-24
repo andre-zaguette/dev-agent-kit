@@ -10,7 +10,7 @@ import { CATEGORIES, HOSTS, type Category, type HostId } from './schema.js';
 const HELP = `frontend-agent-bench — run the eval scenarios against real hosts (costs tokens)
 
 Usage:
-  npm run bench -- [--host claude|codex|all] [--scenario <id> ...] [--category base|stack|profile ...]
+  npm run bench -- [--host claude|codex|all] [--scenario <id> ...] [--category base|stack|profile|backend ...]
                    [--model-claude <m>] [--model-codex <m>] [--out <dir>] [--keep]
   npm run bench -- --list        list scenarios
   npm run bench -- --validate    validate the scenario catalog only (free)`;

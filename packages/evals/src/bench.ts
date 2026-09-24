@@ -88,15 +88,15 @@ async function runCase(opts: BenchOptions, scenario: Scenario, host: HostId): Pr
 
     const tsx = path.join(opts.kitRoot, 'node_modules', '.bin', 'tsx');
     const kit = kitServerLaunch({ kitRoot: opts.kitRoot, projectRoot: ws, includeFigma: false });
-    const servers: McpServerSpec[] = [
-      { name: 'frontend-agent', command: kit.command, args: kit.args, env: kit.env },
-      {
+    const servers: McpServerSpec[] = [{ name: 'frontend-agent', command: kit.command, args: kit.args, env: kit.env }];
+    if (scenario.figma) {
+      servers.push({
         name: 'figma',
         command: tsx,
         args: [path.join(opts.kitRoot, 'packages', 'evals', 'src', 'figma-mock', 'main.ts')],
         env: { FIGMA_MOCK_FIXTURE: path.join(layout.figmaDir, `${scenario.figma}.json`), FIGMA_MOCK_OUTPUT_ROOT: ws }
-      }
-    ];
+      });
+    }
     const prompt = scenario.prompt.replaceAll('{{baseUrl}}', server.origin);
     const binary = opts.binaries?.[host] ?? { command: host, prefixArgs: [] };
     const model = opts.models?.[host];

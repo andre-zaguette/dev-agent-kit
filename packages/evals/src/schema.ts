@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const CATEGORIES = ['base', 'stack', 'profile'] as const;
+export const CATEGORIES = ['base', 'stack', 'profile', 'backend'] as const;
 export const HOSTS = ['claude', 'codex'] as const;
 export type Category = (typeof CATEGORIES)[number];
 export type HostId = (typeof HOSTS)[number];
@@ -50,7 +50,7 @@ export const ScenarioSchema = z
     category: z.enum(CATEGORIES),
     title: z.string().min(1).max(120),
     fixture: z.string().regex(NAME),
-    figma: z.string().regex(NAME),
+    figma: z.string().regex(NAME).optional(),
     profile: z.enum(['pixel-perfect', 'standard', 'relaxed']).optional(),
     prompt: z.string().min(1).max(4000),
     timeoutSec: z.number().int().min(60).max(3600).default(900),

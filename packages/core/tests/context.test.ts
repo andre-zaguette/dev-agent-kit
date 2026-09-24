@@ -134,7 +134,7 @@ test('formatAuditReport lists each finding and the totals', () => {
     const text = formatAuditReport(auditContext(p.dir));
     assert.match(text, /always-on: ~\d+ tokens/);
     assert.match(text, /\[duplicate-content\] CLAUDE\.md/);
-    assert.match(text, /removable: ~\d+ tokens/);
+    assert.match(text, /removable: up to ~\d+ tokens/);
   } finally {
     p.cleanup();
   }

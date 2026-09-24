@@ -20,6 +20,7 @@ export interface ContextFinding {
 export interface ContextAuditReport {
   findings: ContextFinding[];
   alwaysOnTokens: number;
+  /** Upper bound: findings can overlap (e.g. an oversized file's excess, framework lines and duplicates), so this sum may exceed what can actually be removed. */
   removableTokens: number;
 }
 
@@ -167,7 +168,7 @@ export function formatAuditReport(report: ContextAuditReport): string {
     lines.push('no findings');
   } else {
     for (const f of report.findings) lines.push(`  [${f.kind}] ${f.path} — ${f.detail} (~${f.removableTokens} tokens)`);
-    lines.push(`removable: ~${report.removableTokens} tokens`);
+    lines.push(`removable: up to ~${report.removableTokens} tokens (findings may overlap)`);
   }
   return lines.join('\n');
 }

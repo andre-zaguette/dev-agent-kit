@@ -1,6 +1,12 @@
-# Frontend Agent Kit
+# Dev Agent Kit
 
-Use the frontend skills available in `.claude/skills/` (installed from this kit's canonical `skills/` directory).
+Use the skills installed in `.claude/skills/` (from this kit's canonical `skills/` directory). Load only the ones the task needs.
+
+1. Inspect the repository before editing: existing patterns, neighboring code, the real test, lint and typecheck commands.
+2. Verify real behavior, not just compilation: run it, exercise it, reproduce bugs before and after the fix.
+3. Keep the diff to the requested scope.
+
+## Frontend tasks
 
 For Figma implementation tasks:
 

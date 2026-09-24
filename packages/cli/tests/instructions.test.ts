@@ -50,10 +50,10 @@ test('AGENTS.md symlinked to CLAUDE.md: install --all twice is unchanged for bot
 
     const afterFirstRound = readFileSync(claudeFile, 'utf8');
     assert.match(afterFirstRound, /Figma as the design source of truth/);
-    assert.match(afterFirstRound, /Frontend repository instructions/);
+    assert.match(afterFirstRound, /Dev Agent Kit repository instructions/);
     // Each text appears exactly once.
     const claudeMarkerCount = afterFirstRound.split('Figma as the design source of truth').length - 1;
-    const codexMarkerCount = afterFirstRound.split('Frontend repository instructions').length - 1;
+    const codexMarkerCount = afterFirstRound.split('Dev Agent Kit repository instructions').length - 1;
     assert.equal(claudeMarkerCount, 1);
     assert.equal(codexMarkerCount, 1);
 

@@ -18,3 +18,5 @@ export { redactSecrets } from './secrets.js';
 export * from './backend-references.js';
 export * from './contract.js';
 export * from './contract-verify.js';
+export * from './contract-openapi.js';
+export * from './contract-usage.js';

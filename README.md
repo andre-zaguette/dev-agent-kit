@@ -194,3 +194,7 @@ Each run copies the fixture into `$TMPDIR/fak-bench-*`, installs the kit into it
 - Codex: `codex exec --json --ignore-user-config --sandbox workspace-write --ephemeral`, MCP servers passed with `-c` (no project trust needed) and their tools auto-approved.
 
 Results land in `evals/results/<timestamp>/` (`report.md`, `summary.json`, transcripts). A timeout, a crash, a missing/unauthenticated host or a truncated transcript is `error`, never `pass`. `--keep` keeps the workspaces for inspection.
+
+## v0.6 — shared engineering core
+
+Seven provider-neutral skills (`engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory`) now ship with the frontend skills, and `packages/core` provides deterministic project inspection, repo-memory freshness and a context audit. Frontend behavior and the `frontend-agent` CLI are unchanged. See `docs/context-efficiency.md` and `docs/superpowers/specs/2026-09-24-dev-agent-kit-evolution.md`.

@@ -12,6 +12,8 @@ export interface ProjectProfile {
   database?: string;
   migrationTool?: string;
   queue?: string;
+  queues?: string[];
+  cache?: string;
   docker: boolean;
   baseBranch?: string;
 }
@@ -155,8 +157,18 @@ export function detectProjectProfile(root: string): ProjectProfile {
   const migrationTool = has(root, 'alembic.ini') ? 'alembic' : has(root, 'prisma') ? 'prisma' : frameworks.includes('django') ? 'django' : undefined;
   if (migrationTool) profile.migrationTool = migrationTool;
 
-  const queue = /image:\s*["']?rabbitmq/.test(compose) ? 'rabbitmq' : mentions(pyText, 'celery') ? 'celery' : 'bullmq' in deps ? 'bullmq' : undefined;
-  if (queue) profile.queue = queue;
+  const queues = [
+    /image:\s*["']?rabbitmq/.test(compose) ? 'rabbitmq' : undefined,
+    mentions(pyText, 'celery') ? 'celery' : undefined,
+    'bullmq' in deps ? 'bullmq' : undefined
+  ].filter((q): q is string => q !== undefined);
+  if (queues.length > 0) {
+    profile.queue = queues[0];
+    profile.queues = queues;
+  }
+
+  const cache = /image:\s*["']?redis/.test(compose) || 'redis' in deps || 'ioredis' in deps || 'bullmq' in deps || mentions(pyText, 'redis') ? 'redis' : undefined;
+  if (cache) profile.cache = cache;
 
   if (isGitRepo(root)) {
     const baseBranch = detectBaseBranch(root);

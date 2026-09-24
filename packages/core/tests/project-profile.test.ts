@@ -168,3 +168,22 @@ test('bun projects run package scripts with bun run', () => {
     p.cleanup();
   }
 });
+
+test('redis and every queue technology are detected, not just the first', () => {
+  const p = project({
+    'pyproject.toml': '[project]\ndependencies = ["celery", "redis"]\n',
+    'docker-compose.yml': 'services:\n  mq:\n    image: rabbitmq:3\n'
+  });
+  const bare = project({ 'README.md': 'x' });
+  try {
+    const profile = detectProjectProfile(p.dir);
+    assert.equal(profile.cache, 'redis');
+    assert.deepEqual(profile.queues, ['rabbitmq', 'celery']);
+    assert.equal(profile.queue, 'rabbitmq');
+    assert.equal(detectProjectProfile(bare.dir).cache, undefined);
+    assert.equal(detectProjectProfile(bare.dir).queues, undefined);
+  } finally {
+    p.cleanup();
+    bare.cleanup();
+  }
+});

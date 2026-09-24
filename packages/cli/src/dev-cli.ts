@@ -2,6 +2,7 @@ import { parseArgs } from 'node:util';
 import { auditContext, detectProjectProfile, selectBackendReferences } from '../../core/src/index.js';
 import { run, type CliIo } from './cli.js';
 import { CliError, PROJECT_JSON, projectRootOf } from './dev-common.js';
+import { contractShow, contractUsage, contractVerify } from './dev-contract-commands.js';
 import { sourcesList, sourcesVerify, taskResolve, taskShow, taskStatus } from './dev-task-commands.js';
 import { readKitVersion } from './util.js';
 
@@ -98,6 +99,17 @@ export async function runDev(argv: string[], io: CliIo): Promise<number> {
             return taskShow(rest.slice(1), io);
           default:
             throw new CliError(`dev-agent: unknown task command "${rest[0] ?? ''}" — see --help.`);
+        }
+      case 'contract':
+        switch (rest[0]) {
+          case 'show':
+            return contractShow(rest.slice(1), io);
+          case 'verify':
+            return contractVerify(rest.slice(1), io);
+          case 'usage':
+            return contractUsage(rest.slice(1), io);
+          default:
+            throw new CliError(`dev-agent: unknown contract command "${rest[0] ?? ''}" — see --help.`);
         }
       default:
         throw new CliError(`dev-agent: unknown command "${command}" — see --help.`);

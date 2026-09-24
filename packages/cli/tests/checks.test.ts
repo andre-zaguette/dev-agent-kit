@@ -145,3 +145,30 @@ test('checkSkills reports a skill added to the kit that was never installed at a
     assert.match(withNewSkill.detail, /outdated.*new-skill\/SKILL\.md.*run install/);
   });
 });
+
+test('checkSkills does not fail for a new kit skill shadowed by a user-owned skill, but notes it', async () => {
+  await withDir((dir) => {
+    const source = join(dir, 'kit-skills');
+    mkdirSync(join(source, 'demo'), { recursive: true });
+    writeFileSync(join(source, 'demo', 'SKILL.md'), 'v1\n');
+    const target = join(dir, 'installed');
+    syncSkills(source, target, { kitVersion: '0.6.0' });
+
+    mkdirSync(join(source, 'verification'), { recursive: true });
+    writeFileSync(join(source, 'verification', 'SKILL.md'), 'kit version\n');
+    mkdirSync(join(target, 'verification'), { recursive: true });
+    writeFileSync(join(target, 'verification', 'SKILL.md'), 'user-owned\n');
+    syncSkills(source, target, { kitVersion: '0.6.0' });
+
+    const result = checkSkills(target, source);
+    assert.equal(result.ok, true, result.detail);
+    assert.match(result.detail, /user-owned skill `verification` shadows the kit's/);
+
+    // A genuinely new, uninstalled kit skill (no shadowing directory) still fails.
+    mkdirSync(join(source, 'other'), { recursive: true });
+    writeFileSync(join(source, 'other', 'SKILL.md'), 'x\n');
+    const stillFails = checkSkills(target, source);
+    assert.equal(stillFails.ok, false);
+    assert.match(stillFails.detail, /other\/SKILL\.md/);
+  });
+});

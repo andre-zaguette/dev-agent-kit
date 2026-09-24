@@ -53,8 +53,14 @@ export function checkSkills(skillsDir: string, sourceDir: string): CheckResult {
     }
   }
   // A whole skill the kit added since the last install — not in the manifest at all yet.
+  const shadowed: string[] = [];
   for (const skill of listSourceSkills(sourceDir)) {
     if (skill in manifest.skills) continue;
+    // A user-owned skill with the same name shadows the kit's; install skips it, so it is a note, not a failure.
+    if (existsSync(path.join(skillsDir, skill))) {
+      shadowed.push(skill);
+      continue;
+    }
     for (const rel of listFilesRecursive(path.join(sourceDir, skill)).map((p) => p.split(path.sep).join('/'))) {
       outdated.push(`${skill}/${rel}`);
     }
@@ -65,7 +71,11 @@ export function checkSkills(skillsDir: string, sourceDir: string): CheckResult {
   if (outdated.length > 0) {
     return { name: 'skills', ok: false, detail: `outdated vs the kit: ${outdated.join(', ')} — run install` };
   }
-  const note = edited.length > 0 ? `; locally edited (kept by design): ${edited.join(', ')}` : '';
+  const note =
+    (edited.length > 0 ? `; locally edited (kept by design): ${edited.join(', ')}` : '') +
+    shadowed
+      .map((skill) => `; user-owned skill \`${skill}\` shadows the kit's; kit version not installed — rename or remove yours to install it`)
+      .join('');
   return {
     name: 'skills',
     ok: true,

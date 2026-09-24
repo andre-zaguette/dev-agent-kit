@@ -2,6 +2,7 @@ import { parseArgs } from 'node:util';
 import { auditContext, detectProjectProfile, selectBackendReferences } from '../../core/src/index.js';
 import { run, type CliIo } from './cli.js';
 import { CliError, PROJECT_JSON, projectRootOf } from './dev-common.js';
+import { sourcesList, sourcesVerify, taskResolve, taskShow, taskStatus } from './dev-task-commands.js';
 import { readKitVersion } from './util.js';
 
 export { CliError, projectRootOf } from './dev-common.js';
@@ -85,6 +86,19 @@ export async function runDev(argv: string[], io: CliIo): Promise<number> {
       case 'context':
         if (rest[0] === 'audit') return contextAudit(rest.slice(1), io);
         throw new CliError(`dev-agent: unknown context command "${rest[0] ?? ''}" — see --help.`);
+      case 'sources':
+        return rest[0] === 'verify' ? sourcesVerify(rest.slice(1), io) : sourcesList(rest, io);
+      case 'task':
+        switch (rest[0]) {
+          case 'resolve':
+            return taskResolve(rest.slice(1), io);
+          case 'status':
+            return taskStatus(rest.slice(1), io);
+          case 'show':
+            return taskShow(rest.slice(1), io);
+          default:
+            throw new CliError(`dev-agent: unknown task command "${rest[0] ?? ''}" — see --help.`);
+        }
       default:
         throw new CliError(`dev-agent: unknown command "${command}" — see --help.`);
     }

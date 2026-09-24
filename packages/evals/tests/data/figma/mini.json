@@ -1,0 +1,9 @@
+{
+  "fileKey": "MINI01",
+  "metadata": "<canvas id=\"0:1\" name=\"Page 1\"><frame id=\"1:2\" name=\"Frame\" /><frame id=\"9:9\" name=\"Huge\" /></canvas>",
+  "variables": { "color/primary": "#4F46E5" },
+  "nodes": {
+    "1:2": { "name": "Frame", "designContext": "<div class=\"frame\">Hello</div>", "screenshot": "assets/frame.png", "assets": { "logo.png": "assets/logo.png" } },
+    "9:9": { "name": "Huge", "tooLarge": true }
+  }
+}

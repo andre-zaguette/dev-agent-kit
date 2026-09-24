@@ -1,0 +1,19 @@
+{
+  "id": "stack-react",
+  "category": "stack",
+  "title": "PricingCard em React",
+  "fixture": "react-app",
+  "figma": "pricing",
+  "profile": "standard",
+  "prompt": "Implemente o componente PricingCard do Figma (https://www.figma.com/design/PRICING01/Pricing?node-id=1-10) em src/components/PricingCard.tsx, seguindo as convenções deste projeto e reutilizando o botão que já existe. Use as skills do kit. Não é preciso rodar o app nem instalar dependências.",
+  "timeoutSec": 900,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^1[:-]10$" } },
+    { "type": "tool_called", "tool": "reference/react" },
+    { "type": "file_matches", "glob": "src/components/PricingCard.tsx", "pattern": "export (default )?function PricingCard|export const PricingCard" },
+    { "type": "file_matches", "glob": "src/components/PricingCard.tsx", "pattern": "import[^;]*\\bButton\\b[^;]*from" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "src/components/PricingCard.tsx", "pattern": "\\bclass=", "description": "React usa className" }
+  ]
+}

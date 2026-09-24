@@ -1,0 +1,19 @@
+{
+  "id": "stack-vuejs",
+  "category": "stack",
+  "title": "PricingCard em Vue",
+  "fixture": "vue-app",
+  "figma": "pricing",
+  "profile": "standard",
+  "prompt": "Implemente o componente PricingCard do Figma (https://www.figma.com/design/PRICING01/Pricing?node-id=1-10) em src/components/PricingCard.vue, seguindo as convenções deste projeto e reutilizando o botão que já existe. Use as skills do kit. Não é preciso rodar o app nem instalar dependências.",
+  "timeoutSec": 900,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^1[:-]10$" } },
+    { "type": "tool_called", "tool": "reference/vuejs" },
+    { "type": "file_matches", "glob": "src/components/PricingCard.vue", "pattern": "<script setup" },
+    { "type": "file_matches", "glob": "src/components/PricingCard.vue", "pattern": "<BaseButton" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "src/components/PricingCard.vue", "pattern": "data\\s*\\(\\s*\\)\\s*\\{", "description": "Options API" }
+  ]
+}

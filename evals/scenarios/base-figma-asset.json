@@ -1,0 +1,18 @@
+{
+  "id": "base-figma-asset",
+  "category": "base",
+  "title": "Asset real do Figma",
+  "fixture": "vanilla-app",
+  "figma": "asset",
+  "profile": "standard",
+  "prompt": "Implemente o frame Landing hero do Figma (https://www.figma.com/design/ASSET01/Marketing?node-id=7-1) como pages/landing.html. Siga o workflow das skills do kit (Figma como fonte de verdade, reuso do que já existe, validação com as tools do frontend-agent). O projeto é servido em {{baseUrl}}. Termine com um resumo do que fez e das diferenças conhecidas.",
+  "timeoutSec": 1200,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/download_assets" },
+    { "type": "file_matches", "glob": "pages/landing.html", "pattern": "<img[^>]*src=\"[^\"]*hero\\.png\"" },
+    { "type": "file_matches", "glob": "pages/landing.html", "pattern": "alt=\"[^\"]+\"" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "pages/landing.html", "pattern": "placeholder|picsum|unsplash|placehold|dummyimage", "flags": "i", "description": "placeholder no lugar do asset" }
+  ]
+}

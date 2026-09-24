@@ -1,0 +1,19 @@
+{
+  "id": "stack-angular",
+  "category": "stack",
+  "title": "PricingCard em Angular",
+  "fixture": "angular-app",
+  "figma": "pricing",
+  "profile": "standard",
+  "prompt": "Implemente o componente PricingCard do Figma (https://www.figma.com/design/PRICING01/Pricing?node-id=1-10) em src/app/pricing-card/pricing-card.component.ts, seguindo as convenções deste projeto e reutilizando o botão que já existe. Use as skills do kit. Não é preciso rodar o app nem instalar dependências.",
+  "timeoutSec": 900,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^1[:-]10$" } },
+    { "type": "tool_called", "tool": "reference/angular" },
+    { "type": "file_matches", "glob": "src/app/pricing-card/**", "pattern": "@Component" },
+    { "type": "file_matches", "glob": "src/app/pricing-card/**", "pattern": "ButtonComponent|<app-button" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "src/app/pricing-card/**", "pattern": "document\\.querySelector", "description": "manipulação direta do DOM" }
+  ]
+}

@@ -1,0 +1,19 @@
+:root {
+  --color-primary: #4F46E5;
+  --color-primary-contrast: #FFFFFF;
+  --color-bg: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-text: #0F172A;
+  --color-muted: #64748B;
+  --color-border: #E2E8F0;
+  --radius-md: 12px;
+  --space-2: 8px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-10: 40px;
+  --font-title: 40px;
+}
+
+.btn { display: inline-block; padding: 12px 20px; border-radius: 8px; font-weight: 700; text-decoration: none; border: 0; cursor: pointer; }
+.btn--primary { background: var(--color-primary); color: var(--color-primary-contrast); }
+.btn:focus-visible { outline: 3px solid var(--color-text); outline-offset: 2px; }

@@ -1,0 +1,1 @@
+{ "name": "acme-tailwind", "private": true, "scripts": { "build:css": "tailwindcss -i src/input.css -o dist/output.css" }, "devDependencies": { "tailwindcss": "^3.4.0" } }

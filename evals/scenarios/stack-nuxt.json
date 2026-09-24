@@ -1,0 +1,18 @@
+{
+  "id": "stack-nuxt",
+  "category": "stack",
+  "title": "PricingCard em Nuxt",
+  "fixture": "nuxt-app",
+  "figma": "pricing",
+  "profile": "standard",
+  "prompt": "Implemente o componente PricingCard do Figma (https://www.figma.com/design/PRICING01/Pricing?node-id=1-10) em components/PricingCard.vue, seguindo as convenções deste projeto e reutilizando o botão que já existe. Use as skills do kit. Não é preciso rodar o app nem instalar dependências.",
+  "timeoutSec": 900,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^1[:-]10$" } },
+    { "type": "tool_called", "tool": "reference/nuxt" },
+    { "type": "file_matches", "glob": "components/PricingCard.vue", "pattern": "<BaseButton" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "components/PricingCard.vue", "pattern": "import\\s+BaseButton\\s+from", "description": "Nuxt auto-importa" }
+  ]
+}

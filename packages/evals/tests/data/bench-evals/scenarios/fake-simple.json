@@ -1,0 +1,16 @@
+{
+  "id": "fake-simple",
+  "category": "base",
+  "title": "Fake host writes a page",
+  "fixture": "tiny",
+  "figma": "tiny",
+  "profile": "standard",
+  "prompt": "Implement the page. App at {{baseUrl}}.",
+  "timeoutSec": 60,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context" },
+    { "type": "file_matches", "glob": "pages/*.html", "pattern": "http://127\\.0\\.0\\.1:\\d+" },
+    { "type": "output_matches", "pattern": "VEREDITO:\\s*PASS" }
+  ],
+  "forbidden": [{ "type": "file_exists", "path": "forbidden.txt" }]
+}

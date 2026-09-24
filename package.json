@@ -1,0 +1,17 @@
+{
+  "name": "frontend-agent-kit",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "validate:skills": "node scripts/validate-skill.mjs skills",
+    "mcp:server": "npm run start --workspace=packages/mcp-server",
+    "mcp:inspect": "npx @modelcontextprotocol/inspector npx tsx packages/mcp-server/src/index.ts",
+    "frontend-agent": "node packages/cli/bin/frontend-agent.mjs",
+    "test": "npm test --workspaces --if-present",
+    "bench": "node packages/evals/bin/bench.mjs",
+    "evals:validate": "node packages/evals/bin/bench.mjs --validate"
+  }
+}

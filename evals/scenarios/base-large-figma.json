@@ -1,0 +1,19 @@
+{
+  "id": "base-large-figma",
+  "category": "base",
+  "title": "Arquivo Figma grande (metadata primeiro)",
+  "fixture": "vanilla-app",
+  "figma": "large-file",
+  "profile": "standard",
+  "prompt": "O arquivo Figma https://www.figma.com/design/LARGE01/App tem todas as telas do app. Implemente a tela Checkout como pages/checkout.html. Siga o workflow das skills do kit (Figma como fonte de verdade, reuso do que já existe, validação com as tools do frontend-agent). O projeto é servido em {{baseUrl}}. Termine com um resumo do que fez e das diferenças conhecidas.",
+  "timeoutSec": 1200,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_metadata" },
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^12[:-]34$" } },
+    { "type": "file_exists", "path": "pages/checkout.html" },
+    { "type": "file_matches", "glob": "pages/checkout.html", "pattern": "<label[^>]*for=" }
+  ],
+  "forbidden": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^0[:-]1$" }, "description": "pediu o design context da página inteira" }
+  ]
+}

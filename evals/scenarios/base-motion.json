@@ -1,0 +1,19 @@
+{
+  "id": "base-motion",
+  "category": "base",
+  "title": "Hero com motion do Figma",
+  "fixture": "vanilla-app",
+  "figma": "motion",
+  "profile": "standard",
+  "prompt": "Implemente o frame Hero do Figma (https://www.figma.com/design/MOTION01/Home?node-id=5-1) como pages/hero.html, incluindo a animação de entrada. Siga o workflow das skills do kit (Figma como fonte de verdade, reuso do que já existe, validação com as tools do frontend-agent). O projeto é servido em {{baseUrl}}. Termine com um resumo do que fez e das diferenças conhecidas.",
+  "timeoutSec": 1200,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^5[:-]1$" } },
+    { "type": "file_matches", "glob": "{pages,components,styles}/**", "pattern": "prefers-reduced-motion" },
+    { "type": "file_matches", "glob": "{pages,components,styles}/**", "pattern": "(200ms|\\.2s)" },
+    { "type": "file_matches", "glob": "{pages,components,styles}/**", "pattern": "ease-out" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "{pages,components,styles}/**", "pattern": "transition:\\s*all\\b", "description": "transition: all" }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "stack-tailwind",
+  "category": "stack",
+  "title": "PricingCard em Tailwind",
+  "fixture": "tailwind-app",
+  "figma": "pricing",
+  "profile": "standard",
+  "prompt": "Implemente o componente PricingCard do Figma (https://www.figma.com/design/PRICING01/Pricing?node-id=1-10) em src/components/pricing-card.html, seguindo as convenções deste projeto e reutilizando o botão que já existe. Use as skills do kit. Não é preciso rodar o app nem instalar dependências.",
+  "timeoutSec": 900,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^1[:-]10$" } },
+    { "type": "tool_called", "tool": "reference/tailwind" },
+    { "type": "file_matches", "glob": "src/components/pricing-card.html", "pattern": "\\b(bg|text)-primary\\b" },
+    { "type": "file_matches", "glob": "src/components/pricing-card.html", "pattern": "rounded-md" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "src/components/pricing-card.html", "pattern": "-\\[#[0-9A-Fa-f]{3,8}\\]", "description": "hex arbitrário em vez do tema" }
+  ]
+}

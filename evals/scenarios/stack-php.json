@@ -1,0 +1,19 @@
+{
+  "id": "stack-php",
+  "category": "stack",
+  "title": "PricingCard em PHP",
+  "fixture": "php-app",
+  "figma": "pricing",
+  "profile": "standard",
+  "prompt": "Implemente o componente PricingCard do Figma (https://www.figma.com/design/PRICING01/Pricing?node-id=1-10) em templates/partials/pricing-card.php, seguindo as convenções deste projeto e reutilizando o botão que já existe. Use as skills do kit. Não é preciso rodar o app nem instalar dependências.",
+  "timeoutSec": 900,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^1[:-]10$" } },
+    { "type": "tool_called", "tool": "reference/php" },
+    { "type": "file_matches", "glob": "templates/partials/pricing-card.php", "pattern": "htmlspecialchars" },
+    { "type": "file_matches", "glob": "templates/partials/pricing-card.php", "pattern": "partials/button\\.php" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "templates/partials/pricing-card.php", "pattern": "<\\?=\\s*\\$[A-Za-z_]+\\s*\\?>", "description": "echo sem escape" }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "fileKey": "MOTION01",
+  "metadata": "<canvas id=\"0:1\" name=\"Home\"><frame id=\"5:1\" name=\"Hero\" width=\"1440\" height=\"900\" /></canvas>",
+  "variables": { "color/primary": "#4F46E5", "color/hero-bg": "#0F172A", "color/hero-muted": "#CBD5E1", "motion/duration-enter": "200ms", "motion/easing-enter": "ease-out" },
+  "nodes": {
+    "5:1": {
+      "name": "Hero",
+      "screenshot": "assets/hero-motion.png",
+      "designContext": "Frame \"Hero\": fill color/hero-bg, centered text, padding 120 vertical.\n- Title \"Crie mais rápido\": Arial Bold 56px, white.\n- Subtitle \"Do Figma ao código sem retrabalho.\": 20px, color/hero-muted.\n- CTA \"Começar agora\": fill color/primary, white bold text, padding 14×24, radius 8.\n\nPrototype / motion (Smart Animate on page load):\n- Title and subtitle: opacity 0→1 and translateY 8px→0, duration motion/duration-enter (200ms), easing motion/easing-enter (ease-out).\n- CTA: same animation with a 50ms delay.\n- Accessibility note from the designer: when the user prefers reduced motion, show everything immediately with no animation."
+    }
+  }
+}

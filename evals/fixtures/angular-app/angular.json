@@ -1,0 +1,1 @@
+{ "version": 1, "projects": { "acme": { "projectType": "application", "root": "", "sourceRoot": "src", "architect": { "build": { "builder": "@angular-devkit/build-angular:application", "options": { "browser": "src/main.ts", "styles": ["src/styles.css"] } } } } } }

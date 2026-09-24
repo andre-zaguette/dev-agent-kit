@@ -1,0 +1,22 @@
+{
+  "id": "base-simple-screen",
+  "category": "base",
+  "title": "Tela simples a partir do Figma",
+  "fixture": "vanilla-app",
+  "figma": "pricing",
+  "profile": "standard",
+  "prompt": "Implemente o frame Pricing do Figma (https://www.figma.com/design/PRICING01/Pricing?node-id=1-2) como pages/pricing.html. Siga o workflow das skills do kit (Figma como fonte de verdade, reuso do que já existe, validação com as tools do frontend-agent). O projeto é servido em {{baseUrl}}. Termine com um resumo do que fez e das diferenças conhecidas.",
+  "timeoutSec": 1200,
+  "expected": [
+    { "type": "tool_called", "tool": "skill/figma-to-code", "description": "leu/invocou a skill figma-to-code" },
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^1[:-]2$" } },
+    { "type": "tool_called", "tool": "figma/get_screenshot" },
+    { "type": "tool_called", "tool": "frontend-agent/capture_screenshot" },
+    { "type": "file_exists", "path": "pages/pricing.html" },
+    { "type": "file_matches", "glob": "pages/pricing.html", "pattern": "tokens\\.css" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "pages/pricing.html", "pattern": "#4[Ff]46[Ee]5", "description": "cor primária hardcoded em vez do token" },
+    { "type": "tool_called", "tool": "frontend-agent/capture_screenshot", "args": { "url": "^(?!http://(127\\.0\\.0\\.1|localhost)[:/])" }, "description": "screenshot fora do localhost" }
+  ]
+}

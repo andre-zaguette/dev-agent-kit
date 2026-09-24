@@ -1,0 +1,13 @@
+{
+  "fileKey": "ASSET01",
+  "metadata": "<canvas id=\"0:1\" name=\"Marketing\"><frame id=\"7:1\" name=\"Landing hero\" width=\"1440\" height=\"900\"><rectangle id=\"7:2\" name=\"hero-image\" width=\"524\" height=\"349\" fills=\"IMAGE\" /></frame></canvas>",
+  "variables": { "color/primary": "#4F46E5", "color/text": "#0F172A", "color/muted": "#64748B" },
+  "nodes": {
+    "7:1": {
+      "name": "Landing hero",
+      "screenshot": "assets/landing.png",
+      "assets": { "hero.png": "assets/hero.png" },
+      "designContext": "Frame \"Landing hero\": container max-width 1120, padding 64×24, 2 columns, gap 48, vertically centered.\n- Left: title \"Bem-vindo à Acme\" (Arial Bold 48px, color/text), text \"Ferramentas simples para times que entregam.\" (18px, color/muted), primary button \"Criar conta\".\n- Right: image fill \"hero.png\" (node 7:2, rounded 12, full column width). This is a real image asset of the file — download it with download_assets; alt text: \"Pessoas colaborando em frente a um painel\"."
+    }
+  }
+}

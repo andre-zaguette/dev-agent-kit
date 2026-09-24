@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Planos</title>
+<style>
+:root{--color-primary:#4F46E5;--color-primary-contrast:#FFFFFF;--color-bg:#F8FAFC;--color-surface:#FFFFFF;--color-text:#0F172A;--color-muted:#64748B;--color-border:#E2E8F0;--radius-md:12px;--space-2:8px;--space-4:16px;--space-6:24px;--space-10:40px;--font-title:40px}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;background:var(--color-bg);color:var(--color-text)}
+main{max-width:1120px;margin:0 auto;padding:var(--space-10) var(--space-6)}
+h1{font-size:var(--font-title);margin:0 0 var(--space-2)}
+.lead{color:var(--color-muted);margin:0 0 var(--space-10)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-6)}
+.card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-6)}
+.card h2{margin:0 0 var(--space-2);font-size:20px}
+.price{font-size:32px;font-weight:700;margin:0 0 var(--space-4)}
+.card ul{padding-left:20px;margin:0 0 var(--space-6);color:var(--color-muted)}
+.btn{display:inline-block;padding:12px 20px;border-radius:8px;font-weight:700;text-decoration:none;border:0}
+.btn--primary{background:var(--color-primary);color:var(--color-primary-contrast)}
+@media (max-width:767px){.grid{grid-template-columns:1fr}h1{font-size:32px}main{padding:var(--space-6) var(--space-4)}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Planos</h1>
+  <p class="lead">Escolha o plano ideal para o seu time.</p>
+  <div class="grid">
+    <article class="card"><h2>Starter</h2><p class="price">R$ 0</p><ul><li>1 projeto</li><li>Suporte por e-mail</li></ul><a class="btn btn--primary" href="#">Começar</a></article>
+    <article class="card"><h2>Pro</h2><p class="price">R$ 49</p><ul><li>10 projetos</li><li>Suporte prioritário</li></ul><a class="btn btn--primary" href="#">Assinar Pro</a></article>
+    <article class="card"><h2>Team</h2><p class="price">R$ 99</p><ul><li>Projetos ilimitados</li><li>SSO</li></ul><a class="btn btn--primary" href="#">Falar com vendas</a></article>
+  </div>
+</main>
+</body>
+</html>

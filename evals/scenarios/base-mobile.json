@@ -1,0 +1,18 @@
+{
+  "id": "base-mobile",
+  "category": "base",
+  "title": "Desktop + mobile responsivo",
+  "fixture": "vanilla-app",
+  "figma": "pricing",
+  "profile": "standard",
+  "prompt": "Implemente pages/pricing.html a partir do Figma: desktop no frame Pricing (https://www.figma.com/design/PRICING01/Pricing?node-id=1-2) e mobile no frame Pricing / Mobile (node-id=1-50). Siga o workflow das skills do kit (Figma como fonte de verdade, reuso do que já existe, validação com as tools do frontend-agent). O projeto é servido em {{baseUrl}}. Termine com um resumo do que fez e das diferenças conhecidas.",
+  "timeoutSec": 1200,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^1[:-]50$" } },
+    { "type": "tool_called", "tool": "frontend-agent/run_responsive_suite" },
+    { "type": "file_matches", "glob": "{pages,components,styles}/**", "pattern": "@media" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "pages/pricing.html", "pattern": "(min-)?width:\\s*1440px", "description": "largura fixa de desktop" }
+  ]
+}

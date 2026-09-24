@@ -1,0 +1,14 @@
+{
+  "fileKey": "LARGE01",
+  "metadata": "<canvas id=\"0:1\" name=\"App — all screens\"><frame id=\"10:1\" name=\"Home\" /><frame id=\"10:2\" name=\"Search\" /><frame id=\"10:3\" name=\"Product\" /><frame id=\"10:4\" name=\"Cart\" /><frame id=\"12:34\" name=\"Checkout\" width=\"1440\" height=\"900\" /><frame id=\"10:6\" name=\"Order confirmed\" /><frame id=\"10:7\" name=\"Account\" /><frame id=\"10:8\" name=\"Orders\" /><frame id=\"10:9\" name=\"Settings\" /><frame id=\"10:10\" name=\"Help\" /><frame id=\"10:11\" name=\"Login\" /><frame id=\"10:12\" name=\"Sign up\" /><frame id=\"10:13\" name=\"Password reset\" /><frame id=\"10:14\" name=\"Empty states\" /><frame id=\"10:15\" name=\"Error states\" /><frame id=\"10:16\" name=\"Components\" /></canvas>",
+  "variables": { "color/primary": "#4F46E5", "color/bg": "#F8FAFC", "color/surface": "#FFFFFF", "color/text": "#0F172A", "color/border": "#E2E8F0", "color/input-border": "#CBD5E1", "radius/md": "12" },
+  "nodes": {
+    "0:1": { "name": "App — all screens", "tooLarge": true },
+    "12:34": {
+      "name": "Checkout",
+      "screenshot": "assets/checkout.png",
+      "metadata": "<frame id=\"12:34\" name=\"Checkout\" width=\"1440\" height=\"900\"><text name=\"Title\" /><frame name=\"Form\"><instance name=\"Input/Nome\" /><instance name=\"Input/E-mail\" /><instance name=\"Input/Cartão\" /><instance name=\"Button/Primary\" /></frame><frame name=\"Summary\" /></frame>",
+      "designContext": "Frame \"Checkout\" (1440×900, fill color/bg). Container max-width 960, padding 40×24, 2-column grid (2fr 1fr), gap 24.\n- Title \"Checkout\" spanning both columns, Arial Bold 32px.\n- Form card (fill color/surface, 1px color/border, radius/md, padding 24): labeled inputs Nome, E-mail (type email), Cartão — label bold, margin-bottom 8; input padding 12, 1px color/input-border, radius 8, margin-bottom 16; full-width primary button \"Pagar R$ 49\".\n- Summary card (same card style): rows \"Plano Pro — R$ 49\" and \"Total — R$ 49\", label left and bold value right."
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "profile-pixel-perfect",
+  "category": "profile",
+  "title": "pixel-perfect: 4px de espaçamento reprova",
+  "fixture": "vanilla-validate",
+  "figma": "pricing",
+  "profile": "pixel-perfect",
+  "prompt": "A página pages/pricing.html foi implementada a partir do frame Pricing do Figma (https://www.figma.com/design/PRICING01/Pricing?node-id=1-2). Não altere arquivos. Valide-a contra o Figma de acordo com o validationProfile configurado em .frontend-agent/config.yml, usando as tools do frontend-agent. O projeto é servido em {{baseUrl}}. Liste as divergências com a tolerância aplicada e termine com uma linha exatamente no formato VEREDITO: PASS ou VEREDITO: FAIL.",
+  "timeoutSec": 1200,
+  "expected": [
+    { "type": "tool_called", "tool": "frontend-agent/inspect_dom" },
+    { "type": "tool_called", "tool": "figma/get_variable_defs" },
+    { "type": "output_matches", "pattern": "VEREDITO:\\s*FAIL" }
+  ],
+  "forbidden": [
+    { "type": "output_matches", "pattern": "VEREDITO:\\s*PASS" },
+    { "type": "tool_called", "tool": "builtin/Edit" },
+    { "type": "tool_called", "tool": "builtin/Write" },
+    { "type": "tool_called", "tool": "builtin/file_change" },
+    { "type": "tool_called", "tool": "builtin/shell", "args": { "command": ">|\\bsed\\s+-i\\b|\\btee\\b|\\bmv\\b|\\brm\\b|\\bcp\\b" }, "description": "editou arquivo via shell em vez das tools (codex)" }
+  ]
+}

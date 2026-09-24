@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Checkout</title>
+<style>
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#F8FAFC;color:#0F172A}
+main{max-width:960px;margin:0 auto;padding:40px 24px;display:grid;grid-template-columns:2fr 1fr;gap:24px}
+h1{grid-column:1/-1;font-size:32px;margin:0}
+form,.summary{background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:24px}
+label{display:block;font-weight:700;margin:0 0 8px}
+input{display:block;width:100%;box-sizing:border-box;padding:12px;border:1px solid #CBD5E1;border-radius:8px;margin:0 0 16px;font-size:16px}
+.btn{display:block;width:100%;padding:14px;border:0;border-radius:8px;background:#4F46E5;color:#FFFFFF;font-weight:700;font-size:16px}
+.summary p{display:flex;justify-content:space-between;margin:0 0 12px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Checkout</h1>
+  <form><label for="name">Nome</label><input id="name"><label for="email">E-mail</label><input id="email" type="email"><label for="card">Cartão</label><input id="card"><button class="btn" type="submit">Pagar R$ 49</button></form>
+  <aside class="summary"><p><span>Plano Pro</span><strong>R$ 49</strong></p><p><span>Total</span><strong>R$ 49</strong></p></aside>
+</main>
+</body>
+</html>

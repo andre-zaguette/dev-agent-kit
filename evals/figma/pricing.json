@@ -1,0 +1,41 @@
+{
+  "fileKey": "PRICING01",
+  "metadata": "<canvas id=\"0:1\" name=\"Pricing\"><frame id=\"1:2\" name=\"Pricing\" x=\"0\" y=\"0\" width=\"1440\" height=\"900\"><frame id=\"1:10\" name=\"PricingCard\" width=\"357\" height=\"262\" /><instance id=\"1:11\" name=\"Button/Primary\" /></frame><frame id=\"1:50\" name=\"Pricing / Mobile\" x=\"1600\" y=\"0\" width=\"390\" height=\"1200\" /></canvas>",
+  "variables": {
+    "color/primary": "#4F46E5",
+    "color/primary-contrast": "#FFFFFF",
+    "color/bg": "#F8FAFC",
+    "color/surface": "#FFFFFF",
+    "color/text": "#0F172A",
+    "color/muted": "#64748B",
+    "color/border": "#E2E8F0",
+    "radius/md": "12",
+    "space/2": "8",
+    "space/4": "16",
+    "space/6": "24",
+    "space/10": "40",
+    "font/title": "40",
+    "font/family": "Arial"
+  },
+  "nodes": {
+    "1:2": {
+      "name": "Pricing",
+      "screenshot": "assets/pricing-desktop.png",
+      "designContext": "Frame \"Pricing\" (1440×900, fill color/bg).\nContainer: max-width 1120, centered, padding space/10 (top/bottom) space/6 (sides).\n- Title \"Planos\": Arial Bold font/title (40px), color/text, margin-bottom space/2.\n- Lead \"Escolha o plano ideal para o seu time.\": 16px, color/muted, margin-bottom space/10.\n- Grid of 3 PricingCard instances (1:10), 3 equal columns, gap space/6.\nPricingCard contents (in order): Starter / R$ 0 / [1 projeto, Suporte por e-mail] / button \"Começar\"; Pro / R$ 49 / [10 projetos, Suporte prioritário] / \"Assinar Pro\"; Team / R$ 99 / [Projetos ilimitados, SSO] / \"Falar com vendas\".\nButtons are instances of the Button/Primary component (1:11).\n\nReference code:\n<main class=\"pricing\"><h1>Planos</h1><p class=\"lead\">Escolha o plano ideal para o seu time.</p><div class=\"grid\">{PricingCard × 3}</div></main>"
+    },
+    "1:10": {
+      "name": "PricingCard",
+      "screenshot": "assets/pricing-card.png",
+      "designContext": "Component \"PricingCard\" (357×262).\nFill color/surface, 1px stroke color/border, radius radius/md (12), padding space/6 (24).\n- Plan name: Arial Bold 20px, color/text, margin-bottom space/2.\n- Price: Arial Bold 32px, margin-bottom space/4.\n- Feature list: bulleted, 16px, color/muted, left padding 20, margin-bottom space/6.\n- CTA: instance of Button/Primary (1:11).\nProps: name (text), price (text), features (list of text), ctaLabel (text).\nExample instance: name \"Pro\", price \"R$ 49\", features [\"10 projetos\", \"Suporte prioritário\"], ctaLabel \"Assinar Pro\".\n\nReference code:\n<article class=\"card\"><h2>{name}</h2><p class=\"price\">{price}</p><ul>{features}</ul><a class=\"btn btn--primary\">{ctaLabel}</a></article>"
+    },
+    "1:11": {
+      "name": "Button/Primary",
+      "designContext": "Component \"Button/Primary\": padding 12×20, radius 8, fill color/primary, text color/primary-contrast Arial Bold 16px. Code Connect: maps to the project's existing primary button component."
+    },
+    "1:50": {
+      "name": "Pricing / Mobile",
+      "screenshot": "assets/pricing-mobile.png",
+      "designContext": "Frame \"Pricing / Mobile\" (390 wide). Same content as Pricing (1:2) with: container padding space/6 (top/bottom) space/4 (sides); title 32px; the 3 PricingCards stacked in a single column, gap space/6; no horizontal scroll."
+    }
+  }
+}

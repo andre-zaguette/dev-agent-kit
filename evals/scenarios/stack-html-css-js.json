@@ -1,0 +1,19 @@
+{
+  "id": "stack-html-css-js",
+  "category": "stack",
+  "title": "PricingCard em HTML/CSS/JS",
+  "fixture": "vanilla-app",
+  "figma": "pricing",
+  "profile": "standard",
+  "prompt": "Implemente o componente PricingCard do Figma (https://www.figma.com/design/PRICING01/Pricing?node-id=1-10): estilos em components/pricing-card.css e um exemplo de uso em pages/pricing-card.html, seguindo as convenções deste projeto e reutilizando o botão que já existe. Use as skills do kit. Não é preciso rodar o app nem instalar dependências.",
+  "timeoutSec": 900,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^1[:-]10$" } },
+    { "type": "tool_called", "tool": "reference/html-css-js" },
+    { "type": "file_matches", "glob": "components/pricing-card.css", "pattern": "var\\(--(color|space|radius)-" },
+    { "type": "file_matches", "glob": "pages/pricing-card.html", "pattern": "btn--primary" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "components/pricing-card.css", "pattern": "#4[Ff]46[Ee]5", "description": "cor primária hardcoded em vez do token" }
+  ]
+}

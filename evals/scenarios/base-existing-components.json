@@ -1,0 +1,20 @@
+{
+  "id": "base-existing-components",
+  "category": "base",
+  "title": "Reuso de componentes existentes",
+  "fixture": "vanilla-app",
+  "figma": "pricing",
+  "profile": "standard",
+  "prompt": "Implemente o frame Pricing do Figma (https://www.figma.com/design/PRICING01/Pricing?node-id=1-2) como pages/pricing.html, reaproveitando o que o projeto já tem. Siga o workflow das skills do kit (Figma como fonte de verdade, reuso do que já existe, validação com as tools do frontend-agent). O projeto é servido em {{baseUrl}}. Termine com um resumo do que fez e das diferenças conhecidas.",
+  "timeoutSec": 1200,
+  "expected": [
+    { "type": "tool_called", "tool": "figma/get_design_context", "args": { "nodeId": "^1[:-]2$" } },
+    { "type": "file_matches", "glob": "pages/pricing.html", "pattern": "components/button\\.css" },
+    { "type": "file_matches", "glob": "pages/pricing.html", "pattern": "class=\"[^\"]*\\bbtn--primary\\b" },
+    { "type": "file_matches", "glob": "pages/pricing.html", "pattern": "class=\"[^\"]*\\bcard\\b" }
+  ],
+  "forbidden": [
+    { "type": "file_matches", "glob": "pages/**", "pattern": "\\.btn(--primary)?\\s*\\{", "description": "redefiniu o botão existente" },
+    { "type": "file_matches", "glob": "components/*.css", "pattern": "\\.(pricing-)?(button|btn)-(primary|cta)\\b", "description": "criou um botão paralelo" }
+  ]
+}

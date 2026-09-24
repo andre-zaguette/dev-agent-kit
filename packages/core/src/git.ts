@@ -2,10 +2,17 @@ import { execFileSync } from 'node:child_process';
 
 const SHA_RE = /^[0-9a-f]{7,40}$/;
 
+/** The parent environment minus variables that would redirect git away from `cwd`. */
+function cleanEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE']) delete env[key];
+  return env;
+}
+
 /** Run a read-only git command in `root`; null on any failure (not a repo, unknown ref, no git). */
 function git(root: string, args: string[]): string | null {
   try {
-    return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024, env: cleanEnv() }).trim();
   } catch {
     return null;
   }
@@ -22,7 +29,7 @@ export function headSha(root: string): string | null {
 /** Files changed between `sha` and HEAD. null when `sha` is malformed or not in this history. */
 export function changedSince(root: string, sha: string): string[] | null {
   if (!SHA_RE.test(sha)) return null;
-  const out = git(root, ['diff', '--name-only', `${sha}..HEAD`]);
+  const out = git(root, ['-c', 'core.quotePath=false', 'diff', '--name-only', `${sha}..HEAD`]);
   return out === null ? null : out.split('\n').filter(Boolean);
 }
 

@@ -76,3 +76,29 @@ test('detectBaseBranch falls back to main, then master', () => {
     rmSync(withMaster, { recursive: true, force: true });
   }
 });
+
+test('changedSince returns non-ASCII paths unescaped', () => {
+  const dir = makeRepo();
+  try {
+    commitFile(dir, 'a.txt');
+    const first = headSha(dir)!;
+    commitFile(dir, 'café.txt');
+    assert.deepEqual(changedSince(dir, first), ['café.txt']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('git helpers ignore GIT_DIR from the parent environment', () => {
+  const dir = makeRepo();
+  const saved = process.env.GIT_DIR;
+  try {
+    commitFile(dir, 'a.txt');
+    process.env.GIT_DIR = join(dir, 'does-not-exist');
+    assert.match(headSha(dir)!, /^[0-9a-f]{12}$/);
+  } finally {
+    if (saved === undefined) delete process.env.GIT_DIR;
+    else process.env.GIT_DIR = saved;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

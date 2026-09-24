@@ -118,12 +118,34 @@ function checkObject(schema: Record<string, ContractType>, value: unknown, where
   }
 }
 
-function routeRegExp(template: string): RegExp {
-  const source = template
-    .split(/\{[^}]+\}/)
-    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('[^/]+');
-  return new RegExp(`^${source}/?$`);
+const MAX_ROUTE_PATH = 4096;
+const trimSlashes = (text: string): string => {
+  let end = text.length;
+  while (end > 1 && text[end - 1] === '/') end--;
+  return text.slice(0, end);
+};
+
+/** Does `segment` match a template segment with {params}? Linear: literals are found in order, params take at least one character. */
+function matchSegment(template: string, segment: string): boolean {
+  if (!template.includes('{')) return template === segment;
+  const parts = template.split(/\{[^}]+\}/);
+  if (!segment.startsWith(parts[0])) return false;
+  let pos = parts[0].length;
+  for (let i = 1; i < parts.length - 1; i++) {
+    const idx = segment.indexOf(parts[i], pos + 1);
+    if (idx === -1) return false;
+    pos = idx + parts[i].length;
+  }
+  const last = parts[parts.length - 1];
+  return segment.length - last.length >= pos + 1 && segment.endsWith(last);
+}
+
+/** Route match without regular expressions over untrusted input, so no path can make it backtrack. */
+function routeMatches(template: string, path: string): boolean {
+  if (path.length > MAX_ROUTE_PATH) return false;
+  const t = trimSlashes(template).split('/');
+  const p = trimSlashes(path).split('/');
+  return t.length === p.length && t.every((segment, i) => matchSegment(segment, p[i]));
 }
 
 export function verifyExchange(contract: ApiContract, exchange: Exchange): VerifyResult {
@@ -131,7 +153,7 @@ export function verifyExchange(contract: ApiContract, exchange: Exchange): Verif
   const finish = (): VerifyResult => ({ ok: !violations.some((v) => v.severity === 'error'), violations });
 
   const path = exchange.path.split(/[?#]/)[0];
-  if (exchange.method.toUpperCase() !== contract.method || !routeRegExp(contract.path).test(path)) {
+  if (exchange.method.toUpperCase() !== contract.method || !routeMatches(contract.path, path)) {
     violations.push({ where: 'route', kind: 'route', severity: 'error', message: `expected ${contract.method} ${contract.path}, got ${exchange.method.toUpperCase()} ${path}` });
     return finish();
   }
@@ -143,7 +165,8 @@ export function verifyExchange(contract: ApiContract, exchange: Exchange): Verif
     if (contract.successStatus !== undefined && status !== contract.successStatus) {
       violations.push({ where: 'status', kind: 'status', severity: 'error', message: `expected status ${contract.successStatus}, got ${status}` });
     }
-    checkObject(contract.response, exchange.responseBody, 'response', '', violations);
+    const emptyBody = exchange.responseBody === undefined || exchange.responseBody === null || exchange.responseBody === '';
+    if (!(Object.keys(contract.response).length === 0 && emptyBody)) checkObject(contract.response, exchange.responseBody, 'response', '', violations);
     return finish();
   }
 

@@ -29,13 +29,23 @@
       "type": "file_matches",
       "glob": "frontend/src/**/*.ts*",
       "pattern": "INVALID_INPUT"
+    },
+    {
+      "type": "file_matches",
+      "glob": "backend/app/**/*.py",
+      "pattern": "\\b400\\b|HTTP_400_BAD_REQUEST"
+    },
+    {
+      "type": "file_matches",
+      "glob": "frontend/src/**/*.ts*",
+      "pattern": "Dados inválidos"
     }
   ],
   "forbidden": [
     {
       "type": "file_matches",
       "glob": "frontend/src/**/*.ts*",
-      "pattern": "catch\\s*\\(\\w*\\)\\s*\\{\\s*\\}",
+      "pattern": "catch\\s*(\\([^)]*\\))?\\s*\\{\\s*\\}",
       "description": "engole o erro em silêncio"
     }
   ]

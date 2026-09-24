@@ -6,6 +6,11 @@ type Json = Record<string, unknown>;
 
 const MAX_REF_HOPS = 10;
 const MAX_ALLOF_DEPTH = 8;
+const MAX_NODES = 20_000;
+const MAX_PATH_KEY = 2048;
+
+// Work budget for one verifyOpenApi call: a schema graph that fans out (allOf bombs) is cut off, not expanded.
+let nodesLeft = 0;
 const isRecord = (value: unknown): value is Json => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export function parseOpenApiText(text: string): unknown {
@@ -40,7 +45,7 @@ function deref(doc: Json, value: unknown): Json | undefined {
 
 /** Deref, then merge allOf branches into one schema (bounded). */
 function flatten(doc: Json, schema: unknown, depth = 0): Json | undefined {
-  if (depth > MAX_ALLOF_DEPTH) return undefined;
+  if (depth > MAX_ALLOF_DEPTH || --nodesLeft < 0) return undefined;
   const base = deref(doc, schema);
   if (!base) return undefined;
   const properties: Json = Object.create(null);
@@ -67,29 +72,38 @@ function unwrap(doc: Json, schema: unknown): Json | undefined {
   return flat;
 }
 
+function typeOf(schema: Json): string | undefined {
+  if (Array.isArray(schema.type)) {
+    const real = schema.type.filter((t) => t !== 'null');
+    return real.length === 1 && typeof real[0] === 'string' ? real[0] : undefined;
+  }
+  return typeof schema.type === 'string' ? schema.type : undefined;
+}
+
 const push = (out: Violation[], where: 'request' | 'response', kind: Violation['kind'], severity: Violation['severity'], field: string | undefined, message: string) =>
   out.push({ where, kind, severity, field, message });
 
 function typeCheck(doc: Json, type: ContractType, schema: unknown, where: 'request' | 'response', field: string, out: Violation[]): void {
   const s = unwrap(doc, schema);
   if (!s) {
-    push(out, where, 'type', 'warning', field, `${field}: the schema could not be resolved`);
+    push(out, where, 'type', 'error', field, `${field}: the schema could not be resolved (dangling $ref, cycle or too complex)`);
     return;
   }
+  const kind = typeOf(s);
   if (typeof type !== 'string') {
-    if (s.type !== 'object' && Object.keys(s.properties as Json).length === 0) push(out, where, 'type', 'error', field, `${field}: expected an object schema`);
+    if (kind !== 'object' && Object.keys(s.properties as Json).length === 0) push(out, where, 'type', 'error', field, `${field}: expected an object schema`);
     else compareFields(doc, type, s, where, field, out);
     return;
   }
   const base = type.endsWith('?') ? type.slice(0, -1) : type;
   if (base.endsWith('[]')) {
-    if (s.type !== 'array') push(out, where, 'type', 'error', field, `${field}: expected an array schema`);
+    if (kind !== 'array') push(out, where, 'type', 'error', field, `${field}: expected an array schema`);
     else typeCheck(doc, base.slice(0, -2), s.items, where, `${field}[]`, out);
     return;
   }
   const format = typeof s.format === 'string' ? s.format : undefined;
   const expect = (ok: boolean, what: string): boolean => {
-    if (!ok) push(out, where, 'type', 'error', field, `${field}: expected ${what}, the description says ${String(s.type ?? 'nothing')}`);
+    if (!ok) push(out, where, 'type', 'error', field, `${field}: expected ${what}, the description says ${String(kind ?? 'nothing')}`);
     return ok;
   };
   const wantFormat = (want: string) => {
@@ -98,31 +112,31 @@ function typeCheck(doc: Json, type: ContractType, schema: unknown, where: 'reque
   };
   switch (base) {
     case 'string':
-      expect(s.type === 'string', 'a string');
+      expect(kind === 'string', 'a string');
       return;
     case 'uuid':
-      if (expect(s.type === 'string', 'a string')) wantFormat('uuid');
+      if (expect(kind === 'string', 'a string')) wantFormat('uuid');
       return;
     case 'email':
-      if (expect(s.type === 'string', 'a string')) wantFormat('email');
+      if (expect(kind === 'string', 'a string')) wantFormat('email');
       return;
     case 'datetime':
-      if (expect(s.type === 'string', 'a string')) wantFormat('date-time');
+      if (expect(kind === 'string', 'a string')) wantFormat('date-time');
       return;
     case 'date':
-      if (expect(s.type === 'string', 'a string')) wantFormat('date');
+      if (expect(kind === 'string', 'a string')) wantFormat('date');
       return;
     case 'integer':
-      expect(s.type === 'integer', 'an integer');
+      expect(kind === 'integer', 'an integer');
       return;
     case 'number':
-      expect(s.type === 'number' || s.type === 'integer', 'a number');
+      expect(kind === 'number' || kind === 'integer', 'a number');
       return;
     case 'boolean':
-      expect(s.type === 'boolean', 'a boolean');
+      expect(kind === 'boolean', 'a boolean');
       return;
     case 'object':
-      expect(s.type === 'object' || Object.keys(s.properties as Json).length > 0, 'an object');
+      expect(kind === 'object' || Object.keys(s.properties as Json).length > 0, 'an object');
       return;
     default:
       return; // any
@@ -147,7 +161,7 @@ function compareFields(doc: Json, fields: Record<string, ContractType>, schema: 
   }
 }
 
-const normalize = (path: string): string => path.replace(/\{[^}]+\}/g, '{}').replace(/\/+$/, '') || '/';
+const normalize = (path: string): string => (path.length > MAX_PATH_KEY ? path : path.replace(/\{[^}]+\}/g, '{}').replace(/\/+$/, '') || '/');
 
 function jsonSchemaOf(doc: Json, holder: unknown): unknown {
   const content = deref(doc, holder)?.content;
@@ -157,6 +171,7 @@ function jsonSchemaOf(doc: Json, holder: unknown): unknown {
 }
 
 export function verifyOpenApi(contract: ApiContract, doc: unknown): VerifyResult {
+  nodesLeft = MAX_NODES;
   const violations: Violation[] = [];
   const finish = (): VerifyResult => ({ ok: !violations.some((v) => v.severity === 'error'), violations });
   const routeError = (message: string): VerifyResult => {
@@ -177,7 +192,7 @@ export function verifyOpenApi(contract: ApiContract, doc: unknown): VerifyResult
     else {
       const flat = flatten(doc, schema);
       if (flat) compareFields(doc, contract.request, flat, 'request', '', violations);
-      else push(violations, 'request', 'type', 'warning', undefined, 'the request schema could not be resolved');
+      else push(violations, 'request', 'type', Object.keys(contract.request).length > 0 ? 'error' : 'warning', undefined, 'the request schema could not be resolved (dangling $ref, cycle or too complex)');
     }
   }
 
@@ -192,7 +207,7 @@ export function verifyOpenApi(contract: ApiContract, doc: unknown): VerifyResult
     } else {
       const flat = flatten(doc, schema);
       if (flat) compareFields(doc, contract.response, flat, 'response', '', violations);
-      else push(violations, 'response', 'type', 'warning', undefined, 'the response schema could not be resolved');
+      else push(violations, 'response', 'type', Object.keys(contract.response).length > 0 ? 'error' : 'warning', undefined, 'the response schema could not be resolved (dangling $ref, cycle or too complex)');
     }
   }
 

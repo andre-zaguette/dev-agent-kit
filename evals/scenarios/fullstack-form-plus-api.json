@@ -21,17 +21,17 @@
     },
     {
       "type": "file_matches",
-      "glob": "frontend/src/components/CreateUserForm.tsx",
+      "glob": "frontend/src/**/*.tsx",
       "pattern": "<form"
     },
     {
       "type": "file_matches",
-      "glob": "frontend/src/components/CreateUserForm.tsx",
+      "glob": "frontend/src/**/*.tsx",
       "pattern": "<label"
     },
     {
       "type": "file_matches",
-      "glob": "frontend/src/components/CreateUserForm.tsx",
+      "glob": "frontend/src/**/*.tsx",
       "pattern": "EMAIL_ALREADY_EXISTS"
     },
     {

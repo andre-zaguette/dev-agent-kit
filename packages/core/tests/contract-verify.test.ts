@@ -93,3 +93,20 @@ test('odd bodies never crash the verifier', () => {
   }
   for (const body of [null, undefined, 'text', []]) assert.equal(verifyExchange(contract, { ...ok, status: 409, responseBody: body }).ok, false);
 });
+
+test('an empty response body is fine when the contract declares no response fields (204)', () => {
+  const del = parseContract({ method: 'DELETE', path: '/api/users/{id}', response: {}, errors: { '404': ['USER_NOT_FOUND'] }, successStatus: 204 });
+  for (const body of [undefined, null, '']) assert.equal(verifyExchange(del, { method: 'DELETE', path: '/api/users/1', status: 204, responseBody: body }).ok, true, String(body));
+  assert.equal(verifyExchange(del, { method: 'DELETE', path: '/api/users/1', status: 204, responseBody: { x: 1 } }).ok, true);
+});
+
+test('route matching stays fast on hostile paths with many adjacent parameters', () => {
+  const started = performance.now();
+  const many = parseContract({ method: 'GET', path: '/{a}-{b}-{c}-{d}-{e}', response: {}, errors: {} });
+  assert.equal(verifyExchange(many, { method: 'GET', path: `/${'-'.repeat(200)}`, status: 200, responseBody: {} }).ok, true);
+  const file = parseContract({ method: 'GET', path: '/files/{name}.{ext}', response: {}, errors: {} });
+  assert.equal(verifyExchange(file, { method: 'GET', path: `/files/${'a'.repeat(50_000)}`, status: 200, responseBody: {} }).ok, false);
+  assert.equal(verifyExchange(file, { method: 'GET', path: '/files/report.pdf', status: 200, responseBody: {} }).ok, true);
+  assert.equal(verifyExchange(many, { method: 'GET', path: `/${'-'.repeat(10_000)}`, status: 200, responseBody: {} }).ok, false);
+  assert.ok(performance.now() - started < 500, `took ${Math.round(performance.now() - started)}ms`);
+});

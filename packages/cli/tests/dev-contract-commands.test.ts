@@ -152,3 +152,13 @@ test('contract usage refuses client directories outside the project and skips sy
     t.cleanup();
   }
 });
+
+test('an exchange file with no exchanges verifies nothing and is a usage error', async () => {
+  const t = project({ 'evidence/empty.json': '[]' });
+  try {
+    assert.equal(await runDev(['contract', 'verify', 'APP-88', '--exchange', join(t.projectRoot, 'evidence/empty.json'), '--project', t.projectRoot], t.io), 1);
+    assert.match(t.err.join('\n'), /holds no exchanges/);
+  } finally {
+    t.cleanup();
+  }
+});

@@ -96,6 +96,7 @@ export function contractVerify(args: string[], io: CliIo): number {
       throw new CliError(`dev-agent: "${file}" is not valid JSON.`, 1);
     }
     const exchanges = (Array.isArray(parsed) ? parsed : [parsed]) as Exchange[];
+    if (exchanges.length === 0) throw new CliError(`dev-agent: "${file}" holds no exchanges.`, 1);
     if (exchanges.some((e) => typeof e !== 'object' || e === null || typeof e.method !== 'string' || typeof e.path !== 'string' || typeof e.status !== 'number')) {
       throw new CliError(`dev-agent: "${file}" must hold exchanges shaped { method, path, status, requestBody?, responseBody? }.`, 1);
     }

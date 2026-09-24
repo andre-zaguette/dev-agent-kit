@@ -232,3 +232,19 @@ test('fullstack: a solution that writes the contract and both sides passes, one 
   delete noClient['frontend/src/api/users.ts'];
   assert.equal(gradeWith('fullstack-api-contract', noClient, 'ok').verdict, 'fail');
 });
+
+test('fullstack form: a differently named accessible form component still passes, and the validation scenario needs the 400 and the message', () => {
+  const contract = (code: string, status: string) => JSON.stringify({ method: 'POST', path: '/api/users', request: { email: 'email', name: 'string' }, response: { id: 'uuid' }, errors: { [status]: [code] }, successStatus: 201 });
+  const form = "export function NewUserForm() {\n  const [e, setE] = useState('');\n  return (<form><label htmlFor=\"email\">E-mail</label><input id=\"email\" />{e === 'EMAIL_ALREADY_EXISTS' && <p role=\"alert\">E-mail já cadastrado</p>}</form>);\n}\n";
+  const backend = 'raise HTTPException(409, detail={"code": "EMAIL_ALREADY_EXISTS"})\n';
+  const ok = { '.dev-agent/tasks/APP-91.contract.json': contract('EMAIL_ALREADY_EXISTS', '409'), 'frontend/src/components/NewUserForm.tsx': form, 'backend/app/routers/users.py': backend };
+  assert.equal(gradeWith('fullstack-form-plus-api', ok, 'ok').verdict, 'pass');
+
+  const vBackend = 'raise HTTPException(status_code=400, detail={"code": "INVALID_INPUT"})\n';
+  const vClient = "if (e.code === 'INVALID_INPUT') setError('Dados inválidos');\n";
+  const vOk = { '.dev-agent/tasks/APP-95.contract.json': contract('INVALID_INPUT', '400'), 'backend/app/routers/users.py': vBackend, 'frontend/src/api/users.ts': vClient };
+  assert.equal(gradeWith('fullstack-validation-error-contract', vOk, 'ok').verdict, 'pass');
+  assert.equal(gradeWith('fullstack-validation-error-contract', { ...vOk, 'backend/app/routers/users.py': 'raise HTTPException(422, detail={"code": "INVALID_INPUT"})\n' }, 'ok').verdict, 'fail');
+  assert.equal(gradeWith('fullstack-validation-error-contract', { ...vOk, 'frontend/src/api/users.ts': "if (e.code === 'INVALID_INPUT') {}\n" }, 'ok').verdict, 'fail');
+  assert.equal(gradeWith('fullstack-validation-error-contract', { ...vOk, 'frontend/src/api/users.ts': "try { go(); } catch {}\nif (e.code === 'INVALID_INPUT') setError('Dados inválidos');\n" }, 'ok').verdict, 'fail');
+});

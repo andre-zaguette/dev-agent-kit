@@ -124,3 +124,44 @@ test('a __proto__ property in the description does not pollute anything', () => 
   verifyOpenApi(contract, d);
   assert.equal(({} as Record<string, unknown>).type, undefined);
 });
+
+test('an allOf bomb is bounded: a tiny document cannot hang the verifier and is reported as unresolved', () => {
+  const started = performance.now();
+  const bomb = doc();
+  (bomb.components.schemas as Record<string, unknown>).UserOut = { allOf: Array.from({ length: 12 }, () => ({ $ref: '#/components/schemas/UserOut' })) };
+  const r = verifyOpenApi(contract, bomb);
+  assert.equal(r.ok, false);
+  assert.ok(performance.now() - started < 2000, `took ${Math.round(performance.now() - started)}ms`);
+});
+
+test('path keys of absurd length are skipped, not scanned', () => {
+  const started = performance.now();
+  const d = doc();
+  // the giants come first, so a scan that does not skip them would reach them before the real route
+  d.paths = { ['{'.repeat(100_000)]: {}, ['/'.repeat(100_000)]: {}, ...d.paths } as typeof d.paths;
+  assert.equal(verifyOpenApi(contract, d).ok, true);
+  assert.ok(performance.now() - started < 500, `took ${Math.round(performance.now() - started)}ms`);
+});
+
+test('schemas that cannot be resolved are errors when the contract declares fields', () => {
+  const dangling = doc();
+  (dangling.components.schemas as Record<string, unknown>).UserOut = { $ref: '#/components/schemas/Gone' };
+  assert.equal(verifyOpenApi(contract, dangling).ok, false);
+  const cyc = doc();
+  (cyc.components.schemas as Record<string, unknown>).UserOut = { $ref: '#/components/schemas/UserOut' };
+  assert.equal(verifyOpenApi(contract, cyc).ok, false);
+  const bad = doc();
+  ((bad.components.schemas as Record<string, { properties: Record<string, unknown> }>).UserOut.properties).name = { $ref: '#/components/schemas/Gone' };
+  assert.equal(verifyOpenApi(contract, bad).ok, false);
+});
+
+test('OpenAPI 3.1 nullable type arrays are understood', () => {
+  const d = doc();
+  const props = (d.components.schemas as Record<string, { properties: Record<string, unknown> }>).UserOut.properties;
+  props.bio = { type: ['string', 'null'] };
+  props.tags = { type: ['array', 'null'], items: { type: 'string' } };
+  const c = parseContract({ ...contract, response: { ...contract.response, tags: 'string[]?' } });
+  assert.deepEqual(verifyOpenApi(c, d), { ok: true, violations: [] });
+  props.name = { type: ['integer', 'null'] };
+  assert.equal(verifyOpenApi(c, d).ok, false);
+});

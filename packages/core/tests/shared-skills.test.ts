@@ -49,4 +49,5 @@ test('the orchestrator tells the agent which skills each classification loads', 
     assert.match(section, new RegExp(skill), skill);
   }
   for (const skill of ['figma-to-code', 'visual-validation', 'root-cause-analysis', 'repository-investigation']) assert.match(section, new RegExp(skill), skill);
+  assert.match(section, /fullstack-contract/);
 });

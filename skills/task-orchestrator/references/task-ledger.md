@@ -31,7 +31,7 @@ frontend, backend, fullstack, investigation-only, infrastructure. Decide after r
 
 - frontend: `figma-to-code`, `component-selection`, `responsive-design`, `accessibility`, `visual-validation` (plus `frontend-design`, `motion-design` when relevant).
 - backend: `backend-architecture` first, then only what the change needs: `api-design`, `data-modeling`, `database-migrations`, `backend-testing`, `auth-security`, `external-integrations`, `async-jobs`, `observability`, `backend-performance`. Detect the stack, then read only its references.
-- fullstack: both sets, after one API contract is written down (see the fullstack workflow in a later version).
+- fullstack: `fullstack-contract` first (it persists `.dev-agent/tasks/<KEY>.contract.json` before either side is written), then both the frontend and the backend skill sets, each implementing against that same contract.
 - investigation-only: `repository-investigation` and `root-cause-analysis`; change no code.
 - infrastructure: `repository-investigation`, `verification`, `surgical-diff`; production stays read-only.
 

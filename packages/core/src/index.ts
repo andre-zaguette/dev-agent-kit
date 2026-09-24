@@ -6,3 +6,4 @@ export * from './safe-fs.js';
 export * from './task-sources/types.js';
 export * from './task-sources/resolver.js';
 export * from './task-sources/registry.js';
+export * from './config.js';

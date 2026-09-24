@@ -16,3 +16,4 @@ export * from './branch.js';
 export * from './resume.js';
 export { redactSecrets } from './secrets.js';
 export * from './backend-references.js';
+export * from './contract.js';

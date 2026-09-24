@@ -5,7 +5,7 @@ Use the skills installed in `.agents/skills/` (from this kit's canonical `skills
 ## Mandatory workflow
 
 - Inspect the repository before editing: existing patterns, neighboring code, the real test, lint and typecheck commands.
-- Verify real behavior, not just compilation: run it, exercise it, reproduce bugs before and after the fix.
+- Verify real behavior, not just compilation: run the project's tests, typecheck and lint when configured, then exercise the change and reproduce bugs before and after the fix.
 - Keep the diff to the requested scope.
 
 ## Frontend tasks

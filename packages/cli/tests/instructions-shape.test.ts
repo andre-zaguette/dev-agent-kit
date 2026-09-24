@@ -15,6 +15,7 @@ for (const [host, rel] of Object.entries(files)) {
     assert.match(text, /Inspect the repository before editing/i);
     assert.match(text, /real behavior/i);
     assert.match(text, /requested scope/i);
+    assert.match(text, /tests, typecheck and lint when configured/i);
     assert.ok(text.indexOf('Inspect the repository') < text.indexOf('Figma'), 'generic principles come before the frontend section');
     for (const kept of ['Figma', 'compare_screenshots', 'run_responsive_suite', 'run_accessibility_audit']) assert.match(text, new RegExp(kept));
     assert.doesNotMatch(text, /task-orchestrator|jira|linear|trello|asana|clickup/i);

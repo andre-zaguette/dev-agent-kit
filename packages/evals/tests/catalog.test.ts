@@ -11,10 +11,10 @@ import type { RunRecord } from '../src/types.ts';
 const kitRoot = findKitRoot();
 const layout = evalsLayout(join(kitRoot, 'evals'));
 
-test('the catalog loads: 7 base, 8 stack, 3 profile, 9 backend', () => {
+test('the catalog loads: 7 base, 8 stack, 3 profile, 9 backend, 3 fullstack', () => {
   const scenarios = loadScenarios(layout);
   const count = (c: string) => scenarios.filter((s) => s.category === c).length;
-  assert.deepEqual([count('base'), count('stack'), count('profile'), count('backend')], [7, 8, 3, 9]);
+  assert.deepEqual([count('base'), count('stack'), count('profile'), count('backend'), count('fullstack')], [7, 8, 3, 9, 3]);
 });
 
 test('every stack scenario maps to a figma-to-code reference and asserts it was read', () => {
@@ -132,7 +132,7 @@ function gradeWith(id: string, files: Record<string, string>, finalText = ''): R
 }
 
 test('every backend scenario fails on the untouched fixture, even when the agent read the right skills', () => {
-  for (const s of loadScenarios(layout).filter((x) => x.category === 'backend')) {
+  for (const s of loadScenarios(layout).filter((x) => x.category === 'backend' || x.category === 'fullstack')) {
     const r = gradeWith(s.id, {}, 'lock duas vezes');
     assert.notEqual(r.verdict, 'pass', `${s.id} passes without any change`);
   }
@@ -205,4 +205,30 @@ test('celery: an unrelated word "sent" is not an idempotency check', () => {
   const task = (body: string) => `from celery import shared_task\n@shared_task(bind=True, acks_late=True, max_retries=5)\ndef send_invoice(self, invoice_id):\n${body}`;
   assert.equal(gradeWith('backend-celery-task', { 'app/tasks/invoices.py': task('    # the invoice was sent\n    deliver(invoice_id)\n') }).verdict, 'fail');
   assert.equal(gradeWith('backend-celery-task', { 'app/tasks/invoices.py': task('    if store.invoices[invoice_id].sent:\n        return\n    deliver(invoice_id)\n') }).verdict, 'pass');
+});
+
+test('fullstack scenarios need no Figma, demand the contract skill, and persist a contract file', () => {
+  const fullstack = loadScenarios(layout).filter((s) => s.category === 'fullstack');
+  assert.deepEqual(fullstack.map((s) => s.id).sort(), ['fullstack-api-contract', 'fullstack-form-plus-api', 'fullstack-validation-error-contract']);
+  for (const s of fullstack) {
+    assert.equal(s.figma, undefined, s.id);
+    assert.ok(s.expected.some((a) => a.type === 'tool_called' && a.tool === 'skill/fullstack-contract'), `${s.id} must expect the contract skill`);
+    assert.ok(s.expected.some((a) => a.type === 'file_matches' && a.glob.startsWith('.dev-agent/tasks/') && a.glob.endsWith('.contract.json')), `${s.id} must expect the contract file`);
+    assert.match(s.prompt, /instalar depend[eê]ncias|nem instalar/i, s.id);
+    assert.doesNotMatch(s.prompt, /\{\{baseUrl\}\}/, s.id);
+  }
+});
+
+test('fullstack: a solution that writes the contract and both sides passes, one that skips the contract or the client fails', () => {
+  const contract = JSON.stringify({ method: 'POST', path: '/api/users', request: { email: 'email', name: 'string' }, response: { id: 'uuid', email: 'email', name: 'string' }, errors: { '400': ['INVALID_INPUT'], '409': ['EMAIL_ALREADY_EXISTS'] }, successStatus: 201 }, null, 2);
+  const backend = 'from fastapi import APIRouter, HTTPException\nrouter = APIRouter(prefix="/api/users")\n@router.post("", status_code=201)\ndef create_user(body):\n    if exists(body.email):\n        raise HTTPException(409, detail={"code": "EMAIL_ALREADY_EXISTS"})\n    return {"id": "x"}\n';
+  const client = "import { request } from './client';\nexport const createUser = (b: unknown) => request('/api/users', { method: 'POST', body: JSON.stringify(b) });\n";
+  const files: Record<string, string> = { '.dev-agent/tasks/APP-88.contract.json': contract, 'backend/app/routers/users.py': backend, 'frontend/src/api/users.ts': client };
+  assert.equal(gradeWith('fullstack-api-contract', files, 'ok').verdict, 'pass');
+  const noContract = { ...files };
+  delete noContract['.dev-agent/tasks/APP-88.contract.json'];
+  assert.equal(gradeWith('fullstack-api-contract', noContract, 'ok').verdict, 'fail');
+  const noClient = { ...files };
+  delete noClient['frontend/src/api/users.ts'];
+  assert.equal(gradeWith('fullstack-api-contract', noClient, 'ok').verdict, 'fail');
 });

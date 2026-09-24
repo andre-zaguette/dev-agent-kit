@@ -1,0 +1,42 @@
+{
+  "id": "fullstack-validation-error-contract",
+  "category": "fullstack",
+  "title": "Contrato de erro de validação respeitado nos dois lados",
+  "fixture": "fullstack-app",
+  "prompt": "Execute a tarefa APP-95: a criação de usuário (POST /api/users) deve rejeitar entrada inválida com 400 e o código INVALID_INPUT, e o frontend deve mostrar \"Dados inválidos\" quando receber esse código. Persista o contrato em .dev-agent/tasks/APP-95.contract.json antes de implementar. Use as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/fullstack-contract"
+    },
+    {
+      "type": "file_matches",
+      "glob": ".dev-agent/tasks/APP-95.contract.json",
+      "pattern": "INVALID_INPUT"
+    },
+    {
+      "type": "file_matches",
+      "glob": ".dev-agent/tasks/APP-95.contract.json",
+      "pattern": "\"400\""
+    },
+    {
+      "type": "file_matches",
+      "glob": "backend/app/**/*.py",
+      "pattern": "INVALID_INPUT"
+    },
+    {
+      "type": "file_matches",
+      "glob": "frontend/src/**/*.ts*",
+      "pattern": "INVALID_INPUT"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "frontend/src/**/*.ts*",
+      "pattern": "catch\\s*\\(\\w*\\)\\s*\\{\\s*\\}",
+      "description": "engole o erro em silêncio"
+    }
+  ]
+}

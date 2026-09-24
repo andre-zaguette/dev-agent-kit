@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const CATEGORIES = ['base', 'stack', 'profile', 'backend'] as const;
+export const CATEGORIES = ['base', 'stack', 'profile', 'backend', 'fullstack'] as const;
 export const HOSTS = ['claude', 'codex'] as const;
 export type Category = (typeof CATEGORIES)[number];
 export type HostId = (typeof HOSTS)[number];

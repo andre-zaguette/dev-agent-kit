@@ -1,0 +1,52 @@
+{
+  "id": "fullstack-api-contract",
+  "category": "fullstack",
+  "title": "Contrato de API para criar usuário, back e front",
+  "fixture": "fullstack-app",
+  "prompt": "Execute a tarefa APP-88: permitir criar usuários com POST /api/users (email e name; responde 201 com id, email e name; 400 INVALID_INPUT e 409 EMAIL_ALREADY_EXISTS). Antes de implementar, persista o contrato da API em .dev-agent/tasks/APP-88.contract.json, depois implemente o backend e o frontend contra o mesmo contrato. Use as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/fullstack-contract"
+    },
+    {
+      "type": "file_matches",
+      "glob": ".dev-agent/tasks/APP-88.contract.json",
+      "pattern": "\"method\"\\s*:\\s*\"POST\""
+    },
+    {
+      "type": "file_matches",
+      "glob": ".dev-agent/tasks/APP-88.contract.json",
+      "pattern": "\"path\"\\s*:\\s*\"/api/users\""
+    },
+    {
+      "type": "file_matches",
+      "glob": ".dev-agent/tasks/APP-88.contract.json",
+      "pattern": "EMAIL_ALREADY_EXISTS"
+    },
+    {
+      "type": "file_matches",
+      "glob": "backend/app/routers/users.py",
+      "pattern": "@router\\.post"
+    },
+    {
+      "type": "file_matches",
+      "glob": "backend/app/**/*.py",
+      "pattern": "EMAIL_ALREADY_EXISTS"
+    },
+    {
+      "type": "file_matches",
+      "glob": "frontend/src/**/*.ts*",
+      "pattern": "[\\'\"]POST[\\'\"]"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "frontend/src/**/*.ts*",
+      "pattern": "/api/(create-user|users/create)",
+      "description": "o cliente chama um caminho diferente do contrato"
+    }
+  ]
+}

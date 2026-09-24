@@ -61,3 +61,8 @@ test('a scenario may omit the Figma fixture, and the backend category is valid',
   assert.equal(ScenarioSchema.safeParse({ ...noFigma, figma: 'Not A Name' }).success, false);
   assert.equal(ScenarioSchema.safeParse({ ...noFigma, category: 'nope' }).success, false);
 });
+
+test('the fullstack category is valid', () => {
+  const s = { id: 'fullstack-x', category: 'fullstack', title: 'Fullstack', fixture: 'fullstack-app', prompt: 'Do the thing.', expected: [{ type: 'file_exists', path: 'a.py' }] };
+  assert.equal(ScenarioSchema.safeParse(s).success, true);
+});

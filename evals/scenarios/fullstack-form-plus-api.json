@@ -1,0 +1,50 @@
+{
+  "id": "fullstack-form-plus-api",
+  "category": "fullstack",
+  "title": "Formulário acessível de novo usuário mais o endpoint",
+  "fixture": "fullstack-app",
+  "prompt": "Execute a tarefa APP-91: adicione um formulário \"Novo usuário\" (e-mail e nome) que chama POST /api/users e mostra uma mensagem específica quando o e-mail já existe (409 EMAIL_ALREADY_EXISTS). Persista primeiro o contrato em .dev-agent/tasks/APP-91.contract.json, depois implemente o endpoint e o formulário, com rótulos associados aos campos. Use as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/fullstack-contract"
+    },
+    {
+      "type": "tool_called",
+      "tool": "skill/accessibility"
+    },
+    {
+      "type": "file_matches",
+      "glob": ".dev-agent/tasks/APP-91.contract.json",
+      "pattern": "EMAIL_ALREADY_EXISTS"
+    },
+    {
+      "type": "file_matches",
+      "glob": "frontend/src/components/CreateUserForm.tsx",
+      "pattern": "<form"
+    },
+    {
+      "type": "file_matches",
+      "glob": "frontend/src/components/CreateUserForm.tsx",
+      "pattern": "<label"
+    },
+    {
+      "type": "file_matches",
+      "glob": "frontend/src/components/CreateUserForm.tsx",
+      "pattern": "EMAIL_ALREADY_EXISTS"
+    },
+    {
+      "type": "file_matches",
+      "glob": "backend/app/**/*.py",
+      "pattern": "EMAIL_ALREADY_EXISTS"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "frontend/src/**/*.tsx",
+      "pattern": "dangerouslySetInnerHTML"
+    }
+  ]
+}

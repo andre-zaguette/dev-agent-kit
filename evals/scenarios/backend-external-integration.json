@@ -1,0 +1,43 @@
+{
+  "id": "backend-external-integration",
+  "category": "backend",
+  "title": "Cliente de frete externo com timeout e retry",
+  "fixture": "fastapi-app",
+  "prompt": "Crie um cliente para uma API externa de cotação de frete (GET https://shipping.example.test/v1/rates?zip=...) em app/clients/shipping.py. Deve ter timeout, retry apenas para falhas transitórias (5xx, 429, rede), tratar o limite de taxa, normalizar a resposta do fornecedor para um tipo próprio e não vazar o formato do fornecedor para o domínio. Use as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/external-integrations"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/clients/shipping.py",
+      "pattern": "timeout"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/clients/shipping.py",
+      "pattern": "429"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/clients/shipping.py",
+      "pattern": "class \\w*(Rate|Quote)\\w*"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "app/**/*.py",
+      "pattern": "verify\\s*=\\s*False",
+      "description": "desliga a verificação TLS"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/**/*.py",
+      "pattern": "while True:\\s*\\n\\s*try",
+      "description": "retry infinito sem limite"
+    }
+  ]
+}

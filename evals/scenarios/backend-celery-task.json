@@ -1,0 +1,46 @@
+{
+  "id": "backend-celery-task",
+  "category": "backend",
+  "title": "Tarefa Celery idempotente para enviar fatura",
+  "fixture": "celery-app",
+  "prompt": "Crie a tarefa Celery send_invoice(invoice_id) em app/tasks/invoices.py: deve ser idempotente (uma entrega duplicada não reenvia a fatura), ter retry com backoff apenas para falhas transitórias, limite de tentativas e limite de tempo. Siga o padrão das tarefas existentes e as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/async-jobs"
+    },
+    {
+      "type": "tool_called",
+      "tool": "reference/celery"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/tasks/invoices.py",
+      "pattern": "def send_invoice"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/tasks/invoices.py",
+      "pattern": "max_retries"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/tasks/invoices.py",
+      "pattern": "acks_late"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/tasks/invoices.py",
+      "pattern": "sent"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "app/tasks/invoices.py",
+      "pattern": "retry_forever|max_retries\\s*=\\s*None",
+      "description": "retry ilimitado"
+    }
+  ]
+}

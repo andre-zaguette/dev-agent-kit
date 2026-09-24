@@ -1,0 +1,41 @@
+{
+  "id": "backend-nest-api",
+  "category": "backend",
+  "title": "Endpoint NestJS para desativar um usuário",
+  "fixture": "nest-app",
+  "prompt": "Adicione POST /users/:id/deactivate que desativa um usuário (active = false) e exige o papel 'admin', com DTO validado para o motivo. Responda 404 com o código USER_NOT_FOUND quando não existir. Siga o módulo existente e as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/api-design"
+    },
+    {
+      "type": "tool_called",
+      "tool": "reference/nestjs"
+    },
+    {
+      "type": "file_matches",
+      "glob": "src/users/users.controller.ts",
+      "pattern": "@Post\\(':id/deactivate'\\)"
+    },
+    {
+      "type": "file_matches",
+      "glob": "src/users/users.controller.ts",
+      "pattern": "RolesGuard"
+    },
+    {
+      "type": "file_matches",
+      "glob": "src/users/*.dto.ts",
+      "pattern": "class-validator"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "src/**/*.ts",
+      "pattern": ":\\s*any\\b",
+      "description": "tipo any em código novo"
+    }
+  ]
+}

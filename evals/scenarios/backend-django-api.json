@@ -1,0 +1,45 @@
+{
+  "id": "backend-django-api",
+  "category": "backend",
+  "title": "Endpoint Django para arquivar uma nota",
+  "fixture": "django-app",
+  "prompt": "Adicione a este projeto um endpoint POST /api/notes/{id}/archive/ que marca uma nota como arquivada (campo archived_at) e é idempotente. Siga as convenções do projeto e as skills do kit, incluindo a migração. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto do que fez e do que verificou.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/backend-architecture"
+    },
+    {
+      "type": "tool_called",
+      "tool": "skill/api-design"
+    },
+    {
+      "type": "tool_called",
+      "tool": "reference/django"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/views.py",
+      "pattern": "def archive"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/models.py",
+      "pattern": "archived_at"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/migrations/*.py",
+      "pattern": "archived_at"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "notes/views.py",
+      "pattern": "Note\\.objects\\.get\\(pk=",
+      "description": "busca sem escopo de dono: qualquer usuário arquivaria a nota de outro"
+    }
+  ]
+}

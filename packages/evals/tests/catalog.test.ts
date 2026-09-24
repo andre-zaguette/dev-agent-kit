@@ -11,10 +11,10 @@ import type { RunRecord } from '../src/types.ts';
 const kitRoot = findKitRoot();
 const layout = evalsLayout(join(kitRoot, 'evals'));
 
-test('the catalog loads: 7 base, 8 stack, 3 profile', () => {
+test('the catalog loads: 7 base, 8 stack, 3 profile, 9 backend', () => {
   const scenarios = loadScenarios(layout);
   const count = (c: string) => scenarios.filter((s) => s.category === c).length;
-  assert.deepEqual([count('base'), count('stack'), count('profile')], [7, 8, 3]);
+  assert.deepEqual([count('base'), count('stack'), count('profile'), count('backend')], [7, 8, 3, 9]);
 });
 
 test('every stack scenario maps to a figma-to-code reference and asserts it was read', () => {
@@ -39,7 +39,8 @@ test('every fixture copies cleanly (no symlinks) and every prompt that needs the
     const ws = createWorkspace(join(layout.fixturesDir, fixture));
     removeWorkspace(ws);
   }
-  for (const s of scenarios.filter((s) => s.category !== 'stack')) assert.match(s.prompt, /\{\{baseUrl\}\}/, s.id);
+  // Visual scenarios serve the workspace; stack scenarios and backend scenarios (no served app) do not.
+  for (const s of scenarios.filter((s) => s.category === 'base' || s.category === 'profile')) assert.match(s.prompt, /\{\{baseUrl\}\}/, s.id);
 });
 
 test('every "do not change files" scenario also forbids a shell edit, not just Edit/Write/file_change', () => {
@@ -81,5 +82,34 @@ test('the shell-write forbidden check actually catches a Codex sed -i edit (fina
 test('reference screenshots were rendered', () => {
   for (const png of ['pricing-desktop.png', 'pricing-mobile.png', 'pricing-card.png', 'hero-motion.png', 'checkout.png', 'landing.png', 'hero.png']) {
     assert.ok(existsSync(join(layout.figmaDir, 'assets', png)), png);
+  }
+});
+
+test('backend scenarios need no Figma, name their skills and references, and match the spec list', () => {
+  const backend = loadScenarios(layout).filter((s) => s.category === 'backend');
+  assert.deepEqual(
+    backend.map((s) => s.id).sort(),
+    ['backend-celery-task', 'backend-django-api', 'backend-drf-permission', 'backend-external-integration', 'backend-fastapi-api', 'backend-nest-api', 'backend-postgres-migration', 'backend-rabbitmq-consumer', 'backend-root-cause-bugfix']
+  );
+  const skills = readdirSync(join(kitRoot, 'skills'));
+  const refs = skills.flatMap((s) => (existsSync(join(kitRoot, 'skills', s, 'references')) ? readdirSync(join(kitRoot, 'skills', s, 'references')).map((f) => f.replace(/\.md$/, '')) : []));
+  for (const s of backend) {
+    assert.equal(s.figma, undefined, s.id);
+    const tools = s.expected.filter((a) => a.type === 'tool_called').map((a) => (a as { tool: string }).tool);
+    assert.ok(tools.some((t) => t.startsWith('skill/') && skills.includes(t.slice('skill/'.length))), `${s.id} must expect a skill read`);
+    for (const t of tools.filter((t) => t.startsWith('reference/'))) assert.ok(refs.includes(t.slice('reference/'.length)), `${s.id}: ${t}`);
+    assert.match(s.prompt, /instalar depend[eê]ncias|nem instalar/i, `${s.id} must say nothing has to be installed or run`);
+    assert.doesNotMatch(s.prompt, /\{\{baseUrl\}\}/, s.id);
+  }
+});
+
+test('backend fixtures contain no symlinks and no installed dependencies', () => {
+  for (const fixture of ['django-app', 'fastapi-app', 'nest-app', 'celery-app']) {
+    const ws = createWorkspace(join(layout.fixturesDir, fixture));
+    try {
+      assert.equal(existsSync(join(ws, 'node_modules')), false, fixture);
+    } finally {
+      removeWorkspace(ws);
+    }
   }
 });

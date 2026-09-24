@@ -1,0 +1,47 @@
+{
+  "id": "backend-rabbitmq-consumer",
+  "category": "backend",
+  "title": "Consumidor RabbitMQ com dead-letter e idempotência",
+  "fixture": "celery-app",
+  "prompt": "Crie em app/consumers/payments.py um consumidor da fila 'payments' com confirmação manual apenas depois do trabalho concluído, dead-letter para mensagens que continuam falhando, e processamento idempotente (a mesma mensagem duas vezes tem um só efeito). Siga o consumidor existente e as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/async-jobs"
+    },
+    {
+      "type": "tool_called",
+      "tool": "reference/rabbitmq"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/consumers/payments.py",
+      "pattern": "basic_ack"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/consumers/payments.py",
+      "pattern": "x-dead-letter-exchange|dead.letter"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/consumers/payments.py",
+      "pattern": "processed"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "app/consumers/payments.py",
+      "pattern": "auto_ack\\s*=\\s*True",
+      "description": "confirma antes de processar e perde mensagens"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/consumers/payments.py",
+      "pattern": "requeue\\s*=\\s*True",
+      "description": "reenfileira em laço apertado"
+    }
+  ]
+}

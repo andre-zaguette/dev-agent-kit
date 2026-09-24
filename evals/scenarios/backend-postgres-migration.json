@@ -1,0 +1,47 @@
+{
+  "id": "backend-postgres-migration",
+  "category": "backend",
+  "title": "Migração segura com índice para notas ativas",
+  "fixture": "django-app",
+  "prompt": "A listagem 'notas ativas de um usuário' está lenta. Adicione o campo archived_at (nullable) ao modelo Note e um índice adequado para essa consulta, via migração revisada para uma tabela grande no PostgreSQL. Use as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine explicando os riscos de lock e a estratégia de rollback.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/database-migrations"
+    },
+    {
+      "type": "tool_called",
+      "tool": "reference/postgresql"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/migrations/0002_*.py",
+      "pattern": "archived_at"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/migrations/0002_*.py",
+      "pattern": "[Ii]ndex"
+    },
+    {
+      "type": "output_matches",
+      "pattern": "lock",
+      "flags": "i"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "notes/migrations/0002_*.py",
+      "pattern": "null\\s*=\\s*False",
+      "description": "coluna NOT NULL sem backfill em tabela grande"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/migrations/0001_initial.py",
+      "pattern": "archived_at",
+      "description": "editou uma migração já aplicada"
+    }
+  ]
+}

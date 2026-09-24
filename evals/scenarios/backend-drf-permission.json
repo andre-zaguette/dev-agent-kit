@@ -1,0 +1,42 @@
+{
+  "id": "backend-drf-permission",
+  "category": "backend",
+  "title": "Ação DRF restrita ao dono da nota",
+  "fixture": "django-app",
+  "prompt": "Adicione GET /api/notes/{id}/summary/ que devolve o título e os primeiros 100 caracteres do corpo, acessível apenas ao dono da nota (outro usuário deve receber 404). Use as skills do kit e mantenha o padrão de permissões que já existe. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/auth-security"
+    },
+    {
+      "type": "tool_called",
+      "tool": "reference/drf"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/views.py",
+      "pattern": "@action"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/views.py",
+      "pattern": "def summary"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "notes/views.py",
+      "pattern": "AllowAny",
+      "description": "abre o endpoint a qualquer um"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/serializers.py",
+      "pattern": "fields\\s*=\\s*[\\'\"]__all__[\\'\"]",
+      "description": "expõe todos os campos (mass assignment / vazamento)"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "id": "backend-root-cause-bugfix",
+  "category": "backend",
+  "title": "Bug de desconto aplicado duas vezes",
+  "fixture": "fastapi-app",
+  "prompt": "O teste tests/test_pricing.py::test_bulk_discount_is_applied_once está falhando: um pedido de 2 unidades de 100 com 10% de desconto deveria custar 180. Encontre a causa raiz e corrija o código, sem alterar nem pular o teste. Use as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine explicando a causa raiz.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/root-cause-analysis"
+    },
+    {
+      "type": "file_matches",
+      "glob": "tests/test_pricing.py",
+      "pattern": "== 180"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/services/pricing.py",
+      "pattern": "def total_with_discount"
+    },
+    {
+      "type": "output_matches",
+      "pattern": "duas vezes|dobr|twice|double",
+      "flags": "i"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "tests/*.py",
+      "pattern": "pytest\\.mark\\.(skip|xfail)",
+      "description": "escondeu o teste em vez de corrigir o código"
+    },
+    {
+      "type": "file_matches",
+      "glob": "tests/test_pricing.py",
+      "pattern": "== 162",
+      "description": "ajustou o teste ao comportamento errado"
+    }
+  ]
+}

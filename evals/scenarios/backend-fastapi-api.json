@@ -1,0 +1,41 @@
+{
+  "id": "backend-fastapi-api",
+  "category": "backend",
+  "title": "Endpoint FastAPI para reservar estoque",
+  "fixture": "fastapi-app",
+  "prompt": "Adicione POST /items/{item_id}/reserve que reserva uma quantidade do estoque de um item. Deve validar a entrada, responder 404 para item inexistente, 409 com código OUT_OF_STOCK quando não houver estoque suficiente, e ser seguro contra reservas concorrentes. Siga as convenções do projeto e as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "skill/api-design"
+    },
+    {
+      "type": "tool_called",
+      "tool": "reference/fastapi"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/routers/items.py",
+      "pattern": "@router\\.post\\([^)]*reserve"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/**/*.py",
+      "pattern": "OUT_OF_STOCK"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/**/*.py",
+      "pattern": "with_for_update|UPDATE .* SET stock|stock\\s*>=|Item\\.stock\\s*-"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "app/routers/items.py",
+      "pattern": "print\\(",
+      "description": "log improvisado em vez do logger do projeto"
+    }
+  ]
+}

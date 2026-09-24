@@ -6,7 +6,7 @@ Portable Figma-to-code agent kit for Claude Code and Codex: skills, stack refere
 
 ## What's in v0.1
 
-- 7 canonical skills under `skills/`, covering the full Figma-to-code workflow, component reuse, responsive design, motion, accessibility and visual validation.
+- 7 canonical skills under `skills/`, covering the full Figma-to-code workflow, component reuse, responsive design, motion, accessibility and visual validation (v0.6 adds 7 shared engineering skills, for 14 in total).
 - 8 pre-populated stack references (`skills/figma-to-code/references/`): React, Next.js, Vue 3, Nuxt, Angular, Tailwind CSS, PHP/Laravel, plain HTML/CSS/JS. New stacks are bootstrapped automatically the first time a task needs them (see `skills/component-selection/SKILL.md`).
 - Manual installation into Claude Code and Codex (a CLI installer was added in v0.4 — see below).
 - Documented setup for Figma's official MCP server (design context, screenshots, variables, assets).
@@ -197,4 +197,4 @@ Results land in `evals/results/<timestamp>/` (`report.md`, `summary.json`, trans
 
 ## v0.6 — shared engineering core
 
-Seven provider-neutral skills (`engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory`) now ship with the frontend skills, and `packages/core` provides deterministic project inspection, repo-memory freshness and a context audit. Frontend behavior and the `frontend-agent` CLI are unchanged. See `docs/context-efficiency.md` and `docs/superpowers/specs/2026-09-24-dev-agent-kit-evolution.md`.
+Seven provider-neutral skills (`engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory`) now ship with the frontend skills, and `packages/core` provides deterministic project inspection, repo-memory freshness and a context audit. The frontend workflow, the `frontend-agent` CLI and the MCP tool names are unchanged; the managed instructions now also ask the agent to run the project's tests, typecheck and lint when configured. See `docs/context-efficiency.md` and `docs/superpowers/specs/2026-09-24-dev-agent-kit-evolution.md`.

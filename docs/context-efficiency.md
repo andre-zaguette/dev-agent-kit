@@ -10,7 +10,7 @@ Rule: use the minimum context required to make the correct decision — not the 
 
 ## Repo memory
 
-Stable facts live in `.dev-agent/knowledge/{repository,architecture,frontend,backend,commands}.md`. Each file starts with `sourceSha` and `updatedAt`. When HEAD differs from `sourceSha`, revalidate only the sections touching `git diff --name-only <sourceSha> HEAD`. Secrets are never written (writes containing them are refused), and writes through symlinks are refused.
+Stable facts live in `.dev-agent/knowledge/{repository,architecture,frontend,backend,commands}.md`. Each file starts with `sourceSha` and `updatedAt`. When HEAD differs from `sourceSha`, revalidate only the sections touching `git diff --name-only <sourceSha> HEAD`. Writes whose body matches common secret patterns are refused, and the knowledge directory and file must not themselves be symlinks. Deeper containment (parent-directory symlinks) and broader secret patterns are planned before the first automated caller lands in v0.7; in v0.6 agents write these files with their own tools, so the repo-memory skill's "Never cache secrets" rule is the primary guard.
 
 ## Context audit
 

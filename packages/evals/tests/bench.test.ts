@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runBench, selectScenarios } from '../src/bench.ts';
+import { defaultOutDir } from '../src/cli.ts';
 import { writeReport } from '../src/report.ts';
 import { findKitRoot } from '../../cli/src/util.ts';
 
@@ -89,4 +90,33 @@ test('selectScenarios filters by id and category and rejects unknown ids', () =>
   assert.deepEqual(selectScenarios(all, undefined, ['stack']).map((s: any) => s.id), ['b']);
   assert.deepEqual(selectScenarios(all, ['a']).map((s: any) => s.id), ['a']);
   assert.throws(() => selectScenarios(all, ['zzz']), /unknown scenario "zzz"/);
+});
+
+test('a static-server startup failure still removes the workspace', async () => {
+  await withOut(async (out) => {
+    let seenWorkspace = '';
+    const results = await runBench({
+      kitRoot: findKitRoot(),
+      evalsDir,
+      hosts: ['claude'],
+      outDir: out,
+      binaries: { claude: fakeClaude },
+      startServer: async (root) => {
+        seenWorkspace = root;
+        throw new Error('listen EADDRINUSE');
+      }
+    });
+    assert.equal(results[0].verdict, 'error');
+    assert.match(results[0].grade.error ?? '', /EADDRINUSE/);
+    assert.match(seenWorkspace, /fak-bench-/);
+    assert.equal(existsSync(seenWorkspace), false);
+  });
+});
+
+test('defaultOutDir differs between runs started in the same millisecond', () => {
+  const at = '2026-09-24T14:00:00.000Z';
+  const a = defaultOutDir('/kit/evals', at);
+  const b = defaultOutDir('/kit/evals', at);
+  assert.notEqual(a, b);
+  assert.match(a, /results\/2026-09-24T14-00-00-000Z-[0-9a-f]{6}$/);
 });

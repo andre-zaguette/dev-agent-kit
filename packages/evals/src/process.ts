@@ -7,12 +7,15 @@ export interface ProcessResult {
   timedOut: boolean;
   stdout: string;
   stderrTail: string;
+  /** True when stdout hit `maxOutputBytes`; the process was killed and `stdout` holds only what fit. */
+  outputTruncated: boolean;
   spawnError?: string;
   durationMs: number;
 }
 
 const active = new Set<ChildProcess>();
 const KILL_GRACE_MS = 3000;
+export const DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
 
 function killGroup(child: ChildProcess, signal: NodeJS.Signals): void {
   if (child.pid === undefined) return;
@@ -29,11 +32,19 @@ export function killAllActive(): void {
 }
 
 /** Run a host in its own process group; stdout is streamed to `transcriptPath` and returned. */
-export function runProcess(spec: HostRunSpec, timeoutMs: number, transcriptPath: string): Promise<ProcessResult> {
+export function runProcess(
+  spec: HostRunSpec,
+  timeoutMs: number,
+  transcriptPath: string,
+  options: { maxOutputBytes?: number } = {}
+): Promise<ProcessResult> {
+  const maxOutputBytes = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
   const started = Date.now();
   return new Promise((resolve) => {
     const transcript = createWriteStream(transcriptPath);
     let stdout = '';
+    let stdoutBytes = 0;
+    let outputTruncated = false;
     let stderrTail = '';
     let timedOut = false;
     let spawnError: string | undefined;
@@ -45,8 +56,17 @@ export function runProcess(spec: HostRunSpec, timeoutMs: number, transcriptPath:
     });
     active.add(child);
     child.stdout?.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8');
-      transcript.write(chunk);
+      if (outputTruncated) return;
+      const room = maxOutputBytes - stdoutBytes;
+      const kept = chunk.length > room ? chunk.subarray(0, Math.max(room, 0)) : chunk;
+      stdoutBytes += kept.length;
+      stdout += kept.toString('utf8');
+      transcript.write(kept);
+      if (chunk.length > room) {
+        outputTruncated = true;
+        killGroup(child, 'SIGTERM');
+        setTimeout(() => killGroup(child, 'SIGKILL'), KILL_GRACE_MS).unref();
+      }
     });
     child.stderr?.on('data', (chunk: Buffer) => {
       stderrTail = (stderrTail + chunk.toString('utf8')).slice(-4000);
@@ -65,7 +85,7 @@ export function runProcess(spec: HostRunSpec, timeoutMs: number, transcriptPath:
       // The host may exit before its children (e.g. MCP servers); make sure none survive.
       killGroup(child, 'SIGKILL');
       transcript.end(() =>
-        resolve({ exitCode: spawnError ? null : code, timedOut, stdout, stderrTail, spawnError, durationMs: Date.now() - started })
+        resolve({ exitCode: spawnError ? null : code, timedOut, stdout, stderrTail, outputTruncated, spawnError, durationMs: Date.now() - started })
       );
     });
   });

@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { findKitRoot, readKitVersion } from '../../cli/src/util.js';
@@ -13,6 +14,11 @@ Usage:
                    [--model-claude <m>] [--model-codex <m>] [--out <dir>] [--keep]
   npm run bench -- --list        list scenarios
   npm run bench -- --validate    validate the scenario catalog only (free)`;
+
+/** Timestamped results dir; the random suffix keeps concurrent runs started in the same millisecond apart. */
+export function defaultOutDir(evalsDir: string, startedAt: string): string {
+  return path.join(evalsDir, 'results', `${startedAt.replace(/[:.]/g, '-')}-${randomBytes(3).toString('hex')}`);
+}
 
 export async function runBenchCli(argv: string[], io: { stdout(l: string): void; stderr(l: string): void; cwd: string }): Promise<number> {
   try {
@@ -52,7 +58,7 @@ export async function runBenchCli(argv: string[], io: { stdout(l: string): void;
     const categories = (values.category ?? []) as Category[];
     for (const c of categories) if (!CATEGORIES.includes(c)) throw new Error(`unknown category "${c}"`);
     const startedAt = new Date().toISOString();
-    const outDir = values.out ? path.resolve(io.cwd, values.out) : path.join(evalsDir, 'results', startedAt.replace(/[:.]/g, '-'));
+    const outDir = values.out ? path.resolve(io.cwd, values.out) : defaultOutDir(evalsDir, startedAt);
     const models: Partial<Record<HostId, string>> = {};
     if (values['model-claude']) models.claude = values['model-claude'];
     if (values['model-codex']) models.codex = values['model-codex'];

@@ -24,6 +24,9 @@ export interface BenchOptions {
   binaries?: Partial<Record<HostId, HostBinary>>;
   models?: Partial<Record<HostId, string>>;
   timeoutMsOverride?: number;
+  maxOutputBytes?: number;
+  /** Test hook: replaces the static file server started for each workspace. */
+  startServer?: typeof startStaticServer;
   log?: (line: string) => void;
 }
 
@@ -66,8 +69,9 @@ async function runCase(opts: BenchOptions, scenario: Scenario, host: HostId): Pr
   mkdirSync(transcriptDir, { recursive: true });
   const transcriptPath = path.join(transcriptDir, `${scenario.id}.jsonl`);
   const ws = createWorkspace(path.join(layout.fixturesDir, scenario.fixture));
-  const server = await startStaticServer(ws);
+  let server: { origin: string; close(): Promise<void> } | undefined;
   try {
+    server = await (opts.startServer ?? startStaticServer)(ws);
     if (scenario.profile) {
       mkdirSync(path.join(ws, '.frontend-agent'), { recursive: true });
       writeFileSync(path.join(ws, '.frontend-agent', 'config.yml'), `validationProfile: ${scenario.profile}\n`);
@@ -101,7 +105,9 @@ async function runCase(opts: BenchOptions, scenario: Scenario, host: HostId): Pr
         ? buildClaudeRun({ workspace: ws, prompt, servers, mcpConfigPath: path.join(transcriptDir, `${scenario.id}.mcp.json`), binary, model })
         : buildCodexRun({ workspace: ws, prompt, servers, binary, model });
 
-    const proc = await runProcess(spec, opts.timeoutMsOverride ?? scenario.timeoutSec * 1000, transcriptPath);
+    const proc = await runProcess(spec, opts.timeoutMsOverride ?? scenario.timeoutSec * 1000, transcriptPath, {
+      maxOutputBytes: opts.maxOutputBytes
+    });
     const parsed = host === 'claude' ? parseClaudeTranscript(proc.stdout) : parseCodexTranscript(proc.stdout);
     const record: RunRecord = {
       ...parsed,
@@ -112,6 +118,7 @@ async function runCase(opts: BenchOptions, scenario: Scenario, host: HostId): Pr
       timedOut: proc.timedOut,
       stderrTail: proc.stderrTail
     };
+    if (proc.outputTruncated) record.error = `${record.error ? `${record.error}; ` : ''}host output exceeded the capture limit and was killed`;
     const result = grade(scenario, record, ws);
     if (result.verdict === 'error' && proc.stderrTail.trim()) result.error += ` — stderr: ${proc.stderrTail.trim().slice(-500)}`;
     return {
@@ -127,7 +134,7 @@ async function runCase(opts: BenchOptions, scenario: Scenario, host: HostId): Pr
       workspace: opts.keep ? ws : undefined
     };
   } finally {
-    await server.close();
+    await server?.close();
     if (!opts.keep) removeWorkspace(ws);
   }
 }

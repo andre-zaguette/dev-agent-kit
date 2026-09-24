@@ -111,3 +111,30 @@ test('runProcess: a missing binary is a spawnError, not a crash', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('runProcess: runaway stdout is capped, flagged and the process is killed', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fak-proc-'));
+  try {
+    const cap = 100 * 1024;
+    const result = await runProcess({ command: process.execPath, args: [join(here, 'data', 'fake-flood.mjs')], cwd: dir }, 10000, join(dir, 't.jsonl'), {
+      maxOutputBytes: cap
+    });
+    assert.equal(result.outputTruncated, true);
+    assert.equal(result.timedOut, false);
+    assert.ok(result.stdout.length <= cap, `stdout ${result.stdout.length} > ${cap}`);
+    assert.ok(readFileSync(join(dir, 't.jsonl')).length <= cap);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('runProcess: normal output is not flagged as truncated', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fak-proc-'));
+  try {
+    const result = await runProcess({ command: process.execPath, args: ['-e', 'console.log("ok")'], cwd: dir }, 5000, join(dir, 't.jsonl'));
+    assert.equal(result.outputTruncated, false);
+    assert.equal(result.stdout.trim(), 'ok');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -12,6 +12,7 @@
     "frontend-agent": "node packages/cli/bin/frontend-agent.mjs",
     "test": "npm test --workspaces --if-present",
     "bench": "node packages/evals/bin/bench.mjs",
-    "evals:validate": "node packages/evals/bin/bench.mjs --validate"
+    "evals:validate": "node packages/evals/bin/bench.mjs --validate",
+    "dev-agent": "node packages/cli/bin/dev-agent.mjs"
   }
 }

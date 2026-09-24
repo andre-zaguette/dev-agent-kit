@@ -5,7 +5,8 @@
   "type": "module",
   "bin": {
     "frontend-agent": "bin/frontend-agent.mjs",
-    "frontend-agent-kit": "bin/frontend-agent.mjs"
+    "frontend-agent-kit": "bin/frontend-agent.mjs",
+    "dev-agent": "bin/dev-agent.mjs"
   },
   "scripts": {
     "test": "node --import tsx --test tests/*.test.ts",

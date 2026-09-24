@@ -41,3 +41,12 @@ test('task-orchestrator ships exactly the six contract references, all with vali
   }
   assert.deepEqual(readdirSync(dir).sort(), names.map((n) => `${n}.md`).sort());
 });
+
+test('the orchestrator tells the agent which skills each classification loads', () => {
+  const text = readFileSync(join(kitRoot, 'skills', 'task-orchestrator', 'references', 'task-ledger.md'), 'utf8');
+  const section = text.slice(text.indexOf('## Classification'), text.indexOf('## Resume'));
+  for (const skill of ['backend-architecture', 'api-design', 'data-modeling', 'database-migrations', 'backend-testing', 'auth-security', 'external-integrations', 'async-jobs', 'observability', 'backend-performance']) {
+    assert.match(section, new RegExp(skill), skill);
+  }
+  for (const skill of ['figma-to-code', 'visual-validation', 'root-cause-analysis', 'repository-investigation']) assert.match(section, new RegExp(skill), skill);
+});

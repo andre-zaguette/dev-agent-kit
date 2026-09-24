@@ -14,7 +14,7 @@ Stable facts live in `.dev-agent/knowledge/{repository,architecture,frontend,bac
 
 ## Context audit
 
-`auditContext(root)` (from `packages/core`) reports: instruction files over ~1500 tokens, paragraphs duplicated across instructions and skills, framework detail in always-on files, skills over ~2500 tokens, and stale repo memory — with an estimated removable token count (`chars / 4`). The estimated removable token total is an upper bound because findings can overlap (the tool prints "removable: up to ~N tokens (findings may overlap)"). A CLI command (`dev-agent context audit`) is planned with the v0.9 CLI work.
+`auditContext(root)` (from `packages/core`) reports: instruction files over ~1500 tokens, paragraphs duplicated across instructions and skills, framework detail in always-on files, skills over ~2500 tokens, and stale repo memory — with an estimated removable token count (`chars / 4`). The estimated removable token total is an upper bound because findings can overlap; `formatAuditReport` (from `packages/core`) renders it as "removable: up to ~N tokens (findings may overlap)". A CLI command (`dev-agent context audit`) is planned with the v0.9 CLI work.
 
 ## Not in v0.6
 

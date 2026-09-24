@@ -48,7 +48,12 @@ function collectSources(root: string): Source[] {
   for (const name of ['CLAUDE.md', 'AGENTS.md']) {
     const file = path.join(root, name);
     if (!existsSync(file)) continue;
-    const real = realpathSync(file);
+    let real: string;
+    try {
+      real = realpathSync(file);
+    } catch {
+      continue;
+    }
     if (seenReal.has(real)) continue;
     seenReal.add(real);
     const text = readIfFile(file);

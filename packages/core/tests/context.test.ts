@@ -115,8 +115,7 @@ test('stale repo knowledge is reported; fresh knowledge is not', () => {
   const repo = makeRepo();
   try {
     commitFile(repo, 'a.txt');
-    const dir = join(repo, '.dev-agent', 'knowledge');
-    writeKnowledge(dir, 'repository', 'Fresh facts about the repository layout.', { sourceSha: headSha(repo)! });
+    writeKnowledge(repo, 'repository', 'Fresh facts about the repository layout.', { sourceSha: headSha(repo)! });
     assert.deepEqual(auditContext(repo).findings.filter((f) => f.kind === 'stale-knowledge'), []);
     commitFile(repo, 'b.txt');
     const stale = auditContext(repo).findings.filter((f) => f.kind === 'stale-knowledge');

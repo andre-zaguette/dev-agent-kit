@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkFreshness, findSecret, knowledgePath, readKnowledge, writeKnowledge } from '../src/repo-memory.ts';
@@ -16,8 +16,8 @@ test('write then read round-trips body, sourceSha and updatedAt', () => {
   const t = tmp();
   try {
     const dir = join(t.dir, '.dev-agent', 'knowledge');
-    const file = writeKnowledge(dir, 'commands', 'test: npm test\n', { sourceSha: 'abc1234', updatedAt: '2026-09-24T14:00:00Z' });
-    assert.equal(file, join(dir, 'commands.md'));
+    const file = writeKnowledge(t.dir, 'commands', 'test: npm test\n', { sourceSha: 'abc1234', updatedAt: '2026-09-24T14:00:00Z' });
+    assert.equal(file, join(realpathSync(dir), 'commands.md'));
     assert.match(readFileSync(file, 'utf8'), /^---\nsourceSha: abc1234\nupdatedAt: 2026-09-24T14:00:00Z\n---\n/);
     assert.deepEqual(readKnowledge(dir, 'commands'), {
       name: 'commands',
@@ -59,22 +59,28 @@ test('a body that looks like it holds a secret is refused', () => {
   }
 });
 
-test('writing through a symlinked knowledge dir or file is refused', () => {
+test('writing through a symlinked knowledge dir, parent dir or file is refused', () => {
   const t = tmp();
+  const other = mkdtempSync(join(tmpdir(), 'dak-mem-other-'));
   try {
-    const real = join(t.dir, 'real');
-    mkdirSync(real);
-    symlinkSync(real, join(t.dir, 'linkdir'));
-    assert.throws(() => writeKnowledge(join(t.dir, 'linkdir'), 'repository', 'x', { sourceSha: 'abc1234' }), /symbolic link/);
+    mkdirSync(join(t.dir, '.dev-agent'));
+    symlinkSync(other, join(t.dir, '.dev-agent', 'knowledge'), 'dir');
+    assert.throws(() => writeKnowledge(t.dir, 'repository', 'x', { sourceSha: 'abc1234' }), /symbolic link/);
+    rmSync(join(t.dir, '.dev-agent'), { recursive: true, force: true });
 
-    const dir = join(t.dir, 'k');
-    mkdirSync(dir);
+    symlinkSync(other, join(t.dir, '.dev-agent'), 'dir');
+    assert.throws(() => writeKnowledge(t.dir, 'commands', 'x', { sourceSha: 'abc1234' }), /symbolic link/);
+    rmSync(join(t.dir, '.dev-agent'), { force: true });
+
+    const dir = join(t.dir, '.dev-agent', 'knowledge');
+    mkdirSync(dir, { recursive: true });
     writeFileSync(join(t.dir, 'target.md'), 'victim');
     symlinkSync(join(t.dir, 'target.md'), join(dir, 'repository.md'));
-    assert.throws(() => writeKnowledge(dir, 'repository', 'x', { sourceSha: 'abc1234' }), /symbolic link/);
+    assert.throws(() => writeKnowledge(t.dir, 'repository', 'x', { sourceSha: 'abc1234' }), /symbolic link/);
     assert.equal(readFileSync(join(t.dir, 'target.md'), 'utf8'), 'victim');
   } finally {
     t.cleanup();
+    rmSync(other, { recursive: true, force: true });
   }
 });
 

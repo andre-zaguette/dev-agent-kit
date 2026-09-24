@@ -45,3 +45,10 @@ test('redactSecrets replaces each match with a label that no longer looks like a
   assert.equal(findSecret(out), null);
   assert.equal(redactSecrets('nothing to see'), 'nothing to see');
 });
+
+test('more credential formats are detected and slugs containing sk- are not', () => {
+  assert.equal(findSecret('token ATATT3xFfGF0' + 'a'.repeat(30)), 'Atlassian token');
+  assert.equal(findSecret('key lin_api_' + 'a'.repeat(30)), 'Linear API key');
+  assert.equal(findSecret('Authorization: Basic dXNlcjpwYXNzd29yZDEyMw=='), 'basic auth credential');
+  for (const clean of ['a-task-sk-' + 'x'.repeat(24), 'Basic authentication configuration', 'Basic internationalization']) assert.equal(findSecret(clean), null, clean);
+});

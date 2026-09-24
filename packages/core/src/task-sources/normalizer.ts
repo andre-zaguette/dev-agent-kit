@@ -66,7 +66,8 @@ export function extractAcceptanceCriteria(description: string): string[] {
 
 export function normalizeLinkType(raw: string | undefined): WorkItemLinkType {
   if (raw === undefined) return 'other';
-  return LINK_TYPES[raw.toLowerCase().trim().replace(/[\s_]+/g, '-')] ?? 'other';
+  const key = raw.toLowerCase().trim().replace(/[\s_]+/g, '-');
+  return Object.hasOwn(LINK_TYPES, key) ? LINK_TYPES[key] : 'other';
 }
 
 const field = (mapped: Record<string, string>, name: string): string => mapped[name] ?? name;

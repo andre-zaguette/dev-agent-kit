@@ -79,3 +79,19 @@ test('safeReadFile returns null for a missing file and the content otherwise', (
     t.cleanup();
   }
 });
+
+test('a hardlinked target is replaced, never written through to the other inode, and no temp file is left behind', async () => {
+  const { linkSync, readdirSync } = await import('node:fs');
+  const t = tmp();
+  try {
+    mkdirSync(join(t.dir, 'out'));
+    writeFileSync(join(t.other, 'victim.txt'), 'victim');
+    linkSync(join(t.other, 'victim.txt'), join(t.dir, 'out', 'a.md'));
+    safeWriteFile(t.dir, 'out/a.md', 'new content');
+    assert.equal(readFileSync(join(t.dir, 'out', 'a.md'), 'utf8'), 'new content');
+    assert.equal(readFileSync(join(t.other, 'victim.txt'), 'utf8'), 'victim');
+    assert.deepEqual(readdirSync(join(t.dir, 'out')), ['a.md']);
+  } finally {
+    t.cleanup();
+  }
+});

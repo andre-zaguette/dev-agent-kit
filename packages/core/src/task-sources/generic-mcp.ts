@@ -18,11 +18,16 @@ const IDENTIFIER_RE = /^[^\u0000-\u001F\u007F]{1,256}$/;
 const MAX_SEARCH_RESULTS = 50;
 const OPTIONAL_KINDS = ['comments', 'attachments', 'links'] as const;
 
+const ENVELOPE_KEYS = new Set(['content', 'isError', 'structuredContent', '_meta']);
+const CONTENT_TYPES = new Set(['text', 'image', 'audio', 'resource', 'resource_link']);
+
 const isEnvelope = (value: unknown): value is { content: Array<Record<string, unknown>>; structuredContent?: unknown; isError?: boolean } =>
   typeof value === 'object' &&
   value !== null &&
+  !Array.isArray(value) &&
+  Object.keys(value).every((key) => ENVELOPE_KEYS.has(key)) &&
   Array.isArray((value as { content?: unknown }).content) &&
-  (value as { content: unknown[] }).content.every((c) => typeof c === 'object' && c !== null && typeof (c as { type?: unknown }).type === 'string');
+  (value as { content: unknown[] }).content.every((c) => typeof c === 'object' && c !== null && CONTENT_TYPES.has((c as { type?: string }).type as string));
 
 /** Message that is safe to show or log: bounded, and never a secret. */
 function scrub(text: string): string {

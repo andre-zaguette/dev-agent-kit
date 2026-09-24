@@ -3,6 +3,7 @@ import { currentBranch, detectBaseBranch, dirtyFiles, hasRemote, headSha, isGitR
 export type PrepFailure =
   | 'not-a-repo'
   | 'dirty-tree'
+  | 'status-failed'
   | 'detached-head'
   | 'ignored-files-in-the-way'
   | 'invalid-branch-name'
@@ -37,6 +38,7 @@ export function prepareTaskBranch(root: string, opts: { workingBranch: string; b
 
   if (!isGitRepo(root)) return fail('not-a-repo', `${root} is not inside a git repository`);
   const dirty = dirtyFiles(root);
+  if (dirty === null) return fail('status-failed', 'git could not read the working tree status; nothing was modified');
   if (dirty.length > 0) return fail('dirty-tree', `${dirty.length} uncommitted change(s); commit or stash them yourself, nothing was modified`, dirty);
   const start = currentBranch(root);
   if (start === null && !isOnSomeBranch(root)) {
@@ -63,7 +65,7 @@ export function prepareTaskBranch(root: string, opts: { workingBranch: string; b
 
   let behind = 0;
   if (fetched && refExists(root, `refs/remotes/${remote}/${base}`)) {
-    const counts = runGit(root, ['rev-list', '--left-right', '--count', `${remote}/${base}...${base}`]);
+    const counts = runGit(root, ['rev-list', '--left-right', '--count', `refs/remotes/${remote}/${base}...refs/heads/${base}`]);
     const [remoteOnly, localOnly] = counts.ok ? counts.stdout.trim().split(/\s+/).map(Number) : [Number.NaN, Number.NaN];
     if (Number.isNaN(remoteOnly) || Number.isNaN(localOnly)) return fail('base-missing', `could not compare ${base} with ${remote}/${base}`);
     if (remoteOnly > 0 && localOnly > 0) {
@@ -96,7 +98,7 @@ export function prepareTaskBranch(root: string, opts: { workingBranch: string; b
   const switched = runGit(root, ['switch', base]);
   if (!switched.ok) return fail('switch-failed', `could not switch to ${base}: ${firstLine(switched.stderr)}`);
   if (behind > 0) {
-    const merged = runGit(root, ['merge', '--ff-only', `${remote}/${base}`]);
+    const merged = runGit(root, ['merge', '--ff-only', `refs/remotes/${remote}/${base}`]);
     if (!merged.ok) return (restore(), fail('diverged', `${base} could not be fast-forwarded to ${remote}/${base}: ${firstLine(merged.stderr)}`));
   }
   const baseSha = headSha(root);

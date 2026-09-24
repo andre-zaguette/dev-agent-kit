@@ -148,3 +148,9 @@ test('criteria extraction stays fast on pathological whitespace (no regex backtr
   assert.ok(performance.now() - started < 500, `took ${Math.round(performance.now() - started)}ms`);
   assert.deepEqual(extractAcceptanceCriteria('Acceptance criteria:\n-   spaced out   \n- next'), ['spaced out', 'next']);
 });
+
+test('link types and quoted text are safe against prototype names and lone carriage returns', async () => {
+  const { quoteExternal } = await import('../src/ledger.ts');
+  for (const raw of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) assert.equal(normalizeLinkType(raw), 'other', raw);
+  assert.equal(quoteExternal('a\r## Final status\rdone\r\nx'), '> a\n> ## Final status\n> done\n> x');
+});

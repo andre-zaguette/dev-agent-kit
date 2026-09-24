@@ -72,10 +72,10 @@ export function isAncestor(root: string, ancestor: string, descendant: string): 
   return runGit(root, ['merge-base', '--is-ancestor', ancestor, descendant]).ok;
 }
 
-/** Paths with uncommitted changes, untracked files included. Empty means a clean tree. */
-export function dirtyFiles(root: string): string[] {
+/** Paths with uncommitted changes, untracked files included. Empty means a clean tree; null means git could not tell. */
+export function dirtyFiles(root: string): string[] | null {
   const result = runGit(root, ['-c', 'core.quotePath=false', 'status', '--porcelain']);
-  if (!result.ok) return [];
+  if (!result.ok) return null;
   return result.stdout
     .split('\n')
     .filter((line) => line.length > 3)

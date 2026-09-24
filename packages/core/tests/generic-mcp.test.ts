@@ -124,3 +124,9 @@ test('an identifier with control characters or absurd length is refused before a
   await assert.rejects(adapter.getWorkItem('A'.repeat(300)), /identifier/);
   assert.equal(calls, 0);
 });
+
+test('a plain payload with its own typed content array is not mistaken for an MCP envelope', () => {
+  const payload = { id: '1', key: 'A-1', content: [{ type: 'paragraph', text: 'body' }] };
+  assert.deepEqual(unwrapToolResult(payload), payload);
+  assert.deepEqual(unwrapToolResult({ content: [{ type: 'text', text: '{"a":1}' }], isError: false }), { a: 1 });
+});

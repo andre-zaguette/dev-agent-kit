@@ -157,3 +157,18 @@ test('identifier regexes: invalid, double-escaped, backtracking-prone and oversi
 test('secret-looking text anywhere in the file is refused', () => {
   bad('baseBranch: main\n# token: ghp_' + 'a'.repeat(30), /secret/);
 });
+
+test('prototype-named mapping keys are a clear error, not a crash', () => {
+  for (const key of ['toString', 'constructor', 'hasOwnProperty']) {
+    bad(source().replace('key: k', `key: k\n      ${key}: {id: x}`), new RegExp(`mapping\\.${key}.*not a recognized`));
+  }
+});
+
+test('the task, state and knowledge directories may not overlap, repeat or live under .git', () => {
+  bad('taskDocsDir: a/tasks\nstateDir: a/tasks/state', /overlap/);
+  bad('stateDir: a\nknowledgeDir: a/knowledge', /overlap/);
+  bad('taskDocsDir: same\nstateDir: same', /overlap/);
+  bad('knowledgeDir: .git/hooks', /\.git/);
+  bad('stateDir: .git', /\.git/);
+  assert.doesNotThrow(() => parseDevAgentConfig('taskDocsDir: a/tasks\nstateDir: a/state\nknowledgeDir: a/knowledge'));
+});

@@ -122,7 +122,7 @@ function parseMapping(label: string, where: string, raw: unknown): SourceMapping
   for (const [key, value] of Object.entries(raw)) {
     if ((ITEM_FIELDS as readonly string[]).includes(key)) {
       mapping.fields[key as ItemField] = mappingPath(label, `${where}.${key}`, value);
-    } else if (key in COLLECTION_FIELDS) {
+    } else if (Object.hasOwn(COLLECTION_FIELDS, key)) {
       const allowed = COLLECTION_FIELDS[key as keyof typeof COLLECTION_FIELDS] as readonly string[];
       if (!isRecord(value)) fail(label, `${where}.${key}`, 'must be a mapping of field names to paths');
       for (const [field, fieldPath] of Object.entries(value)) {
@@ -183,6 +183,14 @@ export function parseDevAgentConfig(yamlText: string, label = CONFIG_FILE): DevA
   cfg.taskDocsDir = relativeDir(label, 'taskDocsDir', raw.taskDocsDir, cfg.taskDocsDir);
   cfg.stateDir = relativeDir(label, 'stateDir', raw.stateDir, cfg.stateDir);
   cfg.knowledgeDir = relativeDir(label, 'knowledgeDir', raw.knowledgeDir, cfg.knowledgeDir);
+  const dirs: Array<[string, string]> = [['taskDocsDir', cfg.taskDocsDir], ['stateDir', cfg.stateDir], ['knowledgeDir', cfg.knowledgeDir]];
+  for (const [name, dir] of dirs) if (dir === '.git' || dir.startsWith('.git/')) fail(label, name, 'must not be inside .git');
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      const [a, b] = [dirs[i][1], dirs[j][1]];
+      if (a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`)) fail(label, `${dirs[i][0]} and ${dirs[j][0]}`, 'overlap: use separate directories, none inside another');
+    }
+  }
   if (raw.contextMode !== undefined) {
     if (typeof raw.contextMode !== 'string' || !CONTEXT_MODE_RE.test(raw.contextMode)) fail(label, 'contextMode', 'must be a short lowercase name such as "balanced"');
     cfg.contextMode = raw.contextMode;

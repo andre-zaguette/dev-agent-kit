@@ -35,7 +35,7 @@ test('a dirty tree is refused before anything changes', () => {
   assert.deepEqual([...(result.files ?? [])].sort(), ['a.txt', 'wip.txt']);
   assert.equal(currentBranch(dir), 'main');
   assert.equal(runGit(dir, ['show-ref', '--verify', '--quiet', 'refs/heads/feat/x-1-y']).ok, false);
-  assert.deepEqual(dirtyFiles(dir).sort(), ['a.txt', 'wip.txt']);
+  assert.deepEqual(dirtyFiles(dir)!.sort(), ['a.txt', 'wip.txt']);
 });
 
 test('a diverged base stops with a reason and leaves the repository as found', () => {
@@ -166,4 +166,25 @@ test('an ignored local file that the base tracks is never overwritten', () => {
   assert.deepEqual(result.files, ['.env']);
   assert.equal(readFileSync(join(dir, '.env'), 'utf8'), 'LOCAL_SECRET=1');
   assert.equal(currentBranch(dir), 'main');
+});
+
+test('a status that cannot be read is a refusal, never a clean tree', () => {
+  const { dir } = seededClone();
+  writeFileSync(join(dir, '.git', 'index'), 'garbage');
+  assert.equal(dirtyFiles(dir), null);
+  const result = prepareTaskBranch(dir, { workingBranch: 'feat/x-1-y' });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, 'status-failed');
+});
+
+test('a tag named like the base branch does not confuse the divergence check', () => {
+  const { dir } = seededClone();
+  sh(dir, 'switch', '-q', '-c', 'side');
+  commitFile(dir, 'side.txt');
+  sh(dir, 'tag', 'main');
+  sh(dir, 'switch', '-q', 'main');
+  commitFile(dir, 'more.txt');
+  sh(dir, 'push', '-q', 'origin', 'refs/heads/main:refs/heads/main');
+  const result = prepareTaskBranch(dir, { workingBranch: 'feat/x-1-y' });
+  assert.equal(result.ok, true, JSON.stringify(result));
 });

@@ -78,7 +78,7 @@ export function taskStatePath(dirs: TaskDirs, key: string): string {
 /** Blockquote every line so external text can never start a heading, list or fence of its own. */
 export function quoteExternal(text: string): string {
   return text
-    .split(/\r?\n/)
+    .split(/\r\n|\r|\n/)
     .map((line) => (line === '' ? '>' : `> ${line}`))
     .join('\n');
 }

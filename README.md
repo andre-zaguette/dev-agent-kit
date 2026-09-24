@@ -1,4 +1,6 @@
-# Frontend Agent Kit
+# Dev Agent Kit
+
+> This repository is the evolution of `andre-zaguette/frontend-agent-kit` (history restarted at v0.5). The kit is growing from a frontend-only agent into a provider-neutral engineering agent; see `docs/superpowers/specs/2026-09-24-dev-agent-kit-evolution.md`. The `frontend-agent` CLI, the seven frontend skills and the MCP tool names are unchanged until v1.0.
 
 Portable Figma-to-code agent kit for Claude Code and Codex: skills, stack references and (from v0.2 onward) an own MCP server for visual validation.
 

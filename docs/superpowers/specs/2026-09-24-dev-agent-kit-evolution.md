@@ -2,7 +2,7 @@
 
 ## Implementation plan for v0.6 through v1.0
 
-Repository: `https://github.com/andre-zaguette/frontend-agent-kit`
+Repository: `https://github.com/andre-zaguette/dev-agent-kit` (evolved from `andre-zaguette/frontend-agent-kit`, history restarted at v0.5)
 
 Current baseline: v0.5 plus the post-v0.5 fixes already merged to `main`.
 

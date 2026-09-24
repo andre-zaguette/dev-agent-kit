@@ -19,9 +19,17 @@ Other brokers, or a task framework that already manages acknowledgments for you:
 ## Exemplo
 
 ```python
+MAX_ATTEMPTS = 5
+
+
+def attempts(properties) -> int:
+    deaths = (properties.headers or {}).get("x-death") or []
+    return sum(entry.get("count", 0) for entry in deaths)
+
+
 def on_message(channel, method, properties, body):
-    message = OrderMessage.model_validate_json(body)
     try:
+        message = OrderMessage.model_validate_json(body)  # a malformed body is rejected below, never fatal
         with db.transaction():
             if processed.exists(message.id):
                 return channel.basic_ack(method.delivery_tag)
@@ -29,13 +37,18 @@ def on_message(channel, method, properties, body):
             processed.add(message.id)
         channel.basic_ack(method.delivery_tag)
     except RetryableError:
-        channel.basic_nack(method.delivery_tag, requeue=False)  # dead-letter or delayed retry queue
+        if attempts(properties) >= MAX_ATTEMPTS:
+            channel.basic_reject(method.delivery_tag, requeue=False)  # give up: dead-letter for a human
+        else:
+            channel.basic_nack(method.delivery_tag, requeue=False)  # to the retry queue (a TTL queue that dead-letters back)
     except Exception:
-        channel.basic_reject(method.delivery_tag, requeue=False)  # poison message
+        channel.basic_reject(method.delivery_tag, requeue=False)  # poison message: never redeliver it in a loop
 
-channel.queue_declare("orders", durable=True, arguments={"x-dead-letter-exchange": "orders.dlx"})
+channel.queue_declare("orders", durable=True, arguments={"x-dead-letter-exchange": "orders.retry"})
 channel.basic_qos(prefetch_count=10)
 ```
+
+The retry queue holds a message for a delay (per-queue TTL) and dead-letters it back to `orders`; RabbitMQ counts each trip in the `x-death` header, which is how the attempt limit is enforced. After the limit, reject to a final dead-letter queue that people inspect.
 
 Declare queues durable, publish persistent messages, keep a prefetch limit, use manual acknowledgments, and record the message id you processed. Never requeue a failing message in a tight loop; use a dead-letter exchange with a delay or a retry cap.
 

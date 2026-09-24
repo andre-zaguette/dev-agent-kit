@@ -17,17 +17,12 @@
     {
       "type": "file_matches",
       "glob": "src/users/users.controller.ts",
-      "pattern": "@Post\\(':id/deactivate'\\)"
-    },
-    {
-      "type": "file_matches",
-      "glob": "src/users/users.controller.ts",
-      "pattern": "RolesGuard"
+      "pattern": "@Post\\(':id/deactivate'\\)(?=[\\s\\S]{0,250}RolesGuard)(?=[\\s\\S]{0,250}@Roles\\(['\\\"]admin['\\\"]\\))"
     },
     {
       "type": "file_matches",
       "glob": "src/users/*.dto.ts",
-      "pattern": "class-validator"
+      "pattern": "class \\w*Deactivat\\w*[\\s\\S]{0,200}(IsString|MaxLength|IsNotEmpty)"
     }
   ],
   "forbidden": [

@@ -37,6 +37,12 @@
       "glob": "notes/serializers.py",
       "pattern": "fields\\s*=\\s*[\\'\"]__all__[\\'\"]",
       "description": "expõe todos os campos (mass assignment / vazamento)"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/views.py",
+      "pattern": "Note\\.objects\\.get\\(pk=[^,)]*\\)|get_object_or_404\\(Note,\\s*pk=[^,)]*\\)",
+      "description": "busca sem escopo de dono: qualquer usuário alcançaria a nota de outro"
     }
   ]
 }

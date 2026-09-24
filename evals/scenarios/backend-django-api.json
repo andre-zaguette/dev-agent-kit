@@ -38,8 +38,14 @@
     {
       "type": "file_matches",
       "glob": "notes/views.py",
-      "pattern": "Note\\.objects\\.get\\(pk=",
-      "description": "busca sem escopo de dono: qualquer usuário arquivaria a nota de outro"
+      "pattern": "Note\\.objects\\.get\\(pk=[^,)]*\\)|get_object_or_404\\(Note,\\s*pk=[^,)]*\\)",
+      "description": "busca sem escopo de dono: qualquer usuário alcançaria a nota de outro"
+    },
+    {
+      "type": "file_matches",
+      "glob": "notes/migrations/0001_initial.py",
+      "pattern": "archived_at",
+      "description": "editou uma migração já aplicada"
     }
   ]
 }

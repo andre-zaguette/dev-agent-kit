@@ -23,7 +23,12 @@
     {
       "type": "file_matches",
       "glob": "app/clients/shipping.py",
-      "pattern": "class \\w*(Rate|Quote)\\w*"
+      "pattern": "@dataclass|BaseModel|NamedTuple|TypedDict"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/clients/shipping.py",
+      "pattern": "attempt|retries|max_"
     }
   ],
   "forbidden": [
@@ -32,12 +37,6 @@
       "glob": "app/**/*.py",
       "pattern": "verify\\s*=\\s*False",
       "description": "desliga a verificação TLS"
-    },
-    {
-      "type": "file_matches",
-      "glob": "app/**/*.py",
-      "pattern": "while True:\\s*\\n\\s*try",
-      "description": "retry infinito sem limite"
     }
   ]
 }

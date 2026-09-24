@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { evalsLayout, loadScenarios } from '../src/load.ts';
 import { createWorkspace, removeWorkspace } from '../src/workspace.ts';
 import { findKitRoot } from '../../cli/src/util.ts';
@@ -112,4 +112,97 @@ test('backend fixtures contain no symlinks and no installed dependencies', () =>
       removeWorkspace(ws);
     }
   }
+});
+
+/** Grade a scenario as if an agent had read what it should and then produced `files` on top of the fixture. */
+function gradeWith(id: string, files: Record<string, string>, finalText = ''): ReturnType<typeof grade> {
+  const s = loadScenarios(layout).find((x) => x.id === id)!;
+  const ws = createWorkspace(join(layout.fixturesDir, s.fixture));
+  try {
+    for (const [rel, content] of Object.entries(files)) {
+      mkdirSync(dirname(join(ws, rel)), { recursive: true });
+      writeFileSync(join(ws, rel), content);
+    }
+    const tools = s.expected.filter((a) => a.type === 'tool_called').map((a) => (a as { tool: string }).tool);
+    const record: RunRecord = { host: 'claude', durationMs: 1, exitCode: 0, timedOut: false, stderrTail: '', toolCalls: tools.map((tool) => ({ tool, args: {}, ok: true })), finalText };
+    return grade(s, record, ws);
+  } finally {
+    removeWorkspace(ws);
+  }
+}
+
+test('every backend scenario fails on the untouched fixture, even when the agent read the right skills', () => {
+  for (const s of loadScenarios(layout).filter((x) => x.category === 'backend')) {
+    const r = gradeWith(s.id, {}, 'lock duas vezes');
+    assert.notEqual(r.verdict, 'pass', `${s.id} passes without any change`);
+  }
+});
+
+test('root cause: leaving the double subtraction fails, a single discount passes', () => {
+  const fixed = 'def total_with_discount(unit_price: float, quantity: int, discount_percent: float) -> float:\n    discounted_unit = unit_price * (1 - discount_percent / 100)\n    return round(discounted_unit * quantity, 2)\n';
+  assert.equal(gradeWith('backend-root-cause-bugfix', { 'app/services/pricing.py': fixed }, 'O desconto era aplicado duas vezes.').verdict, 'pass');
+  assert.equal(gradeWith('backend-root-cause-bugfix', {}, 'O desconto era aplicado duas vezes.').verdict, 'fail');
+});
+
+test('nest: a handler without the guard and role fails, a guarded one with a validated DTO passes', () => {
+  const guarded = `import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { RolesGuard, Roles } from '../auth/roles.guard';
+import { DeactivateUserDto } from './create-user.dto';
+import { UsersService } from './users.service';
+
+@Controller('users')
+export class UsersController {
+  constructor(private readonly users: UsersService) {}
+
+  @Post(':id/deactivate')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  deactivate(@Param('id') id: string, @Body() dto: DeactivateUserDto) {
+    return this.users.deactivate(id, dto.reason);
+  }
+}
+`;
+  const unguarded = guarded.replace("  @UseGuards(RolesGuard)\n  @Roles('admin')\n", '');
+  const dto = "import { IsEmail, IsString, MaxLength } from 'class-validator';\n\nexport class DeactivateUserDto {\n  @IsString() @MaxLength(200) reason!: string;\n}\n";
+  assert.equal(gradeWith('backend-nest-api', { 'src/users/users.controller.ts': guarded, 'src/users/create-user.dto.ts': dto }).verdict, 'pass');
+  assert.equal(gradeWith('backend-nest-api', { 'src/users/users.controller.ts': unguarded, 'src/users/create-user.dto.ts': dto }).verdict, 'fail');
+});
+
+test('fastapi: a read-check-write reservation fails, an atomic conditional update passes', () => {
+  const head = 'from fastapi import APIRouter\nrouter = APIRouter(prefix="/items")\n\n';
+  const naive = `${head}@router.post("/{item_id}/reserve")\ndef reserve(item_id: int, body, db):\n    item = db.query(Item).filter(Item.id == item_id).first()\n    if item.stock >= body.quantity:\n        item.stock -= body.quantity\n        db.commit()\n    else:\n        raise HTTPException(409, detail={"code": "OUT_OF_STOCK"})\n`;
+  const atomic = `${head}@router.post("/{item_id}/reserve")\ndef reserve(item_id: int, body, db):\n    updated = db.query(Item).filter(Item.id == item_id, Item.stock >= body.quantity).update({Item.stock: Item.stock - body.quantity})\n    if not updated:\n        raise HTTPException(409, detail={"code": "OUT_OF_STOCK"})\n    db.commit()\n`;
+  assert.equal(gradeWith('backend-fastapi-api', { 'app/routers/items.py': naive }).verdict, 'fail');
+  assert.equal(gradeWith('backend-fastapi-api', { 'app/routers/items.py': atomic }).verdict, 'pass');
+});
+
+test('postgres migration: a split AddField + concurrent index across 0002 and 0003 passes', () => {
+  const add = 'from django.db import migrations, models\n\nclass Migration(migrations.Migration):\n    dependencies = [("notes", "0001_initial")]\n    operations = [migrations.AddField("note", "archived_at", models.DateTimeField(null=True))]\n';
+  const index = 'from django.contrib.postgres.operations import AddIndexConcurrently\nfrom django.db import migrations, models\n\nclass Migration(migrations.Migration):\n    atomic = False\n    dependencies = [("notes", "0002_note_archived_at")]\n    operations = [AddIndexConcurrently("note", models.Index(fields=["owner"], condition=models.Q(archived_at__isnull=True), name="notes_active_idx"))]\n';
+  assert.equal(gradeWith('backend-postgres-migration', { 'notes/migrations/0002_note_archived_at.py': add, 'notes/migrations/0003_note_active_idx.py': index }, 'O risco de lock é baixo com índice concorrente.').verdict, 'pass');
+});
+
+test('django and drf: an owner-scoped lookup passes, an unscoped one fails', () => {
+  const view = (lookup: string) => `from rest_framework import viewsets\nfrom rest_framework.decorators import action\n\nclass NoteViewSet(viewsets.ModelViewSet):\n    @action(detail=True, methods=["post"])\n    def archive(self, request, pk=None):\n        note = ${lookup}\n        return note\n    @action(detail=True, methods=["get"])\n    def summary(self, request, pk=None):\n        note = ${lookup}\n        return note\n`;
+  const scoped = view('Note.objects.get(pk=pk, owner=request.user)');
+  const unscoped = view('Note.objects.get(pk=pk)');
+  const model = 'from django.db import models\nclass Note(models.Model):\n    archived_at = models.DateTimeField(null=True)\n';
+  const migration = 'AddField archived_at\n';
+  const django = (v: string) => ({ 'notes/views.py': v, 'notes/models.py': model, 'notes/migrations/0002_note_archived_at.py': migration });
+  assert.equal(gradeWith('backend-django-api', django(scoped)).verdict, 'pass');
+  assert.equal(gradeWith('backend-django-api', django(unscoped)).verdict, 'fail');
+  assert.equal(gradeWith('backend-drf-permission', { 'notes/views.py': scoped }).verdict, 'pass');
+  assert.equal(gradeWith('backend-drf-permission', { 'notes/views.py': unscoped }).verdict, 'fail');
+  assert.equal(gradeWith('backend-django-api', { ...django(scoped), 'notes/migrations/0001_initial.py': 'archived_at' }).verdict, 'fail');
+});
+
+test('external integration: a bounded retry loop and a differently named normalized type pass', () => {
+  const client = 'import httpx\nfrom dataclasses import dataclass\n\n@dataclass\nclass ShippingOption:\n    price_cents: int\n\ndef fetch(zip_code):\n    attempt = 0\n    while True:\n        try:\n            r = httpx.get("https://shipping.example.test/v1/rates", params={"zip": zip_code}, timeout=5)\n            if r.status_code == 429 or r.status_code >= 500:\n                raise httpx.HTTPError("retry")\n            return ShippingOption(price_cents=int(r.json()["cost"] * 100))\n        except httpx.HTTPError:\n            attempt += 1\n            if attempt >= 3:\n                raise\n';
+  assert.equal(gradeWith('backend-external-integration', { 'app/clients/shipping.py': client }).verdict, 'pass');
+});
+
+test('celery: an unrelated word "sent" is not an idempotency check', () => {
+  const task = (body: string) => `from celery import shared_task\n@shared_task(bind=True, acks_late=True, max_retries=5)\ndef send_invoice(self, invoice_id):\n${body}`;
+  assert.equal(gradeWith('backend-celery-task', { 'app/tasks/invoices.py': task('    # the invoice was sent\n    deliver(invoice_id)\n') }).verdict, 'fail');
+  assert.equal(gradeWith('backend-celery-task', { 'app/tasks/invoices.py': task('    if store.invoices[invoice_id].sent:\n        return\n    deliver(invoice_id)\n') }).verdict, 'pass');
 });

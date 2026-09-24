@@ -53,3 +53,19 @@ test('every hint the selector can produce points at a real file, and every refer
   for (const hint of hints) assert.ok(existsSync(join(skillsDir, hint.skill, 'references', `${hint.reference}.md`)), `${hint.skill}/${hint.reference}`);
   assert.deepEqual(hints.map((h) => h.reference).sort(), [...EXPECTED].sort());
 });
+
+const refText = (skill: string, name: string) => readFileSync(join(skillsDir, skill, 'references', `${name}.md`), 'utf8');
+
+test('the RabbitMQ example validates inside the try, counts attempts and keeps the redelivery promise honest', () => {
+  const text = refText('async-jobs', 'rabbitmq');
+  assert.match(text, /try:\s*\n\s*message = /, 'message parsing must happen inside the try so a malformed body is rejected, not fatal');
+  assert.match(text, /x-death/);
+  assert.match(text, /MAX_ATTEMPTS/);
+});
+
+test('the Celery reference does not claim a check-then-act is idempotent and mentions worker loss', () => {
+  const text = refText('async-jobs', 'celery');
+  assert.match(text, /task_reject_on_worker_lost/);
+  assert.match(text, /conditional update|claim/i);
+  assert.doesNotMatch(text, /idempotent: a duplicate delivery is a no-op/);
+});

@@ -38,6 +38,12 @@
       "glob": "tests/test_pricing.py",
       "pattern": "== 162",
       "description": "ajustou o teste ao comportamento errado"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/services/pricing.py",
+      "pattern": "subtotal\\s*-\\s*subtotal\\s*\\*",
+      "description": "o desconto continua sendo subtraído uma segunda vez"
     }
   ]
 }

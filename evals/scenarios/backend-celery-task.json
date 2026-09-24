@@ -32,7 +32,7 @@
     {
       "type": "file_matches",
       "glob": "app/tasks/invoices.py",
-      "pattern": "sent"
+      "pattern": "\\.sent\\b|sent_at|\\bsent\\s*="
     }
   ],
   "forbidden": [

@@ -16,12 +16,12 @@
     },
     {
       "type": "file_matches",
-      "glob": "notes/migrations/0002_*.py",
+      "glob": "notes/migrations/000{2,3,4}_*.py",
       "pattern": "archived_at"
     },
     {
       "type": "file_matches",
-      "glob": "notes/migrations/0002_*.py",
+      "glob": "notes/migrations/000{2,3,4}_*.py",
       "pattern": "[Ii]ndex"
     },
     {
@@ -33,7 +33,7 @@
   "forbidden": [
     {
       "type": "file_matches",
-      "glob": "notes/migrations/0002_*.py",
+      "glob": "notes/migrations/000{2,3,4}_*.py",
       "pattern": "null\\s*=\\s*False",
       "description": "coluna NOT NULL sem backfill em tabela grande"
     },

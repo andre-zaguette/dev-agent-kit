@@ -27,7 +27,8 @@
     {
       "type": "file_matches",
       "glob": "app/**/*.py",
-      "pattern": "with_for_update|UPDATE .* SET stock|stock\\s*>=|Item\\.stock\\s*-"
+      "pattern": "\\.where\\([^)]*stock\\s*>=|\\.filter\\([^)]*stock\\s*>=|UPDATE\\s+items\\s+SET\\s+stock",
+      "description": "reserva atômica (atualização condicional), não ler-checar-gravar"
     }
   ],
   "forbidden": [

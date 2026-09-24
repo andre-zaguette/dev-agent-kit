@@ -6,7 +6,7 @@ Portable Figma-to-code agent kit for Claude Code and Codex: skills, stack refere
 
 ## What's in v0.1
 
-- 7 canonical skills under `skills/`, covering the full Figma-to-code workflow, component reuse, responsive design, motion, accessibility and visual validation (v0.6 adds 7 shared engineering skills, for 14 in total).
+- 7 canonical skills under `skills/`, covering the full Figma-to-code workflow, component reuse, responsive design, motion, accessibility and visual validation (v0.6 adds 7 shared engineering skills and v0.7 the `task-orchestrator` skill, for 15 in total).
 - 8 pre-populated stack references (`skills/figma-to-code/references/`): React, Next.js, Vue 3, Nuxt, Angular, Tailwind CSS, PHP/Laravel, plain HTML/CSS/JS. New stacks are bootstrapped automatically the first time a task needs them (see `skills/component-selection/SKILL.md`).
 - Manual installation into Claude Code and Codex (a CLI installer was added in v0.4 — see below).
 - Documented setup for Figma's official MCP server (design context, screenshots, variables, assets).
@@ -198,3 +198,7 @@ Results land in `evals/results/<timestamp>/` (`report.md`, `summary.json`, trans
 ## v0.6 — shared engineering core
 
 Seven provider-neutral skills (`engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory`) now ship with the frontend skills, and `packages/core` provides deterministic project inspection, repo-memory freshness and a context audit. The frontend workflow, the `frontend-agent` CLI and the MCP tool names are unchanged; the managed instructions now also ask the agent to run the project's tests, typecheck and lint when configured. See `docs/context-efficiency.md` and `docs/superpowers/specs/2026-09-24-dev-agent-kit-evolution.md`.
+
+## v0.7 — task orchestrator
+
+The `task-orchestrator` skill runs a work item from any configured task source: it resolves the source, normalizes the item into one canonical `WorkItem`, keeps a local ledger under `.dev-agent/tasks/` and `.dev-agent/state/`, prepares a safe Git branch (fast-forward only, never on a dirty tree) and hands off to the domain skills. Sources are declared in `.dev-agent/config.yml` with a field mapping, so a new MCP-backed source needs no code. `packages/core` holds the deterministic parts: source resolution, the mapping engine, the generic MCP adapter, the config parser, the ledger, Git preparation, branch naming and resume validation. The `frontend-agent` CLI, the seven frontend skills and the MCP tool names are unchanged. See `docs/task-orchestrator.md`.

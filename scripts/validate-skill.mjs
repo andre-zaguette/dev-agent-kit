@@ -50,6 +50,9 @@ function validateReferenceFile(path) {
   }
   if (!parsed.fields.name) errors.push(`${path}: frontmatter missing "name"`);
   if (!parsed.fields.description) errors.push(`${path}: frontmatter missing "description"`);
+  // Contract references (data shapes, protocols) are specifications, not guidance: they carry
+  // no baseline/draft-auto/reviewed status and none of the guidance sections.
+  if (parsed.fields.type === 'contract') return errors;
   if (!parsed.fields.status) {
     errors.push(`${path}: frontmatter missing "status"`);
   } else if (!VALID_STATUS_VALUES.includes(parsed.fields.status)) {

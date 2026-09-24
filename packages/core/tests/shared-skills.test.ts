@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
@@ -12,7 +12,8 @@ const SHARED = [
   'root-cause-analysis',
   'surgical-diff',
   'context-efficiency',
-  'repo-memory'
+  'repo-memory',
+  'task-orchestrator'
 ];
 // Shared skills must not assume a framework, a host, a design tool or a task-source product (spec §6.1, §27).
 const FORBIDDEN =
@@ -30,3 +31,13 @@ for (const name of SHARED) {
     assert.ok(text.split('\n').length <= MAX_LINES, `${name} has more than ${MAX_LINES} lines; move detail into references/`);
   });
 }
+
+test('task-orchestrator ships exactly the six contract references, all with valid frontmatter', () => {
+  const dir = join(kitRoot, 'skills', 'task-orchestrator', 'references');
+  const names = ['work-item', 'task-source', 'source-resolution', 'generic-mcp', 'git-workflow', 'task-ledger'];
+  for (const name of names) {
+    const text = readFileSync(join(dir, `${name}.md`), 'utf8');
+    assert.match(text, new RegExp(`^---\\nname: ${name}\\ndescription: .{20,300}\\ntype: contract\\n---\\n`), name);
+  }
+  assert.deepEqual(readdirSync(dir).sort(), names.map((n) => `${n}.md`).sort());
+});

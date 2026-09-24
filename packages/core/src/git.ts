@@ -2,20 +2,35 @@ import { execFileSync } from 'node:child_process';
 
 const SHA_RE = /^[0-9a-f]{7,40}$/;
 
-/** The parent environment minus variables that would redirect git away from `cwd`. */
+/** The parent environment minus variables that would redirect git away from `cwd`, and never prompting. */
 function cleanEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE']) delete env[key];
+  env.GIT_TERMINAL_PROMPT = '0';
   return env;
 }
 
-/** Run a read-only git command in `root`; null on any failure (not a repo, unknown ref, no git). */
-function git(root: string, args: string[]): string | null {
+export interface GitResult {
+  ok: boolean;
+  stdout: string;
+  stderr: string;
+}
+
+/** Run git in `root`. Output is returned untrimmed; a non-zero exit is `ok: false` (never thrown). */
+export function runGit(root: string, args: string[], opts: { timeoutMs?: number } = {}): GitResult {
   try {
-    return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024, env: cleanEnv() }).trim();
-  } catch {
-    return null;
+    const stdout = execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024, env: cleanEnv(), timeout: opts.timeoutMs });
+    return { ok: true, stdout, stderr: '' };
+  } catch (error) {
+    const e = error as { stdout?: string | Buffer; stderr?: string | Buffer };
+    return { ok: false, stdout: String(e.stdout ?? ''), stderr: String(e.stderr ?? '') };
   }
+}
+
+/** Trimmed stdout of a read-only git command; null on any failure (not a repo, unknown ref, no git). */
+function git(root: string, args: string[]): string | null {
+  const result = runGit(root, args);
+  return result.ok ? result.stdout.trim() : null;
 }
 
 export function isGitRepo(root: string): boolean {
@@ -42,4 +57,41 @@ export function detectBaseBranch(root: string, configured?: string): string | un
     if (git(root, ['show-ref', '--verify', '--quiet', `refs/heads/${name}`]) !== null) return name;
   }
   return undefined;
+}
+
+/** Current branch name; null when HEAD is detached or this is not a repository. */
+export function currentBranch(root: string): string | null {
+  const out = git(root, ['symbolic-ref', '--short', '-q', 'HEAD']);
+  return out === null || out === '' ? null : out;
+}
+
+/** True when `ancestor` is reachable from `descendant`. False for unknown or malformed commits. */
+export function isAncestor(root: string, ancestor: string, descendant: string): boolean {
+  if (!SHA_RE.test(ancestor) && !/^[A-Za-z0-9._/-]+$/.test(ancestor)) return false;
+  if (ancestor.startsWith('-') || descendant.startsWith('-')) return false;
+  return runGit(root, ['merge-base', '--is-ancestor', ancestor, descendant]).ok;
+}
+
+/** Paths with uncommitted changes, untracked files included. Empty means a clean tree. */
+export function dirtyFiles(root: string): string[] {
+  const result = runGit(root, ['-c', 'core.quotePath=false', 'status', '--porcelain']);
+  if (!result.ok) return [];
+  return result.stdout
+    .split('\n')
+    .filter((line) => line.length > 3)
+    .map((line) => line.slice(3).replace(/^.* -> /, ''));
+}
+
+export function hasRemote(root: string, remote = 'origin'): boolean {
+  return runGit(root, ['remote', 'get-url', remote]).ok;
+}
+
+/** Branch names on `remote` (without the "<remote>/" prefix and without HEAD). */
+export function listRemoteBranches(root: string, remote = 'origin'): string[] {
+  const out = git(root, ['for-each-ref', '--format=%(refname:short)', `refs/remotes/${remote}`]);
+  if (out === null) return [];
+  return out
+    .split('\n')
+    .map((name) => (name.startsWith(`${remote}/`) ? name.slice(remote.length + 1) : name))
+    .filter((name) => name !== '' && name !== 'HEAD' && name !== remote);
 }

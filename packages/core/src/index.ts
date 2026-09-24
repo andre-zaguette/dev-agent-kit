@@ -11,3 +11,6 @@ export * from './task-sources/mapping.js';
 export * from './task-sources/normalizer.js';
 export * from './task-sources/generic-mcp.js';
 export * from './ledger.js';
+export * from './git-prep.js';
+export * from './branch.js';
+export * from './resume.js';

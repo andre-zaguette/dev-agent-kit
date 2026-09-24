@@ -22,3 +22,30 @@ export function commitFile(dir: string, name: string, content = 'x'): void {
   sh(dir, 'add', '-A');
   sh(dir, 'commit', '-q', '-m', `add ${name}`);
 }
+
+/** An empty bare repository to act as `origin`. */
+export function makeBareRemote(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'dak-remote-'));
+  execFileSync('git', ['init', '--bare', '-q', '-b', 'main', dir]);
+  return dir;
+}
+
+/** A clone of `remote` with a local identity, on `main` even when the remote is still empty. */
+export function cloneOf(remote: string): string {
+  const dir = mkdtempSync(join(tmpdir(), 'dak-clone-'));
+  execFileSync('git', ['clone', '-q', remote, dir], { stdio: ['ignore', 'pipe', 'ignore'] });
+  sh(dir, 'config', 'user.email', 't@example.com');
+  sh(dir, 'config', 'user.name', 'Test');
+  sh(dir, 'config', 'commit.gpgsign', 'false');
+  sh(dir, 'symbolic-ref', 'HEAD', 'refs/heads/main');
+  return dir;
+}
+
+/** remote + a working clone that already pushed one commit to `origin/main`. */
+export function seededClone(): { remote: string; dir: string } {
+  const remote = makeBareRemote();
+  const dir = cloneOf(remote);
+  commitFile(dir, 'a.txt');
+  sh(dir, 'push', '-q', '-u', 'origin', 'main');
+  return { remote, dir };
+}

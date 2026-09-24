@@ -80,7 +80,7 @@ function mentions(text: string, name: string): boolean {
 }
 
 function detectPackageManager(root: string, pkg: PackageJson | null): string | undefined {
-  const declared = pkg?.packageManager?.split('@')[0];
+  const declared = typeof pkg?.packageManager === 'string' ? pkg.packageManager.split('@')[0] : undefined;
   if (declared && NODE_PACKAGE_MANAGERS.includes(declared)) return declared;
   if (has(root, 'pnpm-lock.yaml')) return 'pnpm';
   if (has(root, 'yarn.lock')) return 'yarn';
@@ -93,6 +93,7 @@ function detectPackageManager(root: string, pkg: PackageJson | null): string | u
 
 function scriptCommand(pm: string, name: string): string {
   if (pm === 'npm') return name === 'test' ? 'npm test' : `npm run ${name}`;
+  if (pm === 'bun') return `bun run ${name}`;
   return `${pm} ${name}`;
 }
 

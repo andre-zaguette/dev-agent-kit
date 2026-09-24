@@ -145,3 +145,26 @@ test('baseBranch is filled from git when the project is a repo', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('non-string packageManager never throws and falls back to lockfile / npm', () => {
+  const a = project({ 'package.json': JSON.stringify({ packageManager: 5, scripts: { test: 'x' } }) });
+  const b = project({ 'package.json': JSON.stringify({ packageManager: {} }), 'pnpm-lock.yaml': '' });
+  try {
+    const profileA = detectProjectProfile(a.dir);
+    assert.equal(profileA.packageManager, 'npm');
+    assert.deepEqual(profileA.testCommands, ['npm test']);
+    assert.equal(detectProjectProfile(b.dir).packageManager, 'pnpm');
+  } finally {
+    a.cleanup();
+    b.cleanup();
+  }
+});
+
+test('bun projects run package scripts with bun run', () => {
+  const p = project({ 'package.json': JSON.stringify({ scripts: { test: 'vitest' } }), 'bun.lockb': '' });
+  try {
+    assert.deepEqual(detectProjectProfile(p.dir).testCommands, ['bun run test']);
+  } finally {
+    p.cleanup();
+  }
+});

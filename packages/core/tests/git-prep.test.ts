@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { currentBranch, dirtyFiles, hasRemote, headSha, isAncestor, listRemoteBranches, runGit } from '../src/git.ts';
 import { prepareTaskBranch } from '../src/git-prep.ts';
@@ -118,4 +118,52 @@ test('read-only helpers: ancestry, remote branches, detached HEAD', () => {
   assert.deepEqual(listRemoteBranches(dir).sort(), ['feat/a-1-x', 'main']);
   sh(dir, 'checkout', '-q', '--detach');
   assert.equal(currentBranch(dir), null);
+});
+
+test('a detached HEAD holding commits that no branch contains is refused, so nothing is orphaned', () => {
+  const { dir } = seededClone();
+  sh(dir, 'checkout', '-q', '--detach');
+  commitFile(dir, 'orphan.txt');
+  const orphan = headSha(dir)!;
+  const result = prepareTaskBranch(dir, { workingBranch: 'feat/x-1-y' });
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.reason, 'detached-head');
+  assert.equal(headSha(dir), orphan);
+});
+
+test('a detached HEAD that some branch already contains is fine to leave', () => {
+  const { dir } = seededClone();
+  sh(dir, 'checkout', '-q', '--detach');
+  const result = prepareTaskBranch(dir, { workingBranch: 'feat/x-1-y' });
+  assert.equal(result.ok, true);
+});
+
+test('ref-expanding names such as @{-1} are invalid, and a failed creation goes back to the starting branch', () => {
+  const { dir } = seededClone();
+  sh(dir, 'switch', '-q', '-c', 'work');
+  assert.equal(prepareTaskBranch(dir, { workingBranch: '@{-1}' }).ok, false);
+  assert.equal(currentBranch(dir), 'work');
+  sh(dir, 'branch', 'feat/x');
+  const clash = prepareTaskBranch(dir, { workingBranch: 'feat' });
+  assert.equal(clash.ok, false);
+  if (!clash.ok) assert.equal(clash.reason, 'switch-failed');
+  assert.equal(currentBranch(dir), 'work');
+});
+
+test('an ignored local file that the base tracks is never overwritten', () => {
+  const { remote, dir } = seededClone();
+  writeFileSync(join(dir, '.git', 'info', 'exclude'), '.env\n');
+  writeFileSync(join(dir, '.env'), 'LOCAL_SECRET=1');
+  const other = cloneOf(remote);
+  sh(other, 'pull', '-q', 'origin', 'main');
+  commitFile(other, '.env', 'UPSTREAM=1');
+  sh(other, 'push', '-q', 'origin', 'main');
+  const result = prepareTaskBranch(dir, { workingBranch: 'feat/x-1-y' });
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.reason, 'ignored-files-in-the-way');
+  assert.deepEqual(result.files, ['.env']);
+  assert.equal(readFileSync(join(dir, '.env'), 'utf8'), 'LOCAL_SECRET=1');
+  assert.equal(currentBranch(dir), 'main');
 });

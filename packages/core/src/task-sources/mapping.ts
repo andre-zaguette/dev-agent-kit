@@ -49,7 +49,8 @@ export function toTextList(value: unknown, max = 100): string[] {
 export function safeUrl(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const text = value.trim();
-  if (text.length === 0 || text.length > MAX_URL) return undefined;
+  // The URL parser silently drops tabs and newlines, so a URL with them would validate and still carry them.
+  if (text.length === 0 || text.length > MAX_URL || /[\s\u0000-\u001F\u007F<>"]/.test(text)) return undefined;
   try {
     const url = new URL(text);
     return url.protocol === 'http:' || url.protocol === 'https:' ? text : undefined;

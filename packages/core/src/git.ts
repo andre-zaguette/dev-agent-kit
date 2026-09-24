@@ -95,3 +95,9 @@ export function listRemoteBranches(root: string, remote = 'origin'): string[] {
     .map((name) => (name.startsWith(`${remote}/`) ? name.slice(remote.length + 1) : name))
     .filter((name) => name !== '' && name !== 'HEAD' && name !== remote);
 }
+
+/** True when some local or remote-tracking branch already contains `rev`, so leaving it orphans nothing. */
+export function isOnSomeBranch(root: string, rev = 'HEAD'): boolean {
+  const result = runGit(root, ['for-each-ref', '--contains', rev, '--format=%(refname)', 'refs/heads', 'refs/remotes']);
+  return result.ok && result.stdout.trim() !== '';
+}

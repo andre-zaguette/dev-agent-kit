@@ -18,3 +18,12 @@ export function findSecret(text: string): string | null {
   for (const [pattern, label] of SECRET_PATTERNS) if (pattern.test(text)) return label;
   return null;
 }
+
+/** Replace every secret-looking span with a label that no longer looks like a secret. */
+export function redactSecrets(text: string): string {
+  let out = text;
+  for (const [pattern, label] of SECRET_PATTERNS) {
+    out = out.replace(new RegExp(pattern.source, pattern.flags.replace('g', '') + 'g'), `[redacted ${label}]`);
+  }
+  return out;
+}

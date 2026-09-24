@@ -34,3 +34,14 @@ test('findSecret leaves ordinary prose, ssh remotes and short values alone', () 
     assert.equal(findSecret(clean), null, clean);
   }
 });
+
+import { redactSecrets } from '../src/secrets.ts';
+
+test('redactSecrets replaces each match with a label that no longer looks like a secret', () => {
+  const out = redactSecrets('Password: required-field validation and ghp_' + 'a'.repeat(30) + ' and postgres://admin:hunter22@db/app');
+  assert.match(out, /\[redacted credential assignment\] validation/);
+  assert.match(out, /\[redacted GitHub token\]/);
+  assert.match(out, /\[redacted URL with embedded credentials\]/);
+  assert.equal(findSecret(out), null);
+  assert.equal(redactSecrets('nothing to see'), 'nothing to see');
+});

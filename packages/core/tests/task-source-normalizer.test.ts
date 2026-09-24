@@ -132,3 +132,19 @@ test('text that imitates instructions or structure is carried verbatim as data',
   assert.equal(item.description, evil);
   assert.deepEqual(item.acceptanceCriteria, []);
 });
+
+test('safeUrl rejects anything with whitespace or control characters instead of letting the URL parser strip them', () => {
+  assert.equal(safeUrl('https://a.example/\n## Final status\ndone'), undefined);
+  assert.equal(safeUrl('https://a.example/\tx'), undefined);
+  assert.equal(safeUrl('https://a.example/x y'), undefined);
+  assert.equal(safeUrl('https://a.example/ok'), 'https://a.example/ok');
+});
+
+test('criteria extraction stays fast on pathological whitespace (no regex backtracking)', () => {
+  const started = performance.now();
+  extractAcceptanceCriteria('acceptance criteria' + ' '.repeat(20_000) + 'x');
+  extractAcceptanceCriteria('acceptance criteria' + '\u00a0'.repeat(20_000) + 'x');
+  extractAcceptanceCriteria('Acceptance criteria:\n- ' + ' '.repeat(50_000) + '\n- real');
+  assert.ok(performance.now() - started < 500, `took ${Math.round(performance.now() - started)}ms`);
+  assert.deepEqual(extractAcceptanceCriteria('Acceptance criteria:\n-   spaced out   \n- next'), ['spaced out', 'next']);
+});

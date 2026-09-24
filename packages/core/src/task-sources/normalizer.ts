@@ -13,8 +13,10 @@ import {
 const MAX_COMMENTS = 200;
 const MAX_ATTACHMENTS = 100;
 const MAX_LINKS = 100;
-const BULLET_RE = /^\s*(?:[-*•]|\d+[.)])\s+(?:\[[ xX]\]\s+)?(.*\S)\s*$/;
-const CRITERIA_HEADING_RE = /^\s{0,3}(?:#{1,6}\s*)?(?:\*\*)?\s*(?:acceptance criteria|crit[eé]rios de aceit(?:e|a[cç][aã]o))\s*:?\s*(?:\*\*)?\s*:?\s*$/i;
+const BULLET_RE = /^\s*(?:[-*•]|\d+[.)])\s+(?:\[[ xX]\]\s+)?(\S.*)$/;
+// Matched on the trimmed line: every optional token is separated by a literal, so nothing backtracks.
+const CRITERIA_HEADING_RE = /^(?:#{1,6}\s*)?(?:\*\*)?(?:acceptance criteria|crit[eé]rios de aceit(?:e|a[cç][aã]o))(?:\*\*)?:?(?:\*\*)?$/i;
+const isCriteriaHeading = (line: string): boolean => line.length - line.trimStart().length <= 3 && CRITERIA_HEADING_RE.test(line.trim());
 const LINK_TYPES: Record<string, WorkItemLinkType> = {
   parent: 'parent',
   epic: 'parent',
@@ -50,7 +52,7 @@ export interface CollectionLists {
 /** Bullets under an "Acceptance criteria" heading. Stops at the first non-bullet line. */
 export function extractAcceptanceCriteria(description: string): string[] {
   const lines = description.split(/\r?\n/);
-  const start = lines.findIndex((line) => CRITERIA_HEADING_RE.test(line));
+  const start = lines.findIndex(isCriteriaHeading);
   if (start === -1) return [];
   const out: string[] = [];
   for (const line of lines.slice(start + 1)) {

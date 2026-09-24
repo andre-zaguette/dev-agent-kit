@@ -14,3 +14,4 @@ export * from './ledger.js';
 export * from './git-prep.js';
 export * from './branch.js';
 export * from './resume.js';
+export { redactSecrets } from './secrets.js';

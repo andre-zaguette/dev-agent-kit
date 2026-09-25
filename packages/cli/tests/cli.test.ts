@@ -194,3 +194,13 @@ test('preflight fails closed on a corrupt skills manifest of a later host', asyn
     cleanup();
   }
 });
+
+test('every bin name in the root package prints the same version and reports the same help', () => {
+  const rootBin = join(packageRoot, '..', '..', 'bin');
+  const run1 = (name: string, arg: string) => spawnSync(process.execPath, [join(rootBin, name), arg], { cwd: tmpdir(), encoding: 'utf8' });
+  const version = run1('dev-agent.mjs', '--version');
+  assert.equal(version.status, 0, version.stderr);
+  assert.equal(run1('frontend-agent.mjs', '--version').stdout, version.stdout);
+  assert.match(run1('frontend-agent.mjs', '--help').stdout, /frontend-agent install/);
+  assert.match(run1('dev-agent.mjs', '--help').stdout, /dev-agent install/);
+});

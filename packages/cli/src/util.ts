@@ -5,14 +5,16 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-/** Walk up from `fromDir` to the kit checkout: the directory whose package.json is named "frontend-agent-kit" and that holds skills/. */
+const KIT_PACKAGE_NAMES = ['dev-agent-kit', 'frontend-agent-kit'];
+
+/** Walk up from `fromDir` to the kit root (a checkout or an installed copy): the directory that holds skills/ and a package.json named "dev-agent-kit" (or its historical name "frontend-agent-kit"). */
 export function findKitRoot(fromDir: string = HERE): string {
   let current = path.resolve(fromDir);
   for (;;) {
     const pkgPath = path.join(current, 'package.json');
     if (existsSync(pkgPath) && existsSync(path.join(current, 'skills'))) {
       const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { name?: string };
-      if (pkg.name === 'frontend-agent-kit') return current;
+      if (pkg.name !== undefined && KIT_PACKAGE_NAMES.includes(pkg.name)) return current;
     }
     const parent = path.dirname(current);
     if (parent === current) {

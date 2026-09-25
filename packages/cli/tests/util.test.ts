@@ -78,3 +78,19 @@ test('assertRealDirInsideRoot rejects a dir that is, or sits under, a symlink to
     rmSync(base, { recursive: true, force: true });
   }
 });
+
+test('findKitRoot accepts the published name and the historical one, and ignores other packages', () => {
+  const base = mkdtempSync(join(tmpdir(), 'dak-kitroot-'));
+  try {
+    for (const [dir, name] of [['published', 'dev-agent-kit'], ['historical', 'frontend-agent-kit'], ['other', 'something-else']]) {
+      mkdirSync(join(base, dir, 'skills'), { recursive: true });
+      mkdirSync(join(base, dir, 'packages', 'cli', 'src'), { recursive: true });
+      writeFileSync(join(base, dir, 'package.json'), JSON.stringify({ name }));
+    }
+    assert.equal(findKitRoot(join(base, 'published', 'packages', 'cli', 'src')), join(base, 'published'));
+    assert.equal(findKitRoot(join(base, 'historical', 'packages', 'cli', 'src')), join(base, 'historical'));
+    assert.throws(() => findKitRoot(join(base, 'other', 'packages', 'cli', 'src')), /could not find the kit/);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});

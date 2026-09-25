@@ -80,10 +80,16 @@ function unquote(p: string): string {
 function scanPatch(patch: string): Map<string, Set<string>> {
   const hits = new Map<string, Set<string>>();
   let file = '';
+  let inHeader = false;
   for (const line of patch.split('\n')) {
-    if (line.startsWith('+++ ')) {
-      const target = line.slice(4).replace(/\r$/, '');
-      file = target === '/dev/null' ? '' : unquote(target).replace(/^b\//, '');
+    if (line.startsWith('diff --git ')) {
+      inHeader = true;
+      file = '';
+    } else if (inHeader) {
+      if (line.startsWith('+++ ')) {
+        const target = line.slice(4).replace(/\r$/, '').replace(/\t.*$/, '');
+        file = target === '/dev/null' ? '' : unquote(target).replace(/^b\//, '');
+      } else if (line.startsWith('@@')) inHeader = false;
     } else if (line.startsWith('+') && file) {
       const label = findLineSecret(line.slice(1));
       if (label) (hits.get(file) ?? hits.set(file, new Set()).get(file)!).add(label);
@@ -172,7 +178,7 @@ export function reviewDiff(root: string, opts: { base?: string; baseBranch?: str
     return { base, files, findings, truncated };
   }
 
-  const patchRaw = runGit(root, ['-c', 'core.quotePath=false', 'diff', '--relative', '-U0', '--no-color', '--no-ext-diff', '--no-textconv', '-M', base, '--']).stdout;
+  const patchRaw = runGit(root, ['-c', 'core.quotePath=false', 'diff', '--relative', '--src-prefix=a/', '--dst-prefix=b/', '-U0', '--no-color', '--no-ext-diff', '--no-textconv', '-M', base, '--']).stdout;
   const patch = patchRaw.length > MAX_PATCH_BYTES ? patchRaw.slice(0, MAX_PATCH_BYTES) : patchRaw;
   if (patch !== patchRaw) add('patch-truncated', 'info', 'The diff is very large; secrets were scanned only in its first 2 MB.');
   const hits = scanPatch(patch);

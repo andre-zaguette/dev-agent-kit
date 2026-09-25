@@ -156,3 +156,12 @@ test('a knowledge file that was not generated is never overwritten; a generated 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('commands lists the detected ecosystems', () => {
+  const dir = djangoRepo();
+  try {
+    assert.match(renderKnowledge(indexRepository(dir)).commands!, /Ecosystems: .*python/i);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

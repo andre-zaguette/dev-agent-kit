@@ -262,3 +262,18 @@ test('in a monorepo subdirectory only that directory is reviewed, with paths rel
     clean(dir);
   }
 });
+
+test('secrets are attributed to the right file for paths with spaces, odd content lines and user diff settings', () => {
+  const dir = repo({ 'a.txt': 'a' });
+  try {
+    sh(dir, 'config', 'diff.noprefix', 'true');
+    put(dir, { 'my file.txt': 'x\n++ not a header\ntoken ghp_' + 'c'.repeat(30) + '\n' });
+    sh(dir, 'add', '-A');
+    const r = reviewDiff(dir);
+    const secret = r.findings.find((f) => f.id === 'secret-in-diff');
+    assert.deepEqual(secret?.files, ['my file.txt']);
+    assert.match(secret!.message, /my file\.txt \(GitHub token\)/);
+  } finally {
+    clean(dir);
+  }
+});

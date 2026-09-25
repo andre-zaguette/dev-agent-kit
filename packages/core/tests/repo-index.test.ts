@@ -212,3 +212,45 @@ test('in a git repository ignored files are left out and the excluded directory 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('documents and images are never layers, even when their names look like one', () => {
+  assert.equal(classifyPath('docs/payment-service.md'), 'other');
+  assert.equal(classifyPath('assets/user-model.png'), 'other');
+  assert.equal(classifyPath('src/payment-service.ts'), 'service');
+});
+
+test('the feature list is capped at 60', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fak-idx-'));
+  try {
+    for (let i = 0; i < 80; i++) {
+      const d = join(dir, `mod${String(i).padStart(2, '0')}x`);
+      mkdirSync(d, { recursive: true });
+      for (const f of ['models.py', 'views.py', 'urls.py']) writeFileSync(join(d, f), '');
+    }
+    assert.equal(indexRepository(dir).features.length, 60);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('single-word capitalized names do not decide the naming style', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fak-idx-'));
+  try {
+    mkdirSync(join(dir, 'src'));
+    for (const f of ['Note.cs', 'User.cs', 'Order.cs', 'Item.cs', 'Cart.cs', 'Tag.cs']) writeFileSync(join(dir, 'src', f), '');
+    assert.equal(indexRepository(dir).conventions.fileNaming, 'unknown');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a tree with more directories than the limit is reported as truncated', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fak-idx-'));
+  try {
+    for (let i = 0; i < 30; i++) mkdirSync(join(dir, `d${i}`));
+    assert.equal(indexRepository(dir, { maxDirs: 10 }).truncated, true);
+    assert.equal(indexRepository(dir).truncated, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

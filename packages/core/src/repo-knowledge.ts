@@ -38,7 +38,7 @@ function repository(index: RepoIndex): string {
 function commands(index: RepoIndex): string {
   const p = index.profile;
   const row = (label: string, items: string[]): string => `- ${label}: ${items.length > 0 ? items.join(', ') : 'none detected'}`;
-  return cap(['# Commands', '', 'Taken from the repository manifests and scripts; verify before relying on them.', '', row('test', p.testCommands), row('lint', p.lintCommands), row('typecheck', p.typecheckCommands)].join('\n'));
+  return cap(['# Commands', '', 'Taken from the repository manifests and scripts; verify before relying on them.', '', `- Ecosystems: ${list(p.languages)}`, row('test', p.testCommands), row('lint', p.lintCommands), row('typecheck', p.typecheckCommands)].join('\n'));
 }
 
 function architecture(index: RepoIndex): string {

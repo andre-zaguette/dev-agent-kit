@@ -29,6 +29,7 @@ export interface RepoIndex {
 }
 
 const DEFAULT_MAX_FILES = 20_000;
+const DEFAULT_MAX_DIRS = 20_000;
 const MAX_DEPTH = 8;
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', 'target', 'bin', 'obj', 'vendor', '.venv', 'venv', '__pycache__', '.next', '.nuxt', '.output',
@@ -55,6 +56,8 @@ const baseName = (p: string): string => p.slice(p.lastIndexOf('/') + 1);
 const extOf = (file: string): string => (file.lastIndexOf('.') > 0 ? file.slice(file.lastIndexOf('.') + 1) : '');
 const stemOf = (file: string): string => (file.lastIndexOf('.') > 0 ? file.slice(0, file.lastIndexOf('.')) : file);
 
+const NON_CODE_EXT = new Set(['md', 'mdx', 'txt', 'rst', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp', 'pdf', 'lock', 'csv', 'woff', 'woff2', 'ttf', 'mp4', 'zip']);
+
 export function classifyPath(relPath: string): Role {
   const lower = relPath.toLowerCase();
   const segs = lower.split('/');
@@ -62,6 +65,7 @@ export function classifyPath(relPath: string): Role {
   const dirs = segs.slice(0, -1);
   const stem = stemOf(file);
   const ext = extOf(file);
+  if (NON_CODE_EXT.has(ext)) return 'other';
 
   if (
     dirs.some((d) => TEST_DIRS.has(d) || d.endsWith('.tests') || d.endsWith('.test')) ||
@@ -112,7 +116,7 @@ function namingStyle(stem: string): 'kebab-case' | 'snake_case' | 'camelCase' | 
   if (/^[a-z0-9]+(-[a-z0-9]+)+$/.test(s)) return 'kebab-case';
   if (/^[a-z0-9]+(_[a-z0-9]+)+$/.test(s)) return 'snake_case';
   if (/^[a-z][a-z0-9]*([A-Z][a-z0-9]*)+$/.test(s)) return 'camelCase';
-  if (/^[A-Z][a-z0-9]+([A-Z][a-z0-9]*)*$/.test(s) && /[a-z]/.test(s)) return /[A-Z].*[A-Z]|^[A-Z][a-z0-9]{2,}$/.test(s) ? 'PascalCase' : null;
+  if (/^[A-Z][a-z0-9]+([A-Z][a-z0-9]*)*$/.test(s) && /[a-z]/.test(s)) return /[A-Z].*[A-Z]/.test(s) ? 'PascalCase' : null;
   return null;
 }
 
@@ -146,8 +150,9 @@ function underExcluded(rel: string, exclude: string[]): boolean {
 }
 
 /** A bounded, path-only map of the repository: it never opens a file. Inside git, ignored files are left out. */
-export function indexRepository(root: string, opts: { maxFiles?: number; exclude?: string[] } = {}): RepoIndex {
+export function indexRepository(root: string, opts: { maxFiles?: number; maxDirs?: number; exclude?: string[] } = {}): RepoIndex {
   const maxFiles = opts.maxFiles ?? DEFAULT_MAX_FILES;
+  const maxDirs = opts.maxDirs ?? DEFAULT_MAX_DIRS;
   const exclude = (opts.exclude ?? []).map((e) => e.replace(/^\.?\/+|\/+$/g, '')).filter(Boolean);
   const files: IndexedFile[] = [];
   let truncated = false;
@@ -183,7 +188,13 @@ export function indexRepository(root: string, opts: { maxFiles?: number; exclude
         if (entry.isSymbolicLink()) continue;
         const childRel = rel === '' ? entry.name : `${rel}/${entry.name}`;
         if (entry.isDirectory()) {
-          if (depth < MAX_DEPTH && !SKIP_DIRS.has(entry.name) && !underExcluded(childRel, exclude)) queue.push({ rel: childRel, depth: depth + 1 });
+          if (depth < MAX_DEPTH && !SKIP_DIRS.has(entry.name) && !underExcluded(childRel, exclude)) {
+            if (queue.length >= maxDirs) {
+              truncated = true;
+              break;
+            }
+            queue.push({ rel: childRel, depth: depth + 1 });
+          }
         } else if (entry.isFile()) {
           if (files.length >= maxFiles) {
             truncated = true;
@@ -226,6 +237,7 @@ export function indexRepository(root: string, opts: { maxFiles?: number; exclude
     features.push({ name, files: list.slice(0, MAX_FILES_PER_FEATURE), roles: distinct });
   }
   features.sort((a, b) => b.roles.length - a.roles.length || b.files.length - a.files.length || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  features.length = Math.min(features.length, MAX_FEATURES);
 
   const styles = files
     .filter((f) => f.role !== 'migration' && f.role !== 'config')

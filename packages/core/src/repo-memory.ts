@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { changedSince, headSha } from './git.js';
-import { safeWriteFile } from './safe-fs.js';
+import { safeReadFile, safeWriteFile } from './safe-fs.js';
 
 export { findSecret } from './secrets.js';
 
@@ -39,6 +39,12 @@ export function writeKnowledge(
   return safeWriteFile(root, relFile, `---\nsourceSha: ${meta.sourceSha}\nupdatedAt: ${updatedAt}\n---\n\n${body.trim()}\n`);
 }
 
+function parseKnowledge(name: KnowledgeName, text: string): KnowledgeDoc | null {
+  const match = text.match(/^---\nsourceSha: ([0-9a-f]{7,40})\nupdatedAt: (\S+)\n---\n\n?([\s\S]*)$/);
+  if (!match) return null;
+  return { name, sourceSha: match[1], updatedAt: match[2], body: match[3].trim() };
+}
+
 export function readKnowledge(knowledgeDir: string, name: KnowledgeName): KnowledgeDoc | null {
   let text: string;
   try {
@@ -46,9 +52,13 @@ export function readKnowledge(knowledgeDir: string, name: KnowledgeName): Knowle
   } catch {
     return null;
   }
-  const match = text.match(/^---\nsourceSha: ([0-9a-f]{7,40})\nupdatedAt: (\S+)\n---\n\n?([\s\S]*)$/);
-  if (!match) return null;
-  return { name, sourceSha: match[1], updatedAt: match[2], body: match[3].trim() };
+  return parseKnowledge(name, text);
+}
+
+/** Like readKnowledge, but `knowledgeDir` is relative to `root` and the read refuses symlinks and escapes. Throws on those; null when missing. */
+export function readKnowledgeIn(root: string, knowledgeDir: string, name: KnowledgeName): KnowledgeDoc | null {
+  const text = safeReadFile(root, knowledgePath(knowledgeDir, name));
+  return text === null ? null : parseKnowledge(name, text);
 }
 
 /** Compare a knowledge file's source commit with the repository's HEAD. Never reports fresh on doubt. */

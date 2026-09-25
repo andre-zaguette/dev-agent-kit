@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkResume } from '../src/resume.ts';
 import { ingestWorkItem, recordCheckpoint } from '../src/ledger.ts';
@@ -85,4 +86,20 @@ test('a deleted ledger file is reported', () => {
   rmSync(`${dir}/.dev-agent/tasks/HEF-1.md`);
   const r = checkResume(dir, cfg, 'HEF-1');
   assert.equal(r.ok, false);
+});
+
+test('a symlinked knowledge directory is reported instead of being read', () => {
+  const { dir } = prepared();
+  const other = mkdtempSync(join(tmpdir(), 'dak-resume-other-'));
+  try {
+    mkdirSync(join(dir, '.dev-agent'), { recursive: true });
+    rmSync(join(dir, '.dev-agent', 'knowledge'), { recursive: true, force: true });
+    writeFileSync(join(other, 'commands.md'), '---\nsourceSha: abcdef1\nupdatedAt: x\n---\n\nbody\n');
+    symlinkSync(other, join(dir, '.dev-agent', 'knowledge'), 'dir');
+    const r = checkResume(dir, cfg, 'HEF-1');
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.ok(r.reasons.some((x) => /symbolic link/.test(x)), JSON.stringify(r.reasons));
+  } finally {
+    rmSync(other, { recursive: true, force: true });
+  }
 });

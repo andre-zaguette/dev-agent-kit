@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkFreshness, findSecret, knowledgePath, readKnowledge, writeKnowledge } from '../src/repo-memory.ts';
+import { checkFreshness, findSecret, knowledgePath, readKnowledge, readKnowledgeIn, writeKnowledge } from '../src/repo-memory.ts';
 import { headSha } from '../src/git.ts';
 import { commitFile, makeRepo } from './helpers.ts';
 
@@ -120,5 +120,21 @@ test('freshness is unknown, never fresh, when the repo is missing or the sha lef
   } finally {
     t.cleanup();
     rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test('readKnowledgeIn reads through containment: missing is null, a symlinked parent throws', () => {
+  const t = tmp();
+  const other = mkdtempSync(join(tmpdir(), 'dak-mem-in-'));
+  try {
+    assert.equal(readKnowledgeIn(t.dir, '.dev-agent/knowledge', 'commands'), null);
+    writeKnowledge(t.dir, 'commands', 'test: npm test', { sourceSha: 'abc1234' });
+    assert.equal(readKnowledgeIn(t.dir, '.dev-agent/knowledge', 'commands')?.body, 'test: npm test');
+    rmSync(join(t.dir, '.dev-agent'), { recursive: true, force: true });
+    symlinkSync(other, join(t.dir, '.dev-agent'), 'dir');
+    assert.throws(() => readKnowledgeIn(t.dir, '.dev-agent/knowledge', 'commands'), /symbolic link/);
+  } finally {
+    t.cleanup();
+    rmSync(other, { recursive: true, force: true });
   }
 });

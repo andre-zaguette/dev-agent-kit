@@ -1,4 +1,6 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 const SHA_RE = /^[0-9a-f]{7,40}$/;
 
@@ -48,11 +50,11 @@ export function changedSince(root: string, sha: string): string[] | null {
   return out === null ? null : out.split('\n').filter(Boolean);
 }
 
-/** Base branch discovery: explicit config, then origin/HEAD, then a local main, then a local master. */
-export function detectBaseBranch(root: string, configured?: string): string | undefined {
+/** Base branch discovery: explicit config, then <remote>/HEAD, then a local main, then a local master. */
+export function detectBaseBranch(root: string, configured?: string, remote = 'origin'): string | undefined {
   if (configured) return configured;
-  const originHead = git(root, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']);
-  if (originHead?.startsWith('origin/')) return originHead.slice('origin/'.length);
+  const remoteHead = git(root, ['symbolic-ref', '--short', `refs/remotes/${remote}/HEAD`]);
+  if (remoteHead?.startsWith(`${remote}/`)) return remoteHead.slice(remote.length + 1);
   for (const name of ['main', 'master']) {
     if (git(root, ['show-ref', '--verify', '--quiet', `refs/heads/${name}`]) !== null) return name;
   }
@@ -100,4 +102,32 @@ export function listRemoteBranches(root: string, remote = 'origin'): string[] {
 export function isOnSomeBranch(root: string, rev = 'HEAD'): boolean {
   const result = runGit(root, ['for-each-ref', '--contains', rev, '--format=%(refname)', 'refs/heads', 'refs/remotes']);
   return result.ok && result.stdout.trim() !== '';
+}
+
+/** `origin` when it exists, else the only remote when there is exactly one, else undefined. */
+export function defaultRemote(root: string): string | undefined {
+  const out = git(root, ['remote']);
+  if (out === null) return undefined;
+  const names = out.split('\n').filter(Boolean);
+  if (names.includes('origin')) return 'origin';
+  return names.length === 1 ? names[0] : undefined;
+}
+
+const OPERATIONS: Array<[string, string[]]> = [
+  ['merge', ['MERGE_HEAD']],
+  ['rebase', ['rebase-merge', 'rebase-apply']],
+  ['cherry-pick', ['CHERRY_PICK_HEAD']],
+  ['revert', ['REVERT_HEAD']],
+  ['bisect', ['BISECT_LOG']]
+];
+
+/** The multi-step git operation that is in progress (merge, rebase, cherry-pick, revert, bisect), or null. */
+export function operationInProgress(root: string): string | null {
+  for (const [name, markers] of OPERATIONS) {
+    for (const marker of markers) {
+      const located = runGit(root, ['rev-parse', '--git-path', marker]);
+      if (located.ok && existsSync(path.resolve(root, located.stdout.trim()))) return name;
+    }
+  }
+  return null;
 }

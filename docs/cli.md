@@ -16,10 +16,12 @@ Exit codes: `0` ok, `1` usage or environment error, `2` checked and not OK.
 | `task show <KEY>` | Prints the task ledger. |
 | `contract show <KEY>` | Prints the persisted API contract. |
 | `contract verify <KEY> --exchange f... --openapi f` | Checks captured exchanges and an OpenAPI description against the contract. |
-| `contract usage <KEY> --client dir... [--strict]` | Text evidence that client source calls the route and handles its error codes. |
+| `contract usage <KEY> --client dir... [--strict]` | Text evidence that client source calls the route with the contract's method and handles its error codes. Prints `files` (route called with the method), `path only` (route mentioned, method not confirmed) and `unhandled error codes`. Exit 2 when no file calls it with the method; `--strict` also requires every error code to be mentioned. |
 
-Evidence files (`--exchange`, `--openapi`) must be regular files of at most 5 MB. `--client` directories must be inside the project; symlinks are skipped and `node_modules`, `.git`, `dist`, `build` and `coverage` are not scanned.
+Evidence files (`--exchange`, `--openapi`) must be regular files of at most 5 MB. `--client` directories must be directories inside the project (`.` means the project root); symlinks are skipped and `node_modules`, `.git`, `dist`, `build` and `coverage` are not scanned.
 
 Every command accepts `--project <dir>` (default: the current directory) and, where it prints results, `--json`.
+
+`install` and `verify` keep the exit codes of `frontend-agent` (1 when a check fails).
 
 Not in this version: `repo index` and `diff review`.

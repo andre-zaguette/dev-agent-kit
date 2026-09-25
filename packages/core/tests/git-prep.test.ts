@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { currentBranch, dirtyFiles, hasRemote, headSha, isAncestor, listRemoteBranches, runGit } from '../src/git.ts';
+import { currentBranch, defaultRemote, dirtyFiles, hasRemote, headSha, isAncestor, listRemoteBranches, operationInProgress, runGit } from '../src/git.ts';
 import { prepareTaskBranch } from '../src/git-prep.ts';
 import { cloneOf, commitFile, makeRepo, seededClone, sh } from './helpers.ts';
 
@@ -187,4 +187,70 @@ test('a tag named like the base branch does not confuse the divergence check', (
   sh(dir, 'push', '-q', 'origin', 'refs/heads/main:refs/heads/main');
   const result = prepareTaskBranch(dir, { workingBranch: 'feat/x-1-y' });
   assert.equal(result.ok, true, JSON.stringify(result));
+});
+
+const attempt = (dir: string, ...args: string[]) => {
+  try {
+    sh(dir, ...args);
+  } catch {
+    // a conflict stops the operation with a non-zero exit, which is the point
+  }
+};
+
+test('a remote that is not called origin is fetched and fast-forwarded', () => {
+  const { remote, dir } = seededClone();
+  sh(dir, 'remote', 'rename', 'origin', 'upstream');
+  const other = cloneOf(remote);
+  sh(other, 'pull', '-q', 'origin', 'main');
+  commitFile(other, 'remote.txt');
+  sh(other, 'push', '-q', 'origin', 'main');
+  const remoteHead = headSha(other);
+  assert.equal(defaultRemote(dir), 'upstream');
+  const result = prepareTaskBranch(dir, { workingBranch: 'feat/x-1-y' });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  if (!result.ok) return;
+  assert.equal(result.fetched, true);
+  assert.equal(result.baseSha, remoteHead);
+  assert.ok(existsSync(join(dir, 'remote.txt')));
+});
+
+test('two remotes and none called origin are ambiguous, so no remote is used and the note says so', () => {
+  const { remote, dir } = seededClone();
+  sh(dir, 'remote', 'rename', 'origin', 'a');
+  sh(dir, 'remote', 'add', 'b', remote);
+  assert.equal(defaultRemote(dir), undefined);
+  const result = prepareTaskBranch(dir, { workingBranch: 'feat/x-1-y' });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.fetched, false);
+    assert.ok(result.notes.some((n) => /no "origin" remote/.test(n)));
+  }
+});
+
+test('a merge, cherry-pick, rebase or bisect in progress is refused and nothing is touched', () => {
+  const scenarios: Array<[string, (dir: string) => void]> = [
+    ['merge', (dir) => attempt(dir, 'merge', 'x')],
+    ['cherry-pick', (dir) => attempt(dir, 'cherry-pick', 'x')],
+    ['rebase', (dir) => (sh(dir, 'switch', '-q', 'x'), attempt(dir, 'rebase', 'main'))],
+    ['bisect', (dir) => sh(dir, 'bisect', 'start')]
+  ];
+  for (const [kind, start] of scenarios) {
+    const { dir } = seededClone();
+    sh(dir, 'switch', '-q', '-c', 'x');
+    writeFileSync(join(dir, 'a.txt'), 'from x');
+    sh(dir, 'commit', '-q', '-am', 'x edits a');
+    sh(dir, 'switch', '-q', 'main');
+    writeFileSync(join(dir, 'a.txt'), 'from main');
+    sh(dir, 'commit', '-q', '-am', 'main edits a');
+    start(dir);
+    assert.equal(operationInProgress(dir), kind, kind);
+    const before = { head: headSha(dir), branch: currentBranch(dir) };
+    const result = prepareTaskBranch(dir, { workingBranch: 'feat/x-1-y' });
+    assert.equal(result.ok, false, kind);
+    if (!result.ok) assert.equal(result.reason, 'operation-in-progress', kind);
+    assert.deepEqual({ head: headSha(dir), branch: currentBranch(dir) }, before, kind);
+    assert.equal(operationInProgress(dir), kind, kind);
+  }
+  const { dir } = seededClone();
+  assert.equal(operationInProgress(dir), null);
 });

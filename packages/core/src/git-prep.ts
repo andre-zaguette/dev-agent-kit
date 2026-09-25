@@ -1,7 +1,8 @@
-import { currentBranch, detectBaseBranch, dirtyFiles, hasRemote, headSha, isGitRepo, isOnSomeBranch, runGit } from './git.js';
+import { currentBranch, defaultRemote, detectBaseBranch, dirtyFiles, hasRemote, headSha, isGitRepo, isOnSomeBranch, operationInProgress, runGit } from './git.js';
 
 export type PrepFailure =
   | 'not-a-repo'
+  | 'operation-in-progress'
   | 'dirty-tree'
   | 'status-failed'
   | 'detached-head'
@@ -37,6 +38,8 @@ export function prepareTaskBranch(root: string, opts: { workingBranch: string; b
   const fail = (reason: PrepFailure, detail: string, files?: string[]): PrepResult => ({ ok: false, reason, detail, ...(files ? { files } : {}) });
 
   if (!isGitRepo(root)) return fail('not-a-repo', `${root} is not inside a git repository`);
+  const operation = operationInProgress(root);
+  if (operation !== null) return fail('operation-in-progress', `a ${operation} is in progress; finish or abort it yourself, nothing was modified`);
   const dirty = dirtyFiles(root);
   if (dirty === null) return fail('status-failed', 'git could not read the working tree status; nothing was modified');
   if (dirty.length > 0) return fail('dirty-tree', `${dirty.length} uncommitted change(s); commit or stash them yourself, nothing was modified`, dirty);
@@ -48,7 +51,7 @@ export function prepareTaskBranch(root: string, opts: { workingBranch: string; b
   if (!validRef(root, opts.workingBranch)) return fail('invalid-branch-name', `"${opts.workingBranch.slice(0, 80)}" is not a valid branch name`);
   if (refExists(root, `refs/heads/${opts.workingBranch}`)) return fail('branch-exists', `branch "${opts.workingBranch}" already exists; resume it instead of recreating it`);
 
-  const remote = opts.remote ?? 'origin';
+  const remote = opts.remote ?? defaultRemote(root) ?? 'origin';
   let fetched = false;
   if (hasRemote(root, remote)) {
     const fetch = runGit(root, ['fetch', '--prune', remote], { timeoutMs: FETCH_TIMEOUT_MS });
@@ -58,7 +61,7 @@ export function prepareTaskBranch(root: string, opts: { workingBranch: string; b
     notes.push(`no "${remote}" remote; using the local base branch as-is`);
   }
 
-  const base = detectBaseBranch(root, opts.baseBranch);
+  const base = detectBaseBranch(root, opts.baseBranch, remote);
   if (!base) return fail('no-base-branch', 'could not determine the base branch (set baseBranch in .dev-agent/config.yml)');
   if (!validRef(root, base)) return fail('invalid-branch-name', `base branch "${base.slice(0, 80)}" is not a valid branch name`);
   if (!refExists(root, `refs/heads/${base}`)) return fail('base-missing', `local base branch "${base}" does not exist`);

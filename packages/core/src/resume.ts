@@ -1,6 +1,6 @@
 import { currentBranch, isAncestor } from './git.js';
 import { readLedger, readTaskState, type TaskDirs, type TaskPhase, type TaskState } from './ledger.js';
-import { KNOWLEDGE_NAMES, checkFreshness, readKnowledge } from './repo-memory.js';
+import { KNOWLEDGE_NAMES, checkFreshness, readKnowledgeIn } from './repo-memory.js';
 import type { TaskSourceConfig } from './task-sources/types.js';
 
 export type ResumeCheck =
@@ -35,7 +35,12 @@ export function checkResume(root: string, cfg: TaskDirs & { knowledgeDir: string
 
   const staleKnowledge: string[] = [];
   for (const name of KNOWLEDGE_NAMES) {
-    const doc = readKnowledge(`${root}/${cfg.knowledgeDir}`, name);
+    let doc;
+    try {
+      doc = readKnowledgeIn(root, cfg.knowledgeDir, name);
+    } catch (error) {
+      return { ok: false, reasons: [(error as Error).message], state };
+    }
     if (doc !== null && checkFreshness(root, doc).state !== 'fresh') staleKnowledge.push(name);
   }
   return { ok: true, state, phase: state.phase, sourceConfigured: cfg.taskSources.some((s) => s.id === state.source), staleKnowledge };

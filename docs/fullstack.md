@@ -15,7 +15,7 @@ A work item that touches both a screen and an API gets one contract, two impleme
 
 ## The contract
 
-One JSON file per endpoint: `method`, `path` (with `{params}`), `request`, `response`, `errors` (status to error codes) and an optional `successStatus`. Field types are `string`, `uuid`, `email`, `integer`, `number`, `boolean`, `datetime`, `date`, `object`, `any`, with `?` for optional and `[]` for arrays, and objects may nest. The full grammar is in `skills/fullstack-contract/references/contract-format.md`.
+One JSON file per endpoint: `method`, `path` (with `{params}`), `request`, `response`, `errors` (status to error codes) and an optional `successStatus`. Field types are `string`, `uuid`, `email`, `integer`, `number`, `boolean`, `datetime`, `date`, `object`, `any`, with `?` for optional and `[]` for arrays, and objects may nest. A one-element array is an array of that type (`[{ "id": "uuid" }]`), a key ending in `?` makes any field optional (`"profile?": { ... }`), and `request`/`response` may themselves be an array when the body is a list. The full grammar is in `skills/fullstack-contract/references/contract-format.md`.
 
 ## What each verifier proves
 
@@ -23,7 +23,7 @@ One JSON file per endpoint: `method`, `path` (with `{params}`), `request`, `resp
 |---|---|---|
 | exchange | the running service answered the way the contract says, for the exchanges you captured | behavior for requests you did not capture |
 | OpenAPI | the published description agrees with the contract | that the service really behaves like its description |
-| client usage | client source contains the call and the error codes (text evidence) | that the client behaves correctly at runtime |
+| client usage | client source calls the route **with the contract's method** (judged file by file) and mentions the error codes (text evidence) | that the client behaves correctly at runtime |
 
 ## Not automated
 

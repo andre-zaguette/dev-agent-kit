@@ -25,3 +25,4 @@ export * from './repo-knowledge.js';
 export * from './repo-similar.js';
 export * from './diff-review.js';
 export * from './workspaces.js';
+export * from './workspace-pins.js';

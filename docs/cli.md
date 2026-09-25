@@ -31,5 +31,3 @@ Evidence files (`--exchange`, `--openapi`) must be regular files of at most 5 MB
 Every command accepts `--project <dir>` (default: the current directory) and, where it prints results, `--json`.
 
 `install` and `verify` keep the exit codes of `frontend-agent` (1 when a check fails).
-
-Not in this version: `repo index` and `diff review`.

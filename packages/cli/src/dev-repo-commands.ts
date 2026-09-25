@@ -1,7 +1,20 @@
 import { parseArgs } from 'node:util';
-import { findSimilar, indexRepository, loadDevAgentConfig, reviewDiff, writeRepoKnowledge, type DiffFinding, type Role } from '../../core/src/index.js';
+import {
+  findSimilar,
+  indexRepository,
+  isOwnRepository,
+  loadDevAgentConfig,
+  orderWorkspaces,
+  reviewDiff,
+  workspaceRoot,
+  writeRepoKnowledge,
+  type DiffFinding,
+  type DiffReview,
+  type Role,
+  type WorkspaceConfig
+} from '../../core/src/index.js';
 import type { CliIo } from './cli.js';
-import { CliError, PROJECT_JSON, projectRootOf } from './dev-common.js';
+import { CliError, PROJECT_JSON, resolveTarget } from './dev-common.js';
 
 const MAX_LISTED_FILES = 40;
 const EXAMPLES_PER_ROLE = 3;
@@ -9,8 +22,8 @@ const FEATURES_SHOWN = 10;
 const MARK: Record<DiffFinding['severity'], string> = { error: '✘ error', warning: '! warning', info: '· info' };
 
 export function repoIndex(args: string[], io: CliIo): number {
-  const { values } = parseArgs({ args, options: { ...PROJECT_JSON, write: { type: 'boolean', default: false } } });
-  const root = projectRootOf(values, io);
+  const { values } = parseArgs({ args, options: { ...PROJECT_JSON, workspace: { type: 'string' }, write: { type: 'boolean', default: false } } });
+  const root = resolveTarget(values, io).dir;
   const config = loadDevAgentConfig(root);
   const index = indexRepository(root, { exclude: [config.knowledgeDir] });
   const written = values.write ? writeRepoKnowledge(root, index, config.knowledgeDir) : undefined;
@@ -33,13 +46,13 @@ export function repoIndex(args: string[], io: CliIo): number {
 }
 
 export function repoSimilar(args: string[], io: CliIo): number {
-  const { values, positionals } = parseArgs({ args, options: { ...PROJECT_JSON, limit: { type: 'string' } }, allowPositionals: true });
+  const { values, positionals } = parseArgs({ args, options: { ...PROJECT_JSON, workspace: { type: 'string' }, limit: { type: 'string' } }, allowPositionals: true });
   let limit = 3;
   if (values.limit !== undefined) {
     limit = Number(values.limit);
     if (!Number.isInteger(limit) || limit < 1 || limit > 20) throw new CliError('dev-agent: --limit must be an integer from 1 to 20.');
   }
-  const results = findSimilar(indexRepository(projectRootOf(values, io)), positionals.join(' '), limit);
+  const results = findSimilar(indexRepository(resolveTarget(values, io).dir), positionals.join(' '), limit);
   if (values.json) {
     io.stdout(JSON.stringify(results, null, 2));
     return 0;
@@ -57,15 +70,7 @@ export function repoSimilar(args: string[], io: CliIo): number {
   return 0;
 }
 
-export function diffReview(args: string[], io: CliIo): number {
-  const { values } = parseArgs({ args, options: { ...PROJECT_JSON, base: { type: 'string' } } });
-  const root = projectRootOf(values, io);
-  const review = reviewDiff(root, { base: values.base, baseBranch: loadDevAgentConfig(root).baseBranch });
-  const failed = review.findings.some((f) => f.severity === 'error');
-  if (values.json) {
-    io.stdout(JSON.stringify(review, null, 2));
-    return failed ? 2 : 0;
-  }
+function printReview(io: CliIo, review: DiffReview): void {
   io.stdout(`base: ${review.base}`);
   for (const f of review.files.slice(0, MAX_LISTED_FILES)) io.stdout(`${f.status} ${f.path}${f.oldPath ? ` (from ${f.oldPath})` : ''}`);
   if (review.files.length > MAX_LISTED_FILES) io.stdout(`… and ${review.files.length - MAX_LISTED_FILES} more`);
@@ -73,5 +78,55 @@ export function diffReview(args: string[], io: CliIo): number {
     io.stdout(`${MARK[f.severity]} ${f.id}: ${f.message}`);
     if (f.files?.length) io.stdout(`    ${f.files.join(', ')}`);
   }
+}
+
+const hasError = (review: DiffReview): boolean => review.findings.some((f) => f.severity === 'error');
+
+export function diffReview(args: string[], io: CliIo): number {
+  const { values } = parseArgs({ args, options: { ...PROJECT_JSON, workspace: { type: 'string' }, base: { type: 'string' } } });
+  const target = resolveTarget(values, io, { allowAll: true });
+  if (target.all) return diffReviewAll(target.root, target.config!.workspaces, target.config!.baseBranch, values, io);
+  const baseBranch = target.workspace?.baseBranch ?? (target.config ?? loadDevAgentConfig(target.root)).baseBranch;
+  const review = reviewDiff(target.dir, { base: values.base, baseBranch });
+  if (values.json) {
+    io.stdout(JSON.stringify(review, null, 2));
+    return hasError(review) ? 2 : 0;
+  }
+  printReview(io, review);
+  return hasError(review) ? 2 : 0;
+}
+
+/** Review every workspace that is its own repository; the others are skipped with a note, never failing the rest. */
+function diffReviewAll(root: string, workspaces: WorkspaceConfig[], rootBase: string | undefined, values: { json?: boolean; base?: string }, io: CliIo): number {
+  const reviewed: Record<string, DiffReview | { skipped: string }> = {};
+  let failed = false;
+  let any = false;
+  for (const ws of orderWorkspaces({ workspaces })) {
+    let outcome: DiffReview | { skipped: string };
+    try {
+      const dir = workspaceRoot(root, ws);
+      if (!isOwnRepository(dir)) outcome = { skipped: 'not a repository' };
+      else outcome = reviewDiff(dir, { base: values.base, baseBranch: ws.baseBranch ?? rootBase });
+    } catch (error) {
+      outcome = { skipped: (error as Error).message.replace(/^workspace "[^"]*": /, '') };
+    }
+    reviewed[ws.name] = outcome;
+    if ('skipped' in outcome) continue;
+    any = true;
+    if (hasError(outcome)) failed = true;
+  }
+  if (values.json) {
+    io.stdout(JSON.stringify({ workspaces: reviewed }, null, 2));
+  } else {
+    for (const [name, outcome] of Object.entries(reviewed)) {
+      if ('skipped' in outcome) {
+        io.stdout(`skipped ${name}: ${outcome.skipped}`);
+        continue;
+      }
+      io.stdout(`workspace ${name}`);
+      printReview(io, outcome);
+    }
+  }
+  if (!any) return 1;
   return failed ? 2 : 0;
 }

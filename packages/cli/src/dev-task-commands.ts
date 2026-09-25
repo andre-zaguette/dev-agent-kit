@@ -10,7 +10,8 @@ import {
   resolveSource,
   routeOf,
   safeReadFile,
-  type TaskSourceConfig
+  type TaskSourceConfig,
+  type WorkspaceReport
 } from '../../core/src/index.js';
 import type { CliIo } from './cli.js';
 import { CliError, PROJECT_JSON, projectRootOf } from './dev-common.js';
@@ -139,9 +140,11 @@ export function taskStatus(args: string[], io: CliIo): number {
     io.stdout(`source: ${result.state.source}`);
     io.stdout(`source configured: ${result.sourceConfigured ? 'yes' : 'no'}`);
     io.stdout(`stale knowledge: ${result.staleKnowledge.length > 0 ? result.staleKnowledge.join(', ') : '-'}`);
+    printWorkspaceReports(io, result.workspaceReports);
   } else {
     io.stdout('the task needs reconciling before it continues:');
     for (const reason of result.reasons) io.stdout(`- ${reason}`);
+    printWorkspaceNotes(io, result.workspaceReports);
   }
   return result.ok ? 0 : 2;
 }
@@ -159,4 +162,14 @@ export function taskShow(args: string[], io: CliIo): number {
   if (ledger === null) throw new CliError(`dev-agent: no ledger for ${key}.`, 1);
   io.stdout(ledger.trimEnd());
   return 0;
+}
+
+function printWorkspaceReports(io: CliIo, reports: WorkspaceReport[] | undefined): void {
+  if (!reports || reports.length === 0) return;
+  io.stdout('workspaces:');
+  for (const r of reports) io.stdout(`- ${r.workspace}: ${r.ok ? 'ok' : r.reasons.join('; ')}${r.notes.length > 0 ? ` (${r.notes.join('; ')})` : ''}`);
+}
+
+function printWorkspaceNotes(io: CliIo, reports: WorkspaceReport[] | undefined): void {
+  for (const r of reports ?? []) for (const note of r.notes) io.stdout(`  note ${r.workspace}: ${note}`);
 }

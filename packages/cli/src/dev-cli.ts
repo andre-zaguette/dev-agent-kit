@@ -1,9 +1,10 @@
 import { parseArgs } from 'node:util';
 import { auditContext, detectProjectProfile, selectBackendReferences } from '../../core/src/index.js';
 import { run, type CliIo } from './cli.js';
-import { CliError, PROJECT_JSON, projectRootOf } from './dev-common.js';
+import { CliError, PROJECT_JSON, projectRootOf, resolveTarget } from './dev-common.js';
 import { contractShow, contractUsage, contractVerify } from './dev-contract-commands.js';
 import { diffReview, repoIndex, repoSimilar } from './dev-repo-commands.js';
+import { workspacesList, workspacesOrder, workspacesVerify } from './dev-workspace-commands.js';
 import { sourcesList, sourcesVerify, taskResolve, taskShow, taskStatus } from './dev-task-commands.js';
 import { readKitVersion } from './util.js';
 
@@ -14,7 +15,7 @@ export const DEV_HELP = `dev-agent — deterministic helpers for the Dev Agent K
 Usage:
   dev-agent install [claude|codex ...] [--all] [--project <dir>] [--force] [--no-figma]
   dev-agent verify  [claude|codex ...] [--all] [--project <dir>]
-  dev-agent inspect [--project <dir>] [--json]
+  dev-agent inspect [--workspace <name>] [--project <dir>] [--json]
   dev-agent context audit [--project <dir>] [--json]
   dev-agent sources [--project <dir>] [--json]
   dev-agent sources verify [--project <dir>] [--json]
@@ -24,17 +25,20 @@ Usage:
   dev-agent contract show <KEY> [--project <dir>]
   dev-agent contract verify <KEY> [--exchange <file> ...] [--openapi <file>] [--project <dir>] [--json]
   dev-agent contract usage <KEY> [--client <dir> ...] [--strict] [--project <dir>] [--json]
-  dev-agent repo index [--write] [--project <dir>] [--json]
-  dev-agent repo similar <words...> [--limit <n>] [--project <dir>] [--json]
-  dev-agent diff review [--base <ref>] [--project <dir>] [--json]
+  dev-agent repo index [--write] [--workspace <name>] [--project <dir>] [--json]
+  dev-agent repo similar <words...> [--limit <n>] [--workspace <name>] [--project <dir>] [--json]
+  dev-agent diff review [--base <ref>] [--workspace <name|all>] [--project <dir>] [--json]
+  dev-agent workspaces [--project <dir>] [--json]
+  dev-agent workspaces verify [--project <dir>] [--json]
+  dev-agent workspaces order [--only <a,b>] [--with-deps] [--project <dir>] [--json]
   dev-agent --help | --version
 
 install and verify are aliases of the frontend-agent commands and keep its exit codes (1 when a check fails).
 Exit codes: 0 ok, 1 usage or environment error, 2 checked and not OK.`;
 
 function inspect(args: string[], io: CliIo): number {
-  const { values } = parseArgs({ args, options: PROJECT_JSON });
-  const root = projectRootOf(values, io);
+  const { values } = parseArgs({ args, options: { ...PROJECT_JSON, workspace: { type: 'string' } } });
+  const root = resolveTarget(values, io).dir;
   const profile = detectProjectProfile(root);
   const references = selectBackendReferences(profile);
   if (values.json) {
@@ -115,6 +119,10 @@ export async function runDev(argv: string[], io: CliIo): Promise<number> {
           default:
             throw new CliError(`dev-agent: unknown contract command "${rest[0] ?? ''}" — see --help.`);
         }
+      case 'workspaces':
+        if (rest[0] === 'verify') return workspacesVerify(rest.slice(1), io);
+        if (rest[0] === 'order') return workspacesOrder(rest.slice(1), io);
+        return workspacesList(rest, io);
       case 'repo':
         if (rest[0] === 'index') return repoIndex(rest.slice(1), io);
         if (rest[0] === 'similar') return repoSimilar(rest.slice(1), io);

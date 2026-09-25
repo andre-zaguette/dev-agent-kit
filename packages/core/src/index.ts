@@ -22,3 +22,4 @@ export * from './contract-openapi.js';
 export * from './contract-usage.js';
 export * from './repo-index.js';
 export * from './repo-knowledge.js';
+export * from './repo-similar.js';

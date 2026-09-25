@@ -172,3 +172,8 @@ test('the task, state and knowledge directories may not overlap, repeat or live 
   bad('stateDir: .git', /\.git/);
   assert.doesNotThrow(() => parseDevAgentConfig('taskDocsDir: a/tasks\nstateDir: a/state\nknowledgeDir: a/knowledge'));
 });
+
+test('a v1.0 config parses with an empty workspaces list and defaults carry none', () => {
+  assert.deepEqual(parseDevAgentConfig(FULL).workspaces, []);
+  assert.deepEqual(defaultConfig().workspaces, []);
+});

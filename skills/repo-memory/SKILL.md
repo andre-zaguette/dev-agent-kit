@@ -31,7 +31,7 @@ updatedAt: 2026-09-24T14:00:00Z
 
 ## Generating a first draft
 
-`dev-agent repo index --write` writes a first draft (paths, counts and commands only, stamped with the source SHA). Verify and enrich it; the file is derived data and is regenerated when stale.
+`dev-agent repo index --write` writes a first draft (paths, counts and commands only, stamped with the source SHA). Generated files are marked and regenerated when stale; a file you wrote by hand is never overwritten (it is reported as skipped), so put curated facts in such a file.
 
 ## Using memory
 

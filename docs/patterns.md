@@ -13,7 +13,7 @@ Say what you want in plain words, for example "add an archive endpoint for notes
 
 ## What the index knows
 
-- Only paths and names. It never reads file contents, so it cannot leak them and is bounded (20,000 files, depth 8, common build and dependency directories skipped).
+- Only paths and names of the repository files (it reads dependency manifests only to detect the stack). It never reads source contents, so it cannot leak them and is bounded (20,000 files, depth 8, common build and dependency directories skipped).
 - Roles are heuristics from path segments and suffixes (`migrations/`, `*.service.*`, `tests/`…). A feature is a group of files sharing a name across at least two roles, or three or more files.
 - Conventions (file naming, test suffix) are reported only when consistent enough; otherwise `unknown` or `mixed`.
 
@@ -23,7 +23,7 @@ Code-level idioms: error handling style, naming inside files, architectural rule
 
 ## Overriding
 
-`repo index --write` regenerates the derived knowledge files and overwrites hand edits. Put enriched knowledge in files the kit does not generate, or in your instructions file. Set `knowledgeDir` in `.dev-agent/config.yml` to change where they live.
+`repo index --write` regenerates only files it generated (they carry a marker) and reports the rest as skipped, so a hand-written `architecture.md` is never overwritten; delete it to let the kit regenerate it. Files ignored by git are not indexed, and the configured `knowledgeDir` is excluded from the scan. `diff review` compares against the `baseBranch` from `.dev-agent/config.yml` (else the detected main branch, also via `origin/`) and warns when it cannot find it. Set `knowledgeDir` in `.dev-agent/config.yml` to change where they live.
 
 ## Limits
 

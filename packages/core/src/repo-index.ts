@@ -1,6 +1,6 @@
-import { readdirSync } from 'node:fs';
+import { lstatSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { headSha } from './git.js';
+import { headSha, isGitRepo, runGit } from './git.js';
 import { detectProjectProfile, type ProjectProfile } from './project-profile.js';
 
 export type Role = 'test' | 'migration' | 'route' | 'controller' | 'service' | 'repository' | 'model' | 'schema' | 'component' | 'config' | 'other';
@@ -134,33 +134,63 @@ function tally(values: string[]): Array<[string, number]> {
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
 }
 
-/** A bounded, path-only map of the repository: it never opens a file. */
-export function indexRepository(root: string, opts: { maxFiles?: number } = {}): RepoIndex {
+/** Files git tracks or would track (ignored ones excluded), as repo-relative paths; null outside a git repository. */
+function gitFileList(root: string): string[] | null {
+  if (!isGitRepo(root)) return null;
+  const result = runGit(root, ['-c', 'core.quotePath=false', 'ls-files', '-z', '--cached', '--others', '--exclude-standard', '--deduplicate']);
+  return result.ok ? result.stdout.split('\0').filter(Boolean).sort() : null;
+}
+
+function underExcluded(rel: string, exclude: string[]): boolean {
+  return exclude.some((e) => rel === e || rel.startsWith(`${e}/`));
+}
+
+/** A bounded, path-only map of the repository: it never opens a file. Inside git, ignored files are left out. */
+export function indexRepository(root: string, opts: { maxFiles?: number; exclude?: string[] } = {}): RepoIndex {
   const maxFiles = opts.maxFiles ?? DEFAULT_MAX_FILES;
+  const exclude = (opts.exclude ?? []).map((e) => e.replace(/^\.?\/+|\/+$/g, '')).filter(Boolean);
   const files: IndexedFile[] = [];
   let truncated = false;
 
-  const queue: Array<{ rel: string; depth: number }> = [{ rel: '', depth: 0 }];
-  for (let head = 0; head < queue.length && !truncated; head++) {
-    const { rel, depth } = queue[head];
-    let entries;
-    try {
-      entries = readdirSync(path.join(root, rel), { withFileTypes: true });
-    } catch {
-      continue;
+  const listed = gitFileList(root);
+  if (listed !== null) {
+    for (const rel of listed) {
+      const segs = rel.split('/');
+      if (segs.length - 1 > MAX_DEPTH || segs.slice(0, -1).some((d) => SKIP_DIRS.has(d)) || underExcluded(rel, exclude)) continue;
+      try {
+        if (!lstatSync(path.join(root, rel)).isFile()) continue;
+      } catch {
+        continue;
+      }
+      if (files.length >= maxFiles) {
+        truncated = true;
+        break;
+      }
+      files.push({ path: rel, role: classifyPath(rel) });
     }
-    entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-    for (const entry of entries) {
-      if (entry.isSymbolicLink()) continue;
-      const childRel = rel === '' ? entry.name : `${rel}/${entry.name}`;
-      if (entry.isDirectory()) {
-        if (depth < MAX_DEPTH && !SKIP_DIRS.has(entry.name)) queue.push({ rel: childRel, depth: depth + 1 });
-      } else if (entry.isFile()) {
-        if (files.length >= maxFiles) {
-          truncated = true;
-          break;
+  } else {
+    const queue: Array<{ rel: string; depth: number }> = [{ rel: '', depth: 0 }];
+    for (let head = 0; head < queue.length && !truncated; head++) {
+      const { rel, depth } = queue[head];
+      let entries;
+      try {
+        entries = readdirSync(path.join(root, rel), { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+      for (const entry of entries) {
+        if (entry.isSymbolicLink()) continue;
+        const childRel = rel === '' ? entry.name : `${rel}/${entry.name}`;
+        if (entry.isDirectory()) {
+          if (depth < MAX_DEPTH && !SKIP_DIRS.has(entry.name) && !underExcluded(childRel, exclude)) queue.push({ rel: childRel, depth: depth + 1 });
+        } else if (entry.isFile()) {
+          if (files.length >= maxFiles) {
+            truncated = true;
+            break;
+          }
+          files.push({ path: childRel, role: classifyPath(childRel) });
         }
-        files.push({ path: childRel, role: classifyPath(childRel) });
       }
     }
   }

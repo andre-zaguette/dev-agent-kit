@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { reviewDiff } from '../src/diff-review.ts';
-import { makeRepo, sh } from './helpers.ts';
+import { makeRepo, seededClone, sh } from './helpers.ts';
 
 function put(dir: string, files: Record<string, string | Buffer>): void {
   for (const [rel, content] of Object.entries(files)) {
@@ -169,6 +170,94 @@ test('big diffs are capped, binary files and CRLF do not disturb the scan', () =
     assert.equal(r.files.length, 500);
     put(dir, { 'blob.bin': Buffer.from([0, 1, 2, 0, 255, 254]), 'win.txt': 'line one\r\nline two\r\n' });
     assert.doesNotThrow(() => reviewDiff(dir));
+  } finally {
+    clean(dir);
+  }
+});
+
+test('ordinary credential-named code is not a secret; a quoted literal and a known token format are', () => {
+  const dir = repo({ 'src/a.ts': 'a' });
+  try {
+    put(dir, { 'src/a.ts': 'const apiKey = process.env.API_KEY;\nconst token = response.data.token;\nconst password: string = form.password;\n' });
+    assert.ok(!ids(reviewDiff(dir)).some((x) => x.includes('secret')));
+    put(dir, { 'src/a.ts': 'const apiKey = "abcd1234efgh5678";\n' });
+    assert.ok(ids(reviewDiff(dir)).includes('error:secret-in-diff'));
+  } finally {
+    clean(dir);
+  }
+});
+
+test('the configured base is used, resolved through origin/ when there is no local branch, and a missing base warns', () => {
+  const { remote, dir } = seededClone();
+  try {
+    sh(dir, 'switch', '-q', '-c', 'feat');
+    put(dir, { 'leak.txt': 'token ghp_' + 'b'.repeat(30) + '\n' });
+    commitAll(dir, 'feature');
+    sh(dir, 'branch', '-q', '-D', 'main');
+    const r = reviewDiff(dir, { baseBranch: 'main' });
+    assert.ok(ids(r).includes('error:secret-in-diff'));
+    assert.ok(!ids(r).includes('warning:base-not-found'));
+    const lost = reviewDiff(dir, { baseBranch: 'ghost' });
+    assert.ok(ids(lost).includes('warning:base-not-found'));
+  } finally {
+    clean(dir);
+    clean(remote);
+  }
+});
+
+test('only migration-looking code files count as migrations', () => {
+  const dir = repo({
+    'Migrations/AppDbContextModelSnapshot.cs': 'a',
+    'docs/migrations/v2.md': 'a',
+    'src/app/api/migrate/route.ts': 'a',
+    'prisma/migrations/migration_lock.toml': 'a',
+    'db/migrations/0001_init.sql': 'a',
+    'db/migrations/meta/_journal.json': 'a'
+  });
+  try {
+    for (const rel of ['Migrations/AppDbContextModelSnapshot.cs', 'docs/migrations/v2.md', 'src/app/api/migrate/route.ts', 'prisma/migrations/migration_lock.toml', 'db/migrations/meta/_journal.json']) put(dir, { [rel]: 'changed' });
+    assert.ok(!ids(reviewDiff(dir)).includes('error:migration-edited'));
+    put(dir, { 'db/migrations/0001_init.sql': 'changed' });
+    assert.ok(ids(reviewDiff(dir)).includes('error:migration-edited'));
+  } finally {
+    clean(dir);
+  }
+});
+
+test('untracked symlinks are never followed: not to a FIFO (no hang), not to a file outside the repository', () => {
+  const dir = repo();
+  const outside = repo({ 'secret.txt': 'AKIA' + 'A'.repeat(16) + '\n' });
+  try {
+    execFileSync('mkfifo', [join(dir, 'pipe')]);
+    symlinkSync(join(dir, 'pipe'), join(dir, 'link-pipe'));
+    symlinkSync(join(outside, 'secret.txt'), join(dir, 'link-out'));
+    const r = reviewDiff(dir);
+    assert.ok(!ids(r).includes('error:secret-in-diff'));
+  } finally {
+    clean(dir);
+    clean(outside);
+  }
+});
+
+test('a hostile long line cannot make the secret scan slow', () => {
+  const dir = repo();
+  try {
+    put(dir, { 'evil.txt': '-eyJ'.repeat(60_000) + '\n' });
+    const started = Date.now();
+    reviewDiff(dir);
+    assert.ok(Date.now() - started < 4000, `took ${Date.now() - started} ms`);
+  } finally {
+    clean(dir);
+  }
+});
+
+test('in a monorepo subdirectory only that directory is reviewed, with paths relative to it', () => {
+  const dir = repo({ 'packages/api/src/a.ts': 'a', 'packages/web/src/w.ts': 'w' });
+  try {
+    put(dir, { 'packages/web/src/w.ts': 'changed', 'packages/api/src/n.ts': 'n' });
+    const r = reviewDiff(join(dir, 'packages/api'));
+    assert.deepEqual(r.files.map((f) => f.path), ['src/n.ts']);
+    assert.ok(!ids(r).includes('info:new-top-level-dir'));
   } finally {
     clean(dir);
   }

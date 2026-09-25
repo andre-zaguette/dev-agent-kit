@@ -123,3 +123,36 @@ function readFileSyncSafe(file: string): string | null {
     return null;
   }
 }
+
+test('paths that look like secrets are redacted instead of aborting a half-written run', () => {
+  const dir = makeRepo();
+  try {
+    put(dir, { 'packages/sk-starter-template-components/a.ts': '', 'packages/sk-starter-template-components/b.ts': '', 'packages/sk-starter-template-components/c.ts': '' });
+    sh(dir, 'add', '-A');
+    sh(dir, 'commit', '-q', '-m', 'init');
+    const result = writeRepoKnowledge(dir, indexRepository(dir));
+    assert.deepEqual(result.written.sort(), ['architecture', 'commands', 'repository']);
+    assert.deepEqual(result.skipped, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a knowledge file that was not generated is never overwritten; a generated one is regenerated', () => {
+  const dir = djangoRepo();
+  try {
+    writeFileSync(join(dir, '.dev-agent-tmp'), '');
+    mkdirSync(join(dir, '.dev-agent/knowledge'), { recursive: true });
+    writeFileSync(join(dir, '.dev-agent/knowledge/architecture.md'), '---\nsourceSha: abc1234abcde\nupdatedAt: 2026-01-01T00:00:00Z\n---\n\n# Architecture\n\nHand written notes.\n');
+    const first = writeRepoKnowledge(dir, indexRepository(dir));
+    assert.deepEqual(first.skipped, ['architecture']);
+    assert.match(readFileSync(join(dir, '.dev-agent/knowledge/architecture.md'), 'utf8'), /Hand written notes/);
+    const second = writeRepoKnowledge(dir, indexRepository(dir));
+    assert.deepEqual(second.skipped, ['architecture']);
+    assert.ok(second.written.includes('repository'));
+    const again = writeRepoKnowledge(dir, indexRepository(dir));
+    assert.ok(again.written.includes('repository'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -1,4 +1,4 @@
-import { closeSync, fstatSync, openSync, readSync } from 'node:fs';
+import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from 'node:fs';
 import path from 'node:path';
 import { detectBaseBranch, headSha, isGitRepo, runGit } from './git.js';
 import { classifyPath } from './repo-index.js';
@@ -46,19 +46,24 @@ function listed(paths: string[]): string[] {
   return paths.slice(0, MAX_LISTED);
 }
 
-function resolveBase(root: string, base: string | undefined): string {
+function isCommit(root: string, rev: string): boolean {
+  return runGit(root, ['rev-parse', '--verify', '--quiet', `${rev}^{commit}`]).ok;
+}
+
+/** The commit to compare against: an explicit base, else the base branch (local, then origin/) merged with HEAD. */
+function resolveBase(root: string, base: string | undefined, baseBranch: string | undefined): { rev: string; missing?: string } {
   if (base !== undefined) {
-    if (base.startsWith('-') || !runGit(root, ['rev-parse', '--verify', '--quiet', `${base}^{commit}`]).ok) {
-      throw new Error(`"${base}" is not a commit`);
-    }
-    return base;
+    if (base.startsWith('-') || !isCommit(root, base)) throw new Error(`"${base}" is not a commit`);
+    return { rev: mergeBase(root, base) };
   }
-  const branch = detectBaseBranch(root);
-  if (branch) {
-    const mb = runGit(root, ['merge-base', branch, 'HEAD']);
-    if (mb.ok && mb.stdout.trim()) return mb.stdout.trim();
+  const branch = detectBaseBranch(root, baseBranch);
+  if (!branch || branch.startsWith('-')) return { rev: 'HEAD' };
+  for (const candidate of [branch, `origin/${branch}`]) {
+    if (!isCommit(root, candidate)) continue;
+    const mb = runGit(root, ['merge-base', candidate, 'HEAD']);
+    if (mb.ok && mb.stdout.trim()) return { rev: mb.stdout.trim() };
   }
-  return 'HEAD';
+  return { rev: 'HEAD', missing: branch };
 }
 
 function mergeBase(root: string, base: string): string {
@@ -80,17 +85,43 @@ function scanPatch(patch: string): Map<string, Set<string>> {
       const target = line.slice(4).replace(/\r$/, '');
       file = target === '/dev/null' ? '' : unquote(target).replace(/^b\//, '');
     } else if (line.startsWith('+') && file) {
-      const label = findSecret(line.slice(1));
+      const label = findLineSecret(line.slice(1));
       if (label) (hits.get(file) ?? hits.set(file, new Set()).get(file)!).add(label);
     }
   }
   return hits;
 }
 
+const SCAN_WINDOW = 2048;
+const MAX_WINDOWS = 32;
+const LITERAL_ASSIGNMENT_RE = /\b(?:password|passwd|secret|token|api[_-]?key)\w*\s*[:=]\s*['"][^'"\s]{8,}['"]/i;
+
+/** Label of a secret in one line. Long lines are scanned in bounded windows; plain credential-named code is not a secret. */
+function findLineSecret(line: string): string | null {
+  for (let i = 0, n = 0; i < line.length && n < MAX_WINDOWS; i += SCAN_WINDOW, n++) {
+    const label = findSecret(line.slice(i, i + SCAN_WINDOW));
+    if (label === null) continue;
+    if (label !== 'credential assignment') return label;
+    if (LITERAL_ASSIGNMENT_RE.test(line.slice(i, i + SCAN_WINDOW))) return label;
+  }
+  return null;
+}
+
+const MIGRATION_EXT_RE = /\.(?:py|sql|cs|java|kt|rb|php|js|ts|mjs|cjs|xml|ya?ml)$/i;
+const MIGRATION_NAME_RE = /^(?:\d|[VvUuRr]\d)|migration/i;
+
+/** A shipped, immutable migration: a code or SQL file in a migrations directory with a migration-style name. */
+function isMigration(p: string): boolean {
+  if (classifyPath(p) !== 'migration') return false;
+  const name = p.slice(p.lastIndexOf('/') + 1);
+  return MIGRATION_EXT_RE.test(name) && MIGRATION_NAME_RE.test(name) && !/snapshot|lock|_journal/i.test(name);
+}
+
 function readCapped(file: string): string | null {
   let fd: number | undefined;
   try {
-    fd = openSync(file, 'r');
+    if (!lstatSync(file).isFile()) return null;
+    fd = openSync(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     const stat = fstatSync(fd);
     if (!stat.isFile()) return null;
     const buffer = Buffer.alloc(Math.min(stat.size, MAX_UNTRACKED_BYTES));
@@ -103,13 +134,13 @@ function readCapped(file: string): string | null {
   }
 }
 
-export function reviewDiff(root: string, opts: { base?: string } = {}): DiffReview {
+export function reviewDiff(root: string, opts: { base?: string; baseBranch?: string } = {}): DiffReview {
   if (!isGitRepo(root)) throw new Error(`${root} is not a git repository`);
   if (headSha(root) === null) throw new Error('diff review needs a repository with at least one commit');
-  const base = mergeBase(root, resolveBase(root, opts.base));
+  const { rev: base, missing } = resolveBase(root, opts.base, opts.baseBranch);
 
   const files: DiffFile[] = [];
-  const tokens = runGit(root, ['diff', '--name-status', '-z', '-M', '--no-color', '--no-ext-diff', base, '--']).stdout.split('\0');
+  const tokens = runGit(root, ['diff', '--relative', '--name-status', '-z', '-M', '--no-color', '--no-ext-diff', base, '--']).stdout.split('\0');
   for (let i = 0; i < tokens.length; ) {
     const code = tokens[i++];
     if (!code) continue;
@@ -134,21 +165,23 @@ export function reviewDiff(root: string, opts: { base?: string } = {}): DiffRevi
   const add = (id: string, severity: Severity, message: string, paths?: string[]): void => {
     findings.push({ id, severity, message, ...(paths?.length ? { files: listed(paths) } : {}) });
   };
+  if (missing) add('base-not-found', 'warning', `Base branch "${missing}" was not found locally or on origin; only changes since HEAD were reviewed.`);
   if (truncated) add('truncated', 'info', `More than ${MAX_FILES} files changed; only the first ${MAX_FILES} (by path) were reviewed.`);
   if (files.length === 0) {
     add('empty-diff', 'info', 'No changes against the base.');
     return { base, files, findings, truncated };
   }
 
-  const patchRaw = runGit(root, ['-c', 'core.quotePath=false', 'diff', '-U0', '--no-color', '--no-ext-diff', '--no-textconv', '-M', base, '--']).stdout;
+  const patchRaw = runGit(root, ['-c', 'core.quotePath=false', 'diff', '--relative', '-U0', '--no-color', '--no-ext-diff', '--no-textconv', '-M', base, '--']).stdout;
   const patch = patchRaw.length > MAX_PATCH_BYTES ? patchRaw.slice(0, MAX_PATCH_BYTES) : patchRaw;
   if (patch !== patchRaw) add('patch-truncated', 'info', 'The diff is very large; secrets were scanned only in its first 2 MB.');
   const hits = scanPatch(patch);
-  for (const p of untracked.filter((u) => files.some((f) => f.path === u)).slice(0, MAX_UNTRACKED_SCANNED)) {
+  const listedPaths = new Set(files.map((f) => f.path));
+  for (const p of untracked.filter((u) => listedPaths.has(u)).slice(0, MAX_UNTRACKED_SCANNED)) {
     const text = readCapped(path.join(root, p));
     if (text === null) continue;
     for (const line of text.split('\n')) {
-      const label = findSecret(line);
+      const label = findLineSecret(line);
       if (label) (hits.get(p) ?? hits.set(p, new Set()).get(p)!).add(label);
     }
   }
@@ -158,9 +191,9 @@ export function reviewDiff(root: string, opts: { base?: string } = {}): DiffRevi
   }
 
   const paths = (pred: (f: DiffFile) => boolean): string[] => files.filter(pred).map((f) => f.path);
-  const edited = files.filter((f) => f.status !== 'added' && f.status !== 'untracked' && (classifyPath(f.path) === 'migration' || (f.oldPath && classifyPath(f.oldPath) === 'migration')));
+  const edited = files.filter((f) => f.status !== 'added' && f.status !== 'untracked' && (isMigration(f.path) || (f.oldPath !== undefined && isMigration(f.oldPath))));
   if (edited.length) add('migration-edited', 'error', 'Shipped migrations were edited, deleted or renamed; add a new migration instead.', edited.map((f) => f.oldPath ?? f.path));
-  const addedMigrations = paths((f) => (f.status === 'added' || f.status === 'untracked') && classifyPath(f.path) === 'migration');
+  const addedMigrations = paths((f) => (f.status === 'added' || f.status === 'untracked') && isMigration(f.path));
   if (addedMigrations.length) add('migration-added', 'info', 'New migrations: check they are reversible and match the model changes.', addedMigrations);
 
   const manifests = paths((f) => MANIFEST_RE.test(f.path));

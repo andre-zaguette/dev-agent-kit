@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -188,5 +189,26 @@ test('the index is deterministic regardless of creation order', () => {
   } finally {
     a.cleanup();
     b.cleanup();
+  }
+});
+
+test('in a git repository ignored files are left out and the excluded directory is skipped', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fak-idx-'));
+  try {
+    execFileSync('git', ['init', '-q'], { cwd: dir });
+    mkdirSync(join(dir, '.tox/lib/auth'), { recursive: true });
+    mkdirSync(join(dir, 'env/lib/x'), { recursive: true });
+    mkdirSync(join(dir, 'docs/knowledge'), { recursive: true });
+    mkdirSync(join(dir, 'src'), { recursive: true });
+    writeFileSync(join(dir, '.gitignore'), '.tox/\nenv/\n');
+    for (const rel of ['.tox/lib/auth/models.py', 'env/lib/x/views.py', 'docs/knowledge/repository.md', 'src/a.py']) writeFileSync(join(dir, rel), '');
+    const paths = (o = {}) => Object.values(indexRepository(dir, o).roles).flat().concat(indexRepository(dir, o).topDirs.map((d) => d.name));
+    const idx = indexRepository(dir, { exclude: ['docs/knowledge'] });
+    assert.equal(idx.fileCount, 2); // .gitignore + src/a.py
+    assert.ok(!JSON.stringify(idx).includes('.tox'));
+    assert.ok(!JSON.stringify(idx).includes('env/lib'));
+    assert.equal(paths({ exclude: ['docs/knowledge'] }).includes('docs'), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

@@ -13,7 +13,7 @@ Read the repository; do not assume it. Every claim in the map cites a file.
 2. Package manager: from the lockfile or the declared field, not from habit.
 3. Commands: take test, lint and typecheck commands from the repository's own scripts, Makefile or task runner. Never guess a command when a script exists; if none exists, say so.
 4. Structure: list the top-level folders and what each holds.
-5. Neighbors: find the closest existing component, service, model, schema or endpoint to the change, and its tests. The new code should look like them.
+5. Neighbors: find the closest existing component, service, model, schema or endpoint to the change, and its tests. The new code should look like them. `dev-agent repo similar <words describing the change>` lists the existing features closest to it, grouped by role; read those files and copy their structure.
 6. History when useful: `git log -n 5 -- <path>` on the files you will touch, to learn recent intent.
 7. If fresh repo memory exists (`repo-memory`), start from it and only re-read what changed.
 

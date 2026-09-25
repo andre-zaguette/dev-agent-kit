@@ -216,3 +216,7 @@ A work item that spans a screen and an API persists one API contract (`.dev-agen
 ## v0.10 — backend languages
 
 The backend domain now covers PHP (Laravel), C# (ASP.NET Core), Java (Spring Boot) and Ruby (Rails), and adds Flask and Express next to the existing Python and Node stacks. `detectProjectProfile` recognizes these ecosystems (frameworks, test and lint commands, databases, migration tools, queues, cache), `selectBackendReferences` picks from twenty-five references (twelve new, including MySQL and SQL Server), and six new `backend-stack-*` eval scenarios bring the catalog to 36, validated offline. A language alone is not a backend signal. See `docs/backend.md`.
+
+## v0.11 — repository index and existing patterns
+
+The kit can now reuse what a repository already does well. `dev-agent repo index` builds a bounded index from paths only (it never opens source files; only dependency manifests are read to detect the stack): layers by role, features, naming and test conventions; with `--write` it drafts the repository knowledge files stamped with the source SHA. `dev-agent repo similar <words>` lists the existing features closest to a change so the new code copies their structure, and `dev-agent diff review` flags edited migrations, secrets in added lines, dependency and lockfile changes, missing tests and new top-level directories. The `repo-memory`, `repository-investigation` and `surgical-diff` skills point to them. See `docs/patterns.md`.

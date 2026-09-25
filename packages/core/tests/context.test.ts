@@ -138,3 +138,19 @@ test('formatAuditReport lists each finding and the totals', () => {
     p.cleanup();
   }
 });
+
+test('the audit reads knowledge from the configured knowledgeDir', () => {
+  const repo = makeRepo();
+  try {
+    commitFile(repo, 'a.txt');
+    mkdirSync(join(repo, '.dev-agent'), { recursive: true });
+    writeFileSync(join(repo, '.dev-agent/config.yml'), 'knowledgeDir: docs/knowledge\n');
+    writeKnowledge(repo, 'repository', 'Facts about the repository.', { sourceSha: headSha(repo)! }, 'docs/knowledge');
+    commitFile(repo, 'b.txt');
+    const stale = auditContext(repo).findings.filter((f) => f.kind === 'stale-knowledge');
+    assert.equal(stale.length, 1);
+    assert.equal(stale[0].path, 'docs/knowledge/repository.md');
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});

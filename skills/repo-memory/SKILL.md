@@ -29,6 +29,10 @@ updatedAt: 2026-09-24T14:00:00Z
 
 `sourceSha` is `git rev-parse --short=12 HEAD` at the time the facts were verified.
 
+## Generating a first draft
+
+`dev-agent repo index --write` writes a first draft (paths, counts and commands only, stamped with the source SHA). Generated files are marked and regenerated when stale; a file you wrote by hand is never overwritten (it is reported as skipped), so put curated facts in such a file.
+
 ## Using memory
 
 1. Read the file and compare `sourceSha` with the current `git rev-parse --short=12 HEAD`.

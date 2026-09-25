@@ -12,7 +12,7 @@ test('findKitRoot walks up to the directory holding the kit package.json and ski
 });
 
 test('readKitVersion returns the cli package version', () => {
-  assert.equal(readKitVersion(), '0.10.0');
+  assert.equal(readKitVersion(), '0.11.0');
 });
 
 test('which finds an executable on PATH and ignores non-executable files', () => {

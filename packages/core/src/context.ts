@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { loadDevAgentConfig } from './config.js';
 import { KNOWLEDGE_NAMES, checkFreshness, readKnowledge } from './repo-memory.js';
 
 export const MAX_INSTRUCTION_TOKENS = 1500;
@@ -138,9 +139,15 @@ export function auditContext(root: string): ContextAuditReport {
     }
   }
 
-  const knowledgeDir = path.join(root, '.dev-agent', 'knowledge');
+  let knowledgeRel = '.dev-agent/knowledge';
+  try {
+    knowledgeRel = loadDevAgentConfig(root).knowledgeDir;
+  } catch {
+    // an invalid config is reported by `sources verify`; keep auditing the default location
+  }
+  const knowledgeDir = path.join(root, knowledgeRel);
   for (const name of KNOWLEDGE_NAMES) {
-    const rel = `.dev-agent/knowledge/${name}.md`;
+    const rel = `${knowledgeRel}/${name}.md`;
     if (!existsSync(path.join(knowledgeDir, `${name}.md`))) continue;
     const doc = readKnowledge(knowledgeDir, name);
     if (!doc) {

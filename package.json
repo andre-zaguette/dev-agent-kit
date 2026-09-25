@@ -59,6 +59,8 @@
     "test": "npm test --workspaces --if-present",
     "bench": "node packages/evals/bin/bench.mjs",
     "evals:validate": "node packages/evals/bin/bench.mjs --validate",
-    "dev-agent": "node packages/cli/bin/dev-agent.mjs"
+    "dev-agent": "node packages/cli/bin/dev-agent.mjs",
+    "verify:package": "node scripts/verify-package.mjs",
+    "smoke:package": "node scripts/smoke-install.mjs"
   }
 }

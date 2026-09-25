@@ -423,3 +423,31 @@ test('database and client detection: .env fallbacks, quoted values, StackExchang
     [fallback, sqlite, redis, catalog, trilogy].forEach((x) => x.cleanup());
   }
 });
+
+test('a package script no longer hides the commands of the other ecosystems in the repository', () => {
+  const node = { scripts: { test: 'vitest', lint: 'eslint .' } };
+  const py = project({ 'package.json': j(node), 'requirements.txt': 'django\npytest\nruff\nmypy\n' });
+  const rb = project({ 'package.json': j(node), Gemfile: "gem 'rails'\ngem 'rspec-rails'\ngem 'rubocop'\n" });
+  const orchestrated = project({ 'package.json': j(node), 'requirements.txt': 'pytest\n', Makefile: 'test:\n\techo all\n' });
+  try {
+    const a = detectProjectProfile(py.dir);
+    assert.deepEqual(a.testCommands, ['npm test', 'pytest']);
+    assert.deepEqual(a.lintCommands, ['npm run lint', 'ruff check .']);
+    assert.deepEqual(a.typecheckCommands, ['mypy .']);
+    assert.deepEqual(detectProjectProfile(rb.dir).testCommands, ['npm test', 'bundle exec rspec']);
+    assert.deepEqual(detectProjectProfile(orchestrated.dir).testCommands, ['npm test', 'pytest']);
+  } finally {
+    py.cleanup();
+    rb.cleanup();
+    orchestrated.cleanup();
+  }
+});
+
+test('a Makefile target stays the single entry point even when other ecosystems are present', () => {
+  const p = project({ Makefile: 'test:\n\techo all\n', 'requirements.txt': 'pytest\n', Gemfile: "gem 'rspec-rails'\n" });
+  try {
+    assert.deepEqual(detectProjectProfile(p.dir).testCommands, ['make test']);
+  } finally {
+    p.cleanup();
+  }
+});

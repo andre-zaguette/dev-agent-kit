@@ -300,11 +300,12 @@ export function detectProjectProfile(root: string): ProjectProfile {
   const targets = makeTargets(root);
   const commandsFor = (category: Category): string[] => {
     const fromScripts = SCRIPT_NAMES[category].filter((name) => typeof pkg?.scripts?.[name] === 'string').map((name) => scriptCommand(nodePm, name));
-    if (fromScripts.length > 0) return fromScripts;
     const fromTargets = SCRIPT_NAMES[category].flatMap((name) => [`make ${name}`, `task ${name}`]).filter((command) => targets.has(command));
-    if (fromTargets.length > 0) return fromTargets;
+    // A Makefile or Taskfile is the project's own entry point and stands alone; otherwise every ecosystem in the repository contributes.
+    if (fromScripts.length === 0 && fromTargets.length > 0) return fromTargets;
     const fromPython = PYTHON_TOOL_COMMANDS[category].filter(([tool]) => mentions(pyText, tool)).map(([, command]) => command);
-    return fromPython.length > 0 ? fromPython : extra[category === 'test' ? 'test' : category === 'lint' ? 'lint' : 'typecheck'];
+    const others = extra[category === 'test' ? 'test' : category === 'lint' ? 'lint' : 'typecheck'];
+    return [...new Set([...fromScripts, ...fromPython, ...others])];
   };
 
   const profile: ProjectProfile = {

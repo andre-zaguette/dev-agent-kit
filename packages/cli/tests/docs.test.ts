@@ -85,3 +85,27 @@ test('the guides exist and cover their essentials', () => {
   const migration = read('docs/migration-from-frontend-agent.md');
   for (const needle of ['frontend-agent install', 'dev-agent install', '.frontend-agent/config.yml', '.dev-agent/config.yml', 'no removal date']) assert.ok(migration.includes(needle), `migration guide needs ${needle}`);
 });
+
+test('the adapter example runs against the kit\'s core', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const blocks = [...read('docs/task-source-adapters.md').matchAll(/```ts\n([\s\S]*?)```/g)].map((m) => m[1]).filter((b) => b.includes('createTrackerAdapter') || b.includes('registry.resolve'));
+  assert.equal(blocks.length, 2);
+  const coreIndex = path.join(root, 'packages', 'core', 'src', 'index.ts');
+  const dir = mkdtempSync(path.join(tmpdir(), 'dak-doc-example-'));
+  try {
+    const source = [
+      "const client: any = { fetchTicket: async () => ({ ticket_id: '1', reference: 'TRK-7', subject: 'S', body: 'B', state: 'open' }), fetchAllComments: async () => [] };",
+      ...blocks.map((b) => b.replace(/from '[^']*core[^']*'/g, `from '${coreIndex}'`)),
+      "const item = await createTrackerAdapter(client).getWorkItem('TRK-7');",
+      "if (item.key !== 'TRK-7' || registry.resolve('TRK-7').status !== 'resolved') throw new Error('example did not work');"
+    ].join('\n').replace("export function createTrackerAdapter(client: TrackerClient)", "export function createTrackerAdapter(client: any)");
+    const file = path.join(dir, 'example.mts');
+    writeFileSync(file, source);
+    const result = spawnSync(process.execPath, ['--import', 'tsx', file], { cwd: path.join(root, 'packages', 'cli'), encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

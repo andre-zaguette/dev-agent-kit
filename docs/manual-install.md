@@ -1,6 +1,6 @@
 # Manual installation
 
-Use this only when you cannot run `dev-agent install`. The CLI does the same thing and keeps the result verifiable.
+Use this only when you cannot run `dev-agent install`. `/path/to/dev-agent-kit` is your checkout, or `$(npm root -g)/dev-agent-kit` for a global install. The CLI does the same thing and keeps the result verifiable.
 
 From your target project's root:
 

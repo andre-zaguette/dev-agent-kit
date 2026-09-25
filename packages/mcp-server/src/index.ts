@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -19,8 +20,10 @@ function jsonResult(value: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(value) }] };
 }
 
+const PACKAGE_VERSION: string = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
+
 export function createServer(): McpServer {
-  const server = new McpServer({ name: 'frontend-agent', version: '0.3.0' });
+  const server = new McpServer({ name: 'frontend-agent', version: PACKAGE_VERSION });
 
   server.registerTool(
     'capture_screenshot',

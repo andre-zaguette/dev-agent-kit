@@ -1,5 +1,7 @@
 # Evals and benchmark
 
+The evals, scenarios and scripts on this page live in the repository checkout; they are development tooling and are not part of the installed npm package.
+
 ## Validate the kit's own skills
 
 ```bash

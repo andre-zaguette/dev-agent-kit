@@ -32,10 +32,13 @@ The kit ships its own MCP server (`packages/mcp-server`) with five tools: `captu
 
 ```bash
 npm install
-npx --workspace=packages/mcp-server playwright install chromium
+npx --workspace=packages/mcp-server playwright install chromium   # from a checkout
+# installed globally: cd "$(npm root -g)/dev-agent-kit" && npx playwright install chromium
 ```
 
 The server resolves its **project root** — where it looks for `.frontend-agent/config.yml` and where `outputPath` for screenshots must stay inside — from the `FRONTEND_AGENT_PROJECT_ROOT` environment variable if set, otherwise from its own current working directory. Because the server is normally launched from the kit's own checkout (not from the target project), **always set `FRONTEND_AGENT_PROJECT_ROOT` explicitly to the target project's absolute path**, and use absolute paths for the launch command too — a plain `npx tsx packages/mcp-server/src/index.ts` resolved from a different cwd will not find the target project's config or be able to write into it.
+
+In an installed copy the `tsx` binary may be hoisted to a parent `node_modules/.bin`; `dev-agent install` finds it and writes the working path into `.mcp.json`, so copy the command from there if the one below does not exist on your machine.
 
 Register it with `--scope user` so it's available in every project, pointing `FRONTEND_AGENT_PROJECT_ROOT` at whichever project you're validating:
 

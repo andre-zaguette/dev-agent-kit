@@ -15,7 +15,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.6"
   },
   "bin": {
     "dev-agent": "bin/dev-agent.mjs",

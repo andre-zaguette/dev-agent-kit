@@ -96,3 +96,18 @@ export function listFilesRecursive(dir: string): string[] {
   walk(dir, '');
   return files.sort();
 }
+
+/**
+ * The directory `--project` is resolved against. npm changes into the kit checkout for `npm run …` and keeps the caller's directory in
+ * INIT_CWD, so INIT_CWD is trusted only then (from the checkout root or one of its packages); anywhere else (an installed kit, a monorepo workspace script) the process directory is right.
+ */
+export function effectiveCwd(env: NodeJS.ProcessEnv, cwd: string, kitRoot: string): string {
+  if (!env.INIT_CWD) return cwd;
+  try {
+    const here = realpathSync(cwd);
+    const kit = realpathSync(kitRoot);
+    return here === kit || here.startsWith(kit + path.sep) ? env.INIT_CWD : cwd;
+  } catch {
+    return cwd;
+  }
+}

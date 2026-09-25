@@ -68,3 +68,52 @@ export function checkManifest(root: string): string[] {
   }
   return problems;
 }
+
+const BUILTINS = new Set(['fs', 'path', 'os', 'url', 'util', 'child_process', 'crypto', 'http', 'https', 'net', 'stream', 'events', 'assert', 'module', 'readline', 'zlib', 'buffer', 'process', 'timers', 'worker_threads']);
+const IMPORT_RES = [
+  /(?:^|\n)[ \t]*(?:import|export)\s+(?:type\s+)?[\w*{}\s,$]+?\s+from\s*(['"])([^'"\n]+)\1/g,
+  /\bimport\s*\(\s*(['"])([^'"\n]+)\1/g,
+  /(?:^|\n)[ \t]*import\s+(['"])([^'"\n]+)\1/g
+];
+
+function packageOf(specifier: string): string {
+  const parts = specifier.split('/');
+  return specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+}
+
+/** Runtime imports of the packed sources that would fail once installed: relative targets that are not packed, bare packages that are not root dependencies. */
+export function checkImports(root: string, packed: string[]): string[] {
+  const problems = new Set<string>();
+  const have = new Set(packed);
+  const pkg = readManifest(path.join(root, 'package.json'));
+  const isRuntimeSource = (f: string): boolean => /^(bin\/.*\.mjs|packages\/[^/]+\/(src|bin)\/.*\.(ts|mjs))$/.test(f);
+  for (const file of packed.filter(isRuntimeSource)) {
+    const text = readFileSync(path.join(root, file), 'utf8');
+    for (const match of IMPORT_RES.flatMap((re) => [...text.matchAll(re)])) {
+      const specifier = match[2];
+      if (specifier.startsWith('node:') || BUILTINS.has(specifier)) continue;
+      if (specifier.startsWith('.')) {
+        const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier));
+        const candidates = [target, target.replace(/\.js$/, '.ts'), target.replace(/\.js$/, '.mjs')];
+        if (!candidates.some((c) => have.has(c))) problems.add(`${file} imports ${specifier}, which is not in the package`);
+      } else if (!(packageOf(specifier) in (pkg.dependencies ?? {}))) {
+        problems.add(`${file} imports ${packageOf(specifier)}, which is not a dependency of the root package`);
+      }
+    }
+    for (const match of text.matchAll(/new URL\(\s*(['"])([^'"]+)\1\s*,\s*import\.meta\.url\s*\)/g)) {
+      const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), match[2]));
+      if (!have.has(target)) problems.add(`${file} refers to ${match[2]}, which is not in the package`);
+    }
+  }
+  return [...problems];
+}
+
+/** Every skill directory in the repository must ship with its SKILL.md. */
+export function checkSkillsPacked(root: string, packed: string[]): string[] {
+  const have = new Set(packed);
+  const dir = path.join(root, 'skills');
+  if (!existsSync(dir)) return ['skills/ does not exist'];
+  return readdirSync(dir)
+    .filter((name) => existsSync(path.join(dir, name, 'SKILL.md')) && !have.has(`skills/${name}/SKILL.md`))
+    .map((name) => `skill ${name} is not in the package`);
+}

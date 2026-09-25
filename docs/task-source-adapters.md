@@ -24,10 +24,10 @@ interface TaskSourceAdapter {
 
 ## Reuse the normalizer
 
-`normalizeWorkItem(sourceId, mapping, parts, lists)` builds a `WorkItem` from raw payloads and a field mapping, extracts acceptance criteria, normalizes link types and bounds text. Custom code only has to fetch the raw parts. The examples import from the kit's core package (the workspace `@frontend-agent-kit/core`, source in `packages/core/src/index.ts`); `TrackerClient` stands for your own client and is not part of the kit:
+`normalizeWorkItem(sourceId, mapping, parts, lists)` builds a `WorkItem` from raw payloads and a field mapping, extracts acceptance criteria, normalizes link types and bounds text. Custom code only has to fetch the raw parts. The core package is not published separately: the examples import its source from the kit (`/path/to/dev-agent-kit` is your checkout, or `$(npm root -g)/dev-agent-kit` for a global install) and run under `tsx`; `TrackerClient` stands for your own client and is not part of the kit:
 
 ```ts
-import { normalizeWorkItem, type SourceMapping, type TaskSourceAdapter } from '@frontend-agent-kit/core';
+import { normalizeWorkItem, type SourceMapping, type TaskSourceAdapter } from '/path/to/dev-agent-kit/packages/core/src/index.ts';
 
 const mapping: SourceMapping = {
   fields: { id: 'ticket_id', key: 'reference', title: 'subject', description: 'body', status: 'state' },
@@ -50,7 +50,7 @@ export function createTrackerAdapter(client: TrackerClient): TaskSourceAdapter {
 ## Register it
 
 ```ts
-import { TaskSourceRegistry } from '@frontend-agent-kit/core';
+import { TaskSourceRegistry } from '/path/to/dev-agent-kit/packages/core/src/index.ts';
 
 const registry = new TaskSourceRegistry();
 registry.register(createTrackerAdapter(client), { identifiers: [/^TRK-\d+$/], default: false });

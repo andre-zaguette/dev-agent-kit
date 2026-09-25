@@ -6,7 +6,7 @@ Dev Agent Kit is a provider-neutral engineering agent kit for **Claude Code** an
 
 ## Install
 
-Requires Node.js 20 or newer.
+Requires Node.js 20.6 or newer.
 
 ```bash
 # from the tarball attached to the GitHub release
@@ -17,7 +17,7 @@ git clone https://github.com/andre-zaguette/dev-agent-kit.git
 cd dev-agent-kit && npm install && npm link
 ```
 
-The visual-validation tools drive a browser. Install one once: `npx playwright install chromium`.
+The visual-validation tools drive a browser. Install the one matching the kit's Playwright once, from the kit's own directory: `cd "$(npm root -g)/dev-agent-kit" && npx playwright install chromium` (from a checkout, run `npx playwright install chromium` in the checkout).
 
 Then, for each project:
 

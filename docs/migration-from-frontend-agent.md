@@ -27,7 +27,7 @@ v1.0.0 turns the frontend-only kit into Dev Agent Kit. **Nothing you use today w
 
 ## Upgrade steps
 
-1. Install the new package (`npm install -g dev-agent-kit-1.0.0.tgz`, or update your checkout and run `npm install`).
+1. If you installed the old kit globally (for example with `npm link --workspace=packages/cli`), remove that first: `npm unlink -g @frontend-agent-kit/cli` (or `npm rm -g @frontend-agent-kit/cli`). The old and new packages install the same command names, and npm stops with `EEXIST` otherwise. Then install the new package (`npm install -g dev-agent-kit-1.0.0.tgz`, or update your checkout and run `npm install && npm link`).
 2. In each project run `dev-agent install --project <dir>`. It updates the kit's skills and managed blocks, never touches skills it did not install, and keeps a kit skill you edited locally and reports it. Add `--force` only if you want your local edits overwritten.
 3. Run `dev-agent verify --project <dir>`.
 4. Optional: create `.dev-agent/config.yml` to use task sources (see [generic-mcp.md](generic-mcp.md)).
@@ -35,7 +35,7 @@ v1.0.0 turns the frontend-only kit into Dev Agent Kit. **Nothing you use today w
 
 ## Rolling back
 
-Reinstall the previous version of the kit and run its `install`; the managed blocks are replaced in place and your own content is untouched. The v0.11.0 tag and earlier remain on GitHub.
+Remove the new package first (`npm rm -g dev-agent-kit`; otherwise the `frontend-agent` on your PATH is still the 1.0 alias), reinstall the previous version of the kit and run its `install`; the managed blocks are replaced in place and your own content is untouched. The v0.11.0 tag and earlier remain on GitHub.
 
 ## Deprecation policy
 

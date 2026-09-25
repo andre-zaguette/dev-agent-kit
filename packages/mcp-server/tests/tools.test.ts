@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createServer } from '../src/index.ts';
@@ -12,7 +13,7 @@ async function connectClient() {
   return { client, server };
 }
 
-test('the server exposes exactly the five v0.3 tools and reports version 0.3.0', async () => {
+test('the server exposes exactly the five v0.3 tools and reports the package version', async () => {
   const { client, server } = await connectClient();
   try {
     const { tools } = await client.listTools();
@@ -20,7 +21,7 @@ test('the server exposes exactly the five v0.3 tools and reports version 0.3.0',
       tools.map((tool) => tool.name).sort(),
       ['capture_screenshot', 'compare_screenshots', 'inspect_dom', 'run_accessibility_audit', 'run_responsive_suite']
     );
-    assert.equal(client.getServerVersion()?.version, '0.3.0');
+    assert.equal(client.getServerVersion()?.version, JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version);
   } finally {
     await client.close();
     await server.close();

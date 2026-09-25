@@ -1,4 +1,5 @@
 import { realpathSync, statSync } from 'node:fs';
+import { runGit } from './git.js';
 import { resolveInside } from './safe-fs.js';
 
 export type WorkspaceRole = 'library' | 'backend' | 'api' | 'frontend' | 'infra' | 'other';
@@ -74,4 +75,15 @@ export function orderWorkspaces(cfg: HasWorkspaces, opts: { only?: string[]; wit
     visit(name);
   }
   return ordered.filter((w) => wanted.has(w.name));
+}
+
+/** True only when `dir` is itself the top level of a Git work tree (a plain folder inside another repository is not). */
+export function isOwnRepository(dir: string): boolean {
+  const top = runGit(dir, ['rev-parse', '--show-toplevel']);
+  if (!top.ok) return false;
+  try {
+    return realpathSync(top.stdout.trim()) === realpathSync(dir);
+  } catch {
+    return false;
+  }
 }

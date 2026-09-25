@@ -12,6 +12,7 @@ export const LEDGER_SECTIONS = [
   'Visual source',
   'Implementation plan',
   'Git',
+  'Workspaces',
   'Implementation log',
   'Verification',
   'How to run locally',
@@ -27,6 +28,17 @@ const PHASES = ['ingestion', 'investigation', 'git', 'implementation', 'verifica
 export type TaskPhase = (typeof PHASES)[number];
 export type FinalStatus = 'planned' | 'blocked' | 'implementing' | 'verifying' | 'done';
 
+export type WorkspaceStepStatus = 'pending' | 'in-progress' | 'done' | 'blocked';
+const WORKSPACE_STATUSES: readonly WorkspaceStepStatus[] = ['pending', 'in-progress', 'done', 'blocked'];
+const MAX_WORKSPACE_STATES = 30;
+
+export interface WorkspaceState {
+  baseBranch?: string;
+  baseSha?: string;
+  workingBranch?: string;
+  status: WorkspaceStepStatus;
+}
+
 export interface TaskState {
   workItemKey: string;
   source: string;
@@ -36,6 +48,7 @@ export interface TaskState {
   baseSha?: string;
   workingBranch?: string;
   visualSource?: string;
+  workspaces?: Record<string, WorkspaceState>;
   skills: string[];
   updatedAt: string;
 }
@@ -176,8 +189,14 @@ export function setLedgerSection(md: string, section: LedgerSection, body: strin
   const { preamble, sections } = parseLedger(md);
   const existing = sections.find((s) => s.name === section);
   const clean = sanitizeBody(body);
-  if (existing) existing.body = clean;
-  else sections.push({ name: section, body: clean });
+  if (existing) {
+    existing.body = clean;
+  } else {
+    // Keep the canonical order: land before the first present section that belongs after this one.
+    const rank = (name: string): number => (LEDGER_SECTIONS as readonly string[]).indexOf(name);
+    const at = sections.findIndex((s) => rank(s.name) > rank(section));
+    sections.splice(at === -1 ? sections.length : at, 0, { name: section, body: clean });
+  }
   return serializeLedger(preamble, sections);
 }
 
@@ -212,7 +231,31 @@ export function parseTaskState(text: string): TaskState {
     const v = str(name, true);
     if (v !== undefined) state[name] = v;
   }
+  if (r.workspaces !== undefined) state.workspaces = parseWorkspaceStates(r.workspaces);
   return state;
+}
+
+function parseWorkspaceStates(value: unknown): Record<string, WorkspaceState> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('invalid task state: "workspaces"');
+  const entries = Object.entries(value);
+  if (entries.length > MAX_WORKSPACE_STATES) throw new Error('invalid task state: "workspaces"');
+  const out: Record<string, WorkspaceState> = {};
+  for (const [name, entry] of entries) {
+    if (!SOURCE_ID_RE.test(name) || name === 'all') throw new Error('invalid task state: "workspaces"');
+    const where = `workspaces.${name}`;
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) throw new Error(`invalid task state: "${where}"`);
+    const e = entry as Record<string, unknown>;
+    if (typeof e.status !== 'string' || !(WORKSPACE_STATUSES as readonly string[]).includes(e.status)) throw new Error(`invalid task state: "${where}.status"`);
+    const ws: WorkspaceState = { status: e.status as WorkspaceStepStatus };
+    for (const field of ['baseBranch', 'baseSha', 'workingBranch'] as const) {
+      const v = e[field];
+      if (v === undefined) continue;
+      if (typeof v !== 'string' || v === '' || v.length > 200) throw new Error(`invalid task state: "${where}.${field}"`);
+      ws[field] = v;
+    }
+    out[name] = ws;
+  }
+  return out;
 }
 
 export function readTaskState(root: string, dirs: TaskDirs, key: string): TaskState | null {

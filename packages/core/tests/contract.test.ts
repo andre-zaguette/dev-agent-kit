@@ -33,7 +33,7 @@ test('optional, array and nested field types are accepted, with a success status
   });
   assert.equal(c.path, '/api/users/{id}');
   assert.equal(c.successStatus, 200);
-  assert.deepEqual(c.response.profile, { age: 'integer', bio: 'string?' });
+  assert.deepEqual((c.response as Record<string, unknown>).profile, { age: 'integer', bio: 'string?' });
 });
 
 const bad = (over: Record<string, unknown>, pattern: RegExp) => assert.throws(() => parseContract({ ...SPEC_EXAMPLE, ...over }), pattern, JSON.stringify(over));
@@ -103,4 +103,41 @@ test('an invalid contract or a hostile key writes nothing, and a symlinked direc
     t.cleanup();
     rmSync(other, { recursive: true, force: true });
   }
+});
+
+import { fieldName, isOptionalField } from '../src/contract.ts';
+
+test('array bodies, arrays of objects and primitives, and optional nested keys parse and round-trip', () => {
+  const cases: Record<string, unknown>[] = [
+    { response: [{ id: 'uuid', email: 'email' }] },
+    { response: ['uuid'] },
+    { response: { tags: ['string'], users: [{ id: 'uuid', roles: ['string'] }], 'profile?': { age: 'integer' }, 'items?': [{ id: 'uuid' }], matrix: [['integer']] } },
+    { request: [{ id: 'uuid' }] }
+  ];
+  for (const over of cases) {
+    const input = { ...SPEC_EXAMPLE, ...over };
+    assert.deepEqual(parseContract(input), input, JSON.stringify(over));
+  }
+});
+
+test('malformed array and optional-key grammar is refused', () => {
+  const badBody = (over: Record<string, unknown>, pattern: RegExp) => assert.throws(() => parseContract({ ...SPEC_EXAMPLE, ...over }), pattern, JSON.stringify(over));
+  badBody({ response: [] }, /response/);
+  badBody({ response: [{ a: 'string' }, { b: 'string' }] }, /exactly one/);
+  badBody({ response: { tags: [] } }, /response\.tags/);
+  badBody({ response: { a: 'string', 'a?': 'string' } }, /twice/);
+  badBody({ response: { 'bad name?': 'string' } }, /response/);
+  badBody({ response: { '?': 'string' } }, /response/);
+  badBody({ response: { a: [5] } }, /response\.a/);
+  badBody({ response: { a: [null] } }, /response\.a/);
+  badBody({ response: { a: [[[[['string']]]]] } }, /nested too deeply/);
+});
+
+test('old contracts are unchanged, and the key helpers strip the optional marker', () => {
+  assert.deepEqual(parseContract(SPEC_EXAMPLE), SPEC_EXAMPLE);
+  assert.equal(fieldName('profile?'), 'profile');
+  assert.equal(fieldName('id'), 'id');
+  assert.equal(isOptionalField('profile?', { age: 'integer' }), true);
+  assert.equal(isOptionalField('nick', 'string?'), true);
+  assert.equal(isOptionalField('id', 'uuid'), false);
 });

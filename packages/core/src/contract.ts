@@ -3,13 +3,15 @@ import { safeReadFile, safeWriteFile } from './safe-fs.js';
 
 export const CONTRACT_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 export type ContractMethod = (typeof CONTRACT_METHODS)[number];
-export type ContractType = string | { [field: string]: ContractType };
+/** A string is a primitive (with optional `?` / `[]`), a one-element array is an array of that type, an object nests fields. */
+export type ContractType = string | ContractType[] | { [field: string]: ContractType };
+export type ContractBody = Record<string, ContractType> | [ContractType];
 
 export interface ApiContract {
   method: ContractMethod;
   path: string;
-  request?: Record<string, ContractType>;
-  response: Record<string, ContractType>;
+  request?: ContractBody;
+  response: ContractBody;
   errors: Record<string, string[]>;
   successStatus?: number;
 }
@@ -31,23 +33,48 @@ function fail(label: string, where: string, message: string): never {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/** `profile?` -> `profile`. Only one trailing `?` is meaningful. */
+export const fieldName = (key: string): string => (key.endsWith('?') ? key.slice(0, -1) : key);
+
+/** A field is optional when its key ends in `?` or its string type does. */
+export const isOptionalField = (key: string, type: ContractType): boolean => key.endsWith('?') || (typeof type === 'string' && type.endsWith('?'));
+
+function parseType(label: string, at: string, value: unknown, depth: number): ContractType {
+  if (typeof value === 'string') {
+    if (!TYPE_RE.test(value)) fail(label, at, `has an invalid type "${value.slice(0, 40)}" (use string, uuid, email, integer, number, boolean, datetime, date, object or any; add ? for optional or [] for arrays)`);
+    return value;
+  }
+  if (Array.isArray(value)) {
+    if (depth > MAX_DEPTH) fail(label, at, `is nested too deeply (max ${MAX_DEPTH} levels)`);
+    if (value.length !== 1) fail(label, at, 'must hold exactly one element type, for example ["uuid"] or [{ "id": "uuid" }]');
+    return [parseType(label, `${at}[]`, value[0], depth + 1)];
+  }
+  if (isRecord(value)) return parseFields(label, at, value, depth + 1);
+  return fail(label, at, 'must be a type string, a one-element array or a nested object');
+}
+
 function parseFields(label: string, where: string, raw: unknown, depth: number): Record<string, ContractType> {
   if (!isRecord(raw)) fail(label, where, 'must be an object of field names to types');
   if (depth > MAX_DEPTH) fail(label, where, `is nested too deeply (max ${MAX_DEPTH} levels)`);
   const entries = Object.entries(raw);
   if (entries.length > MAX_FIELDS) fail(label, where, `has too many fields (max ${MAX_FIELDS})`);
+  const seen = new Set<string>();
   return Object.fromEntries(
-    entries.map(([name, value]): [string, ContractType] => {
+    entries.map(([key, value]): [string, ContractType] => {
+      const name = fieldName(key);
       const at = `${where}.${name}`;
-      if (!FIELD_RE.test(name) || FORBIDDEN_FIELDS.has(name)) fail(label, where, `has an invalid field name "${name.slice(0, 40)}"`);
-      if (typeof value === 'string') {
-        if (!TYPE_RE.test(value)) fail(label, at, `has an invalid type "${value.slice(0, 40)}" (use string, uuid, email, integer, number, boolean, datetime, date, object or any; add ? for optional or [] for arrays)`);
-        return [name, value];
-      }
-      if (isRecord(value)) return [name, parseFields(label, at, value, depth + 1)];
-      return fail(label, at, 'must be a type string or a nested object');
+      if (!FIELD_RE.test(name) || FORBIDDEN_FIELDS.has(name)) fail(label, where, `has an invalid field name "${key.slice(0, 40)}"`);
+      if (seen.has(name)) fail(label, where, `lists "${name}" twice (with and without ?)`);
+      seen.add(name);
+      return [key, parseType(label, at, value, depth)];
     })
   );
+}
+
+/** A request or response body: a fields object, or a one-element array meaning "an array of that". */
+function parseBody(label: string, where: string, raw: unknown): ContractBody {
+  if (Array.isArray(raw)) return parseType(label, where, raw, 1) as [ContractType];
+  return parseFields(label, where, raw, 1);
 }
 
 function parsePath(label: string, value: unknown): string {
@@ -75,10 +102,10 @@ export function parseContract(input: unknown, label = 'contract'): ApiContract {
   const contract: ApiContract = {
     method: raw.method as ContractMethod,
     path: parsePath(label, raw.path),
-    response: raw.response === undefined ? fail(label, 'response', 'is required (use {} for an empty body)') : parseFields(label, 'response', raw.response, 1),
+    response: raw.response === undefined ? fail(label, 'response', 'is required (use {} for an empty body)') : parseBody(label, 'response', raw.response),
     errors: {}
   };
-  if (raw.request !== undefined) contract.request = parseFields(label, 'request', raw.request, 1);
+  if (raw.request !== undefined) contract.request = parseBody(label, 'request', raw.request);
 
   if (!isRecord(raw.errors)) fail(label, 'errors', 'is required and must map status codes to error code lists (use {} for none)');
   contract.errors = Object.fromEntries(

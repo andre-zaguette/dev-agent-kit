@@ -110,3 +110,34 @@ test('route matching stays fast on hostile paths with many adjacent parameters',
   assert.equal(verifyExchange(many, { method: 'GET', path: `/${'-'.repeat(10_000)}`, status: 200, responseBody: {} }).ok, false);
   assert.ok(performance.now() - started < 500, `took ${Math.round(performance.now() - started)}ms`);
 });
+
+const listContract = parseContract({ method: 'GET', path: '/api/users', response: [{ id: 'uuid', email: 'email' }], errors: {} });
+const list = (body: unknown) => verifyExchange(listContract, { method: 'GET', path: '/api/users', status: 200, responseBody: body });
+
+test('an array response body is checked element by element', () => {
+  assert.equal(list([{ id: ID, email: 'a@example.test' }]).ok, true);
+  assert.equal(list([]).ok, true);
+  assert.deepEqual(kinds(list({})), ['error:type:']);
+  assert.deepEqual(kinds(list([{ id: ID, email: 'a@example.test' }, { id: ID }])), ['error:missing:[1].email']);
+  assert.deepEqual(kinds(list([{ id: 'nope', email: 'a@example.test' }])), ['error:type:[0].id']);
+  assert.equal(list(null).ok, false);
+});
+
+test('arrays of objects and primitives inside fields, and optional nested keys', () => {
+  const c = parseContract({ method: 'GET', path: '/x', response: { users: [{ id: 'uuid' }], tags: ['string'], 'profile?': { age: 'integer' } }, errors: {} });
+  const run = (body: unknown) => verifyExchange(c, { method: 'GET', path: '/x', status: 200, responseBody: body });
+  assert.equal(run({ users: [{ id: ID }], tags: ['a'] }).ok, true);
+  assert.deepEqual(kinds(run({ users: [{ id: 5 }], tags: ['a'] })), ['error:type:users[0].id']);
+  assert.deepEqual(kinds(run({ users: 'x', tags: ['a'] })), ['error:type:users']);
+  assert.deepEqual(kinds(run({ users: [], tags: ['a', 3] })), ['error:type:tags[1]']);
+  assert.equal(run({ users: [], tags: [], profile: null }).ok, true);
+  assert.equal(run({ users: [], tags: [], profile: { age: 3 } }).ok, true);
+  assert.deepEqual(kinds(run({ users: [], tags: [], profile: { age: 'old' } })), ['error:type:profile.age']);
+});
+
+test('an array request body is verified, and the 204 shortcut does not apply to array responses', () => {
+  const c = parseContract({ method: 'POST', path: '/bulk', request: [{ id: 'uuid' }], response: [{ id: 'uuid' }], errors: {}, successStatus: 200 });
+  assert.equal(verifyExchange(c, { method: 'POST', path: '/bulk', requestBody: [], status: 200, responseBody: [] }).ok, true);
+  assert.equal(verifyExchange(c, { method: 'POST', path: '/bulk', requestBody: [{ id: 'x' }], status: 200, responseBody: [] }).ok, false);
+  assert.equal(verifyExchange(c, { method: 'POST', path: '/bulk', requestBody: [], status: 200, responseBody: undefined }).ok, false);
+});

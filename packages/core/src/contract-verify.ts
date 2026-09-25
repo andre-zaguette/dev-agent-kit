@@ -1,4 +1,4 @@
-import type { ApiContract, ContractType } from './contract.js';
+import { fieldName, isOptionalField, type ApiContract, type ContractBody, type ContractType } from './contract.js';
 
 export interface Exchange {
   method: string;
@@ -29,6 +29,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 function describe(value: unknown): string {
+  if (value === undefined) return 'undefined';
   if (value === null) return 'null';
   if (Array.isArray(value)) return 'an array';
   return typeof value === 'object' ? 'an object' : `a ${typeof value}`;
@@ -75,6 +76,14 @@ export function extractErrorCode(body: unknown): string | undefined {
 type Where = 'request' | 'response';
 
 function checkValue(type: ContractType, value: unknown, where: Where, field: string, out: Violation[]): void {
+  if (Array.isArray(type)) {
+    if (!Array.isArray(value)) {
+      out.push({ where, field: field || undefined, kind: 'type', severity: 'error', message: `${field || 'body'}: expected an array, got ${describe(value)}` });
+      return;
+    }
+    value.forEach((element, i) => checkValue(type[0], element, where, `${field}[${i}]`, out));
+    return;
+  }
   if (typeof type !== 'string') {
     checkObject(type, value, where, field, out);
     return;
@@ -100,22 +109,31 @@ function checkObject(schema: Record<string, ContractType>, value: unknown, where
     out.push({ where, field: prefix || undefined, kind: 'type', severity: 'error', message: `${prefix || 'body'}: expected an object, got ${describe(value)}` });
     return;
   }
-  for (const [name, type] of Object.entries(schema)) {
+  const names = new Set<string>();
+  for (const [key, type] of Object.entries(schema)) {
+    const name = fieldName(key);
+    names.add(name);
     const field = prefix ? `${prefix}.${name}` : name;
     const present = Object.hasOwn(value, name) && value[name] !== undefined;
     if (!present) {
-      const optional = typeof type === 'string' && type.endsWith('?');
-      if (!optional) out.push({ where, field, kind: 'missing', severity: 'error', message: `${field}: required field is missing` });
+      if (!isOptionalField(key, type)) out.push({ where, field, kind: 'missing', severity: 'error', message: `${field}: required field is missing` });
       continue;
     }
+    if (value[name] === null && isOptionalField(key, type)) continue;
     checkValue(type, value[name], where, field, out);
   }
   for (const name of Object.keys(value)) {
-    if (!Object.hasOwn(schema, name)) {
+    if (!names.has(name)) {
       const field = prefix ? `${prefix}.${name}` : name;
       out.push({ where, field, kind: 'unexpected', severity: 'warning', message: `${field}: not in the contract` });
     }
   }
+}
+
+/** A request or response body: a fields object, or an array of an element type. */
+function checkBody(body: ContractBody, value: unknown, where: Where, out: Violation[]): void {
+  if (Array.isArray(body)) checkValue(body, value, where, '', out);
+  else checkObject(body, value, where, '', out);
 }
 
 const MAX_ROUTE_PATH = 4096;
@@ -158,7 +176,7 @@ export function verifyExchange(contract: ApiContract, exchange: Exchange): Verif
     return finish();
   }
 
-  if (contract.request) checkObject(contract.request, exchange.requestBody ?? {}, 'request', '', violations);
+  if (contract.request) checkBody(contract.request, exchange.requestBody ?? (Array.isArray(contract.request) ? undefined : {}), 'request', violations);
 
   const status = exchange.status;
   if (status >= 200 && status < 300) {
@@ -166,7 +184,8 @@ export function verifyExchange(contract: ApiContract, exchange: Exchange): Verif
       violations.push({ where: 'status', kind: 'status', severity: 'error', message: `expected status ${contract.successStatus}, got ${status}` });
     }
     const emptyBody = exchange.responseBody === undefined || exchange.responseBody === null || exchange.responseBody === '';
-    if (!(Object.keys(contract.response).length === 0 && emptyBody)) checkObject(contract.response, exchange.responseBody, 'response', '', violations);
+    const noFields = !Array.isArray(contract.response) && Object.keys(contract.response).length === 0;
+    if (!(noFields && emptyBody)) checkBody(contract.response, exchange.responseBody, 'response', violations);
     return finish();
   }
 

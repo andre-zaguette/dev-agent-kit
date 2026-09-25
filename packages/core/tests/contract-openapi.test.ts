@@ -165,3 +165,29 @@ test('OpenAPI 3.1 nullable type arrays are understood', () => {
   props.name = { type: ['integer', 'null'] };
   assert.equal(verifyOpenApi(c, d).ok, false);
 });
+
+const listDoc = (schema: unknown) => ({
+  openapi: '3.1.0',
+  paths: { '/api/users': { get: { responses: { '200': { description: 'ok', content: { 'application/json': { schema } } } } } } },
+  components: { schemas: { UserOut: { type: 'object', required: ['id', 'email'], properties: { id: { type: 'string', format: 'uuid' }, email: { type: 'string', format: 'email' } } } } }
+});
+
+test('an array response verifies against an array schema with items', () => {
+  const c = parseContract({ method: 'GET', path: '/api/users', response: [{ id: 'uuid', email: 'email' }], errors: {} });
+  assert.deepEqual(verifyOpenApi(c, listDoc({ type: 'array', items: { $ref: '#/components/schemas/UserOut' } })), { ok: true, violations: [] });
+  assert.equal(verifyOpenApi(c, listDoc({ $ref: '#/components/schemas/UserOut' })).ok, false);
+  const missing = listDoc({ type: 'array', items: { type: 'object', required: ['id'], properties: { id: { type: 'string', format: 'uuid' } } } });
+  assert.ok(kinds(verifyOpenApi(c, missing)).some((k) => k.startsWith('error:missing:')));
+});
+
+test('arrays of objects inside fields and optional nested keys map to the described properties', () => {
+  const c = parseContract({ method: 'GET', path: '/api/users', response: { users: [{ id: 'uuid' }], 'profile?': { age: 'integer' } }, errors: {} });
+  const d = listDoc({
+    type: 'object',
+    required: ['users'],
+    properties: { users: { type: 'array', items: { type: 'object', required: ['id'], properties: { id: { type: 'string', format: 'uuid' } } } }, profile: { type: 'object', required: ['age'], properties: { age: { type: 'integer' } } } }
+  });
+  assert.deepEqual(verifyOpenApi(c, d), { ok: true, violations: [] });
+  const wrong = listDoc({ type: 'object', required: ['users'], properties: { users: { type: 'array', items: { type: 'object', properties: { id: { type: 'integer' } } } }, profile: { type: 'object', required: ['age'], properties: { age: { type: 'integer' } } } } });
+  assert.ok(kinds(verifyOpenApi(c, wrong)).some((k) => k.startsWith('error:type:users[]')));
+});

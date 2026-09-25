@@ -32,7 +32,10 @@ File: `.dev-agent/tasks/<KEY>.contract.json` (next to the task ledger). One file
 
 - Suffix `?` makes a field optional (and lets it be `null`): `string?`.
 - Suffix `[]` makes an array of that type: `string[]`, `string[]?`.
-- An object value nests fields, up to four levels and 100 fields per object.
+- A one-element array is an array of that type, including objects: `["uuid"]`, `[{ "id": "uuid" }]`.
+- A key may end in `?` to make any field optional, including nested objects and arrays: `"profile?": { "age": "integer" }`, `"items?": [{ "id": "uuid" }]`. `a` and `a?` may not both appear.
+- `request` and `response` may themselves be a one-element array when the body is an array: `"response": [{ "id": "uuid", "email": "email" }]`.
+- An object value nests fields, up to four levels (arrays count as a level) and 100 fields per object.
 - Field names: letters, digits and `_`, starting with a letter or `_`.
 
 ## Error bodies

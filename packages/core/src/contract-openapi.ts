@@ -1,5 +1,5 @@
 import { parse } from 'yaml';
-import type { ApiContract, ContractType } from './contract.js';
+import { fieldName, isOptionalField, type ApiContract, type ContractType } from './contract.js';
 import type { VerifyResult, Violation } from './contract-verify.js';
 
 type Json = Record<string, unknown>;
@@ -90,6 +90,11 @@ function typeCheck(doc: Json, type: ContractType, schema: unknown, where: 'reque
     return;
   }
   const kind = typeOf(s);
+  if (Array.isArray(type)) {
+    if (kind !== 'array') push(out, where, 'type', 'error', field || undefined, `${field || 'body'}: expected an array schema`);
+    else typeCheck(doc, type[0], s.items, where, `${field}[]`, out);
+    return;
+  }
   if (typeof type !== 'string') {
     if (kind !== 'object' && Object.keys(s.properties as Json).length === 0) push(out, where, 'type', 'error', field, `${field}: expected an object schema`);
     else compareFields(doc, type, s, where, field, out);
@@ -146,18 +151,20 @@ function typeCheck(doc: Json, type: ContractType, schema: unknown, where: 'reque
 function compareFields(doc: Json, fields: Record<string, ContractType>, schema: Json, where: 'request' | 'response', prefix: string, out: Violation[]): void {
   const properties = isRecord(schema.properties) ? schema.properties : {};
   const required = new Set(Array.isArray(schema.required) ? (schema.required as string[]) : []);
-  for (const [name, type] of Object.entries(fields)) {
+  const names = new Set<string>();
+  for (const [key, type] of Object.entries(fields)) {
+    const name = fieldName(key);
+    names.add(name);
     const field = prefix ? `${prefix}.${name}` : name;
     if (!Object.hasOwn(properties, name)) {
       push(out, where, 'missing', 'error', field, `${field}: not described in the OpenAPI schema`);
       continue;
     }
     typeCheck(doc, type, properties[name], where, field, out);
-    const contractRequired = !(typeof type === 'string' && type.endsWith('?'));
-    if (contractRequired && !required.has(name)) push(out, where, 'missing', 'warning', field, `${field}: required in the contract but optional in the description`);
+    if (!isOptionalField(key, type) && !required.has(name)) push(out, where, 'missing', 'warning', field, `${field}: required in the contract but optional in the description`);
   }
   for (const name of Object.keys(properties)) {
-    if (!Object.hasOwn(fields, name)) push(out, where, 'unexpected', 'warning', prefix ? `${prefix}.${name}` : name, `${prefix ? `${prefix}.` : ''}${name}: described but not in the contract`);
+    if (!names.has(name)) push(out, where, 'unexpected', 'warning', prefix ? `${prefix}.${name}` : name, `${prefix ? `${prefix}.` : ''}${name}: described but not in the contract`);
   }
 }
 
@@ -191,8 +198,9 @@ export function verifyOpenApi(contract: ApiContract, doc: unknown): VerifyResult
     if (schema === undefined) push(violations, 'request', 'missing', 'error', undefined, 'the operation describes no JSON request body');
     else {
       const flat = flatten(doc, schema);
-      if (flat) compareFields(doc, contract.request, flat, 'request', '', violations);
-      else push(violations, 'request', 'type', Object.keys(contract.request).length > 0 ? 'error' : 'warning', undefined, 'the request schema could not be resolved (dangling $ref, cycle or too complex)');
+      if (Array.isArray(contract.request)) typeCheck(doc, contract.request, schema, 'request', '', violations);
+      else if (flat) compareFields(doc, contract.request, flat, 'request', '', violations);
+      else push(violations, 'request', 'type', Array.isArray(contract.request) || Object.keys(contract.request).length > 0 ? 'error' : 'warning', undefined, 'the request schema could not be resolved (dangling $ref, cycle or too complex)');
     }
   }
 
@@ -203,11 +211,12 @@ export function verifyOpenApi(contract: ApiContract, doc: unknown): VerifyResult
   } else {
     const schema = jsonSchemaOf(doc, responses[successKey]);
     if (schema === undefined) {
-      if (Object.keys(contract.response).length > 0) push(violations, 'response', 'missing', 'error', undefined, `the ${successKey} response describes no JSON body`);
+      if (Array.isArray(contract.response) || Object.keys(contract.response).length > 0) push(violations, 'response', 'missing', 'error', undefined, `the ${successKey} response describes no JSON body`);
     } else {
       const flat = flatten(doc, schema);
-      if (flat) compareFields(doc, contract.response, flat, 'response', '', violations);
-      else push(violations, 'response', 'type', Object.keys(contract.response).length > 0 ? 'error' : 'warning', undefined, 'the response schema could not be resolved (dangling $ref, cycle or too complex)');
+      if (Array.isArray(contract.response)) typeCheck(doc, contract.response, schema, 'response', '', violations);
+      else if (flat) compareFields(doc, contract.response, flat, 'response', '', violations);
+      else push(violations, 'response', 'type', Array.isArray(contract.response) || Object.keys(contract.response).length > 0 ? 'error' : 'warning', undefined, 'the response schema could not be resolved (dangling $ref, cycle or too complex)');
     }
   }
 

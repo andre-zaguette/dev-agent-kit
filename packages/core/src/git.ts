@@ -110,13 +110,13 @@ export function defaultRemote(root: string): string | undefined {
   if (out === null) return undefined;
   const names = out.split('\n').filter(Boolean);
   if (names.includes('origin')) return 'origin';
-  return names.length === 1 ? names[0] : undefined;
+  return names.length === 1 && !names[0].startsWith('-') ? names[0] : undefined;
 }
 
 const OPERATIONS: Array<[string, string[]]> = [
   ['merge', ['MERGE_HEAD']],
   ['rebase', ['rebase-merge', 'rebase-apply']],
-  ['cherry-pick', ['CHERRY_PICK_HEAD']],
+  ['cherry-pick', ['CHERRY_PICK_HEAD', 'sequencer']],
   ['revert', ['REVERT_HEAD']],
   ['bisect', ['BISECT_LOG']]
 ];

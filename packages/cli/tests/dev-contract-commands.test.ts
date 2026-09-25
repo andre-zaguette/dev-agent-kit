@@ -180,3 +180,21 @@ test('--client errors are clear: missing, a file, the project root as ".", and -
     t.cleanup();
   }
 });
+
+test('--client . reports project-relative paths once, skips build output, and accepts a path that resolves to the root', async () => {
+  const t = project({
+    'src/api.ts': "axios.post('/api/users', b);",
+    '.next/server/app.js': "axios.post('/api/users', b);",
+    'out/index.js': "axios.post('/api/users', b);"
+  });
+  try {
+    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--client', '.', '--client', 'src', '--project', t.projectRoot, '--json'], t.io), 0);
+    const json = JSON.parse(t.text());
+    assert.deepEqual(json.files, ['src/api.ts']);
+    assert.equal(json.scannedFiles, 1);
+    t.out.length = 0;
+    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--client', 'src/..', '--project', t.projectRoot], t.io), 0);
+  } finally {
+    t.cleanup();
+  }
+});

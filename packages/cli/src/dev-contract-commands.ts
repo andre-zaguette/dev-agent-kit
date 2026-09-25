@@ -23,7 +23,7 @@ const MAX_CLIENT_FILES = 2000;
 const MAX_CLIENT_FILE_BYTES = 500 * 1024;
 const MAX_CLIENT_TOTAL_BYTES = 50 * 1024 * 1024;
 const CLIENT_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.vue', '.svelte', '.html']);
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage']);
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.nuxt', '.output', '.svelte-kit', 'out', '.turbo', '.cache']);
 
 function load(root: string, key: string): ApiContract {
   try {
@@ -128,7 +128,7 @@ function collectClientFiles(root: string, dir: string, out: ClientFile[], total:
   for (const entry of readdirSync(path.join(root, dir), { withFileTypes: true })) {
     if (out.length >= MAX_CLIENT_FILES) return;
     if (entry.isSymbolicLink()) continue;
-    const rel = `${dir}/${entry.name}`;
+    const rel = dir === '' ? entry.name : `${dir}/${entry.name}`;
     if (entry.isDirectory()) {
       if (!SKIP_DIRS.has(entry.name)) collectClientFiles(root, rel, out, total);
     } else if (entry.isFile() && CLIENT_EXT.has(path.extname(entry.name))) {
@@ -154,17 +154,22 @@ export function contractUsage(args: string[], io: CliIo): number {
   if (clients.length === 0) throw new CliError('dev-agent: contract usage needs at least one --client <dir> — see --help.');
 
   const files: ClientFile[] = [];
+  const found: ClientFile[] = [];
+  const seen = new Set<string>();
   const total = { bytes: 0 };
   for (const client of clients) {
     let abs: string;
     try {
-      abs = client === '.' || client === './' ? root : resolveInside(root, client);
+      const resolved = path.resolve(root, client);
+      abs = resolved === root ? root : resolveInside(root, client);
       if (!lstatSync(abs).isDirectory()) throw new Error('not a directory');
     } catch (error) {
       const reason = (error as Error).message;
       throw new CliError(`dev-agent: --client "${client}": ${/escapes|symbolic|relative/.test(reason) ? reason : 'not a directory inside the project'}.`, 1);
     }
-    collectClientFiles(root, path.relative(root, abs).split(path.sep).join('/'), files, total);
+    collectClientFiles(root, path.relative(root, abs).split(path.sep).join('/'), found, total);
+    for (const f of found) if (!seen.has(f.path)) (seen.add(f.path), files.push(f));
+    found.length = 0;
   }
   const usage = verifyClientUsage(contract, files);
   if (values.json) io.stdout(JSON.stringify({ ...usage, scannedFiles: files.length }, null, 2));

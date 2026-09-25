@@ -54,3 +54,35 @@ test('GET calls count with fetch defaults or .get, and parameterized paths match
   assert.equal(verifyClientUsage(get, [{ path: 'a.ts', text: "fetch(`/api/users/${id}`, { method: 'DELETE' })" }]).methodConfirmed, false);
   assert.equal(verifyClientUsage(get, [{ path: 'a.ts', text: "fetch('/api/usersettings')" }]).used, false);
 });
+
+const used = (contract: ReturnType<typeof parseContract>, text: string) => verifyClientUsage(contract, [{ path: 'a.ts', text }]).used;
+const get = parseContract({ method: 'GET', path: '/api/users', response: {}, errors: {} });
+
+test('real clients with base URLs, options-style calls and framework helpers are recognized', () => {
+  assert.equal(used(post, 'axios.post(`${API}/api/users`, b)'), true);
+  assert.equal(used(post, "api.post(API_BASE + '/api/users', b)"), true);
+  assert.equal(used(post, "axios({ method: 'post', url: '/api/users' })"), true);
+  assert.equal(used(post, "axios({ url: '/api/users', method: 'POST', data })"), true);
+  assert.equal(used(post, "fetch(buildUrl('/api/users'), { method: 'POST', body })"), true);
+  assert.equal(used(post, "postJson('/api/users', body)"), true);
+  assert.equal(used(get, 'fetch(`${BASE}/api/users`)'), true);
+  assert.equal(used(get, "useFetch('/api/users')"), true);
+  assert.equal(used(get, "useSWR('/api/users', fetcher)"), true);
+  assert.equal(used(get, "axios('/api/users')"), true);
+  assert.equal(used(get, "request<User[]>('/api/users')"), true);
+});
+
+test('a method: belonging to a different call, or a path that is not inside any call, never confirms', () => {
+  assert.equal(used(post, "export const USERS = '/api/users';\nexport const logout = () => fetch('/auth/logout', { method: 'POST' });"), false);
+  assert.equal(used(post, "const routes = ['/api/users', '/api/items']; fetch(routes[1], { method: 'DELETE' });"), false);
+  assert.equal(used(post, "axios.get('/api/users'); axios.post('/api/other', b);"), false);
+  assert.equal(used(get, "fetch('/api/users', { method: 'DELETE' })"), false);
+  assert.equal(used(post, "axios.get(`${API}/api/users`)"), false);
+  assert.equal(used(post, "useFetch('/api/users')"), false);
+});
+
+test('hostile client text stays fast', () => {
+  const started = performance.now();
+  for (const text of ['('.repeat(100_000) + "'/api/users'", ".get(".repeat(50_000) + "'/api/users'", "'".repeat(100_000) + '/api/users', ')'.repeat(100_000) + "'/api/users'"]) verifyClientUsage(post, [{ path: 'a.ts', text }]);
+  assert.ok(performance.now() - started < 1000, `took ${Math.round(performance.now() - started)}ms`);
+});

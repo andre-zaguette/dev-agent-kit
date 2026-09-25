@@ -254,3 +254,26 @@ test('a merge, cherry-pick, rebase or bisect in progress is refused and nothing 
   const { dir } = seededClone();
   assert.equal(operationInProgress(dir), null);
 });
+
+test('a multi-commit cherry-pick that stopped between steps is still an operation in progress, and remote names that look like options are never chosen', () => {
+  const { dir } = seededClone();
+  sh(dir, 'switch', '-q', '-c', 'x');
+  for (const name of ['one.txt', 'two.txt']) commitFile(dir, name);
+  const [second, first] = sh(dir, 'log', '--format=%h', '-2').split('\n');
+  sh(dir, 'switch', '-q', 'main');
+  writeFileSync(join(dir, 'one.txt'), 'conflict');
+  sh(dir, 'add', 'one.txt');
+  sh(dir, 'commit', '-q', '-m', 'main one');
+  attempt(dir, 'cherry-pick', first, second);
+  writeFileSync(join(dir, 'one.txt'), 'resolved');
+  sh(dir, 'add', 'one.txt');
+  sh(dir, 'commit', '-q', '-m', 'resolved by hand');
+  assert.notEqual(operationInProgress(dir), null);
+  const r = prepareTaskBranch(dir, { workingBranch: 'feat/x-1-y' });
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.reason, 'operation-in-progress');
+  const other = seededClone();
+  sh(other.dir, 'config', '--remove-section', 'remote.origin');
+  sh(other.dir, 'config', 'remote.-x.url', other.remote);
+  assert.equal(defaultRemote(other.dir), undefined);
+});

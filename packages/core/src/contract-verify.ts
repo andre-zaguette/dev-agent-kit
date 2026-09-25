@@ -75,13 +75,17 @@ export function extractErrorCode(body: unknown): string | undefined {
 
 type Where = 'request' | 'response';
 
+const MAX_VIOLATIONS = 100;
+const full = (out: Violation[]): boolean => out.length >= MAX_VIOLATIONS;
+
 function checkValue(type: ContractType, value: unknown, where: Where, field: string, out: Violation[]): void {
+  if (full(out)) return;
   if (Array.isArray(type)) {
     if (!Array.isArray(value)) {
       out.push({ where, field: field || undefined, kind: 'type', severity: 'error', message: `${field || 'body'}: expected an array, got ${describe(value)}` });
       return;
     }
-    value.forEach((element, i) => checkValue(type[0], element, where, `${field}[${i}]`, out));
+    for (let i = 0; i < value.length && !full(out); i++) checkValue(type[0], value[i], where, `${field}[${i}]`, out);
     return;
   }
   if (typeof type !== 'string') {
@@ -105,12 +109,14 @@ function checkValue(type: ContractType, value: unknown, where: Where, field: str
 }
 
 function checkObject(schema: Record<string, ContractType>, value: unknown, where: Where, prefix: string, out: Violation[]): void {
+  if (full(out)) return;
   if (!isRecord(value)) {
     out.push({ where, field: prefix || undefined, kind: 'type', severity: 'error', message: `${prefix || 'body'}: expected an object, got ${describe(value)}` });
     return;
   }
   const names = new Set<string>();
   for (const [key, type] of Object.entries(schema)) {
+    if (full(out)) return;
     const name = fieldName(key);
     names.add(name);
     const field = prefix ? `${prefix}.${name}` : name;
@@ -123,6 +129,7 @@ function checkObject(schema: Record<string, ContractType>, value: unknown, where
     checkValue(type, value[name], where, field, out);
   }
   for (const name of Object.keys(value)) {
+    if (full(out)) return;
     if (!names.has(name)) {
       const field = prefix ? `${prefix}.${name}` : name;
       out.push({ where, field, kind: 'unexpected', severity: 'warning', message: `${field}: not in the contract` });
@@ -168,7 +175,11 @@ function routeMatches(template: string, path: string): boolean {
 
 export function verifyExchange(contract: ApiContract, exchange: Exchange): VerifyResult {
   const violations: Violation[] = [];
-  const finish = (): VerifyResult => ({ ok: !violations.some((v) => v.severity === 'error'), violations });
+  const finish = (): VerifyResult => {
+    const ok = !violations.some((v) => v.severity === 'error');
+    if (full(violations)) violations.push({ where: 'response', kind: 'type', severity: 'warning', message: `more violations were found; only the first ${MAX_VIOLATIONS} are listed` });
+    return { ok, violations };
+  };
 
   const path = exchange.path.split(/[?#]/)[0];
   if (exchange.method.toUpperCase() !== contract.method || !routeMatches(contract.path, path)) {

@@ -15,7 +15,6 @@ export interface UsageResult {
   missingErrorCodes: string[];
 }
 
-const WINDOW = 300;
 const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Matches the contract path in client source: literal, template (`${id}`), `:id` or `{id}` segments, or `'/x/' + id`. */
@@ -27,31 +26,75 @@ function pathRegExp(path: string): RegExp {
 }
 
 const VERBS = ['get', 'post', 'put', 'patch', 'delete'];
+const HTTP_CALLEES = new Set(['fetch', 'axios', 'usefetch', 'useswr', '$fetch', 'got', 'ky', 'request', 'http', 'api']);
+const LOOKBACK = 400;
+const SCOPE_MAX = 600;
 
-/** Text of the call's arguments after the path: up to the parenthesis that closes the call. */
-function callScope(after: string): string {
+interface Call {
+  callee: string;
+  scope: string;
+  open: number;
+}
+
+function callAt(text: string, open: number): Call {
+  const before = text.slice(Math.max(0, open - 60), open);
+  const callee = before.match(/([A-Za-z_$][\w$]*(?:\s*\??\.\s*[A-Za-z_$][\w$]*)*)\s*(?:<[^()]*?>)?\s*$/)?.[1] ?? '';
   let depth = 0;
-  for (let i = 0; i < after.length; i++) {
-    if (after[i] === '(') depth++;
-    else if (after[i] === ')') {
-      if (depth === 0) return after.slice(0, i);
+  let end = Math.min(text.length, open + 1 + SCOPE_MAX);
+  for (let i = open + 1; i < end; i++) {
+    if (text[i] === '(') depth++;
+    else if (text[i] === ')') {
+      if (depth === 0) {
+        end = i;
+        break;
+      }
       depth--;
     }
   }
-  return after;
+  return { callee, scope: text.slice(open + 1, end), open };
 }
 
-/**
- * Does the call around this occurrence of the path use `method`? `before` is the text just ahead
- * of the path, `after` the text from the path on. An explicit `method: '...'` option must sit inside
- * this call's own arguments; a `.verb(` helper or a bare `fetch(` (GET) is read from `before`.
- */
-function confirms(method: string, before: string, after: string): boolean {
-  const explicit = callScope(after).match(/method\s*:\s*['"`]([A-Za-z]+)['"`]/);
+/** The call whose argument list contains `from`, found by walking back to its unmatched "(" — or null when the position is not inside a call. */
+function enclosingCall(text: string, from: number): Call | null {
+  let depth = 0;
+  for (let i = from - 1, steps = 0; i >= 0 && steps < LOOKBACK; i--, steps++) {
+    const c = text[i];
+    if (c === ')') depth++;
+    else if (c === '(') {
+      if (depth === 0) return callAt(text, i);
+      depth--;
+    } else if (depth === 0 && c === ';') return null;
+    else if (depth === 0 && c === '\n') {
+      let j = i - 1;
+      while (j >= 0 && /\s/.test(text[j])) j--;
+      if (j < 0 || (text[j] !== '(' && text[j] !== ',')) return null;
+    }
+  }
+  return null;
+}
+
+/** true/false when this call is an HTTP call that does/does not use `method`; undefined when it is not recognizably an HTTP call. */
+function decide(method: string, call: Call): boolean | undefined {
+  const explicit = call.scope.match(/method\s*:\s*['"`]([A-Za-z]+)['"`]/);
   if (explicit) return explicit[1].toUpperCase() === method;
-  const verb = VERBS.find((v) => new RegExp(`\\.${v}\\s*(?:<[^>(]*>)?\\(\\s*['"\`]?$`).test(before));
-  if (verb) return verb === method.toLowerCase();
-  return method === 'GET' && /\bfetch\s*\(\s*['"`]?$/.test(before);
+  const last = call.callee.split(/\s*\??\.\s*/).pop()!.toLowerCase();
+  const verbs = VERBS.filter((v) => last === v || last.startsWith(v) || last.endsWith(v));
+  if (verbs.length === 1) return verbs[0] === method.toLowerCase();
+  if (HTTP_CALLEES.has(last)) return method === 'GET';
+  return undefined;
+}
+
+/** Is the path at `at` an argument of a call that uses `method`? Looks outward through helper calls (buildUrl(...)) a few levels. */
+function confirmsAt(text: string, at: number, method: string): boolean {
+  let from = at;
+  for (let level = 0; level < 3; level++) {
+    const call = enclosingCall(text, from);
+    if (!call) return false;
+    const decided = decide(method, call);
+    if (decided !== undefined) return decided;
+    from = call.open;
+  }
+  return false;
 }
 
 /** Text evidence that a client calls the contract's route with its method, and mentions its error codes. */
@@ -64,8 +107,10 @@ export function verifyClientUsage(contract: ApiContract, files: ClientFile[]): U
     let confirmed = false;
     for (const match of file.text.matchAll(pathRe)) {
       hit = true;
-      const at = match.index ?? 0;
-      if (confirms(contract.method, file.text.slice(Math.max(0, at - 40), at), file.text.slice(at, at + WINDOW))) confirmed = true;
+      if (confirmsAt(file.text, match.index ?? 0, contract.method)) {
+        confirmed = true;
+        break;
+      }
     }
     if (confirmed) usedIn.push(file.path);
     else if (hit) pathOnly.push(file.path);

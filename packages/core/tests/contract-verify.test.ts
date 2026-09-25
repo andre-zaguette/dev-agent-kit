@@ -147,3 +147,14 @@ test('an undefined body is described as undefined, not "a undefined"', () => {
   assert.ok(r.violations.some((v) => /got undefined/.test(v.message)), JSON.stringify(r.violations));
   assert.ok(!r.violations.some((v) => /a undefined/.test(v.message)));
 });
+
+test('a huge array of bad elements yields a bounded, summarized list of violations and stays fast', () => {
+  const started = performance.now();
+  const c = parseContract({ method: 'GET', path: '/x', response: [{ a: 'string', b: 'string', c: 'string' }], errors: {} });
+  const body = Array.from({ length: 200_000 }, () => ({}));
+  const r = verifyExchange(c, { method: 'GET', path: '/x', status: 200, responseBody: body });
+  assert.equal(r.ok, false);
+  assert.ok(r.violations.length <= 101, `${r.violations.length} violations`);
+  assert.ok(r.violations.some((v) => /more violations/.test(v.message)));
+  assert.ok(performance.now() - started < 1000, `took ${Math.round(performance.now() - started)}ms`);
+});

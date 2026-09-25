@@ -191,3 +191,10 @@ test('arrays of objects inside fields and optional nested keys map to the descri
   const wrong = listDoc({ type: 'object', required: ['users'], properties: { users: { type: 'array', items: { type: 'object', properties: { id: { type: 'integer' } } } }, profile: { type: 'object', required: ['age'], properties: { age: { type: 'integer' } } } } });
   assert.ok(kinds(verifyOpenApi(c, wrong)).some((k) => k.startsWith('error:type:users[]')));
 });
+
+test('an array schema without items is a warning (valid in 3.1), not an unresolved-schema error', () => {
+  const c = parseContract({ method: 'GET', path: '/api/users', response: [{ id: 'uuid' }], errors: {} });
+  const r = verifyOpenApi(c, listDoc({ type: 'array' }));
+  assert.equal(r.ok, true);
+  assert.ok(r.violations.some((v) => v.severity === 'warning' && /items/.test(v.message)));
+});

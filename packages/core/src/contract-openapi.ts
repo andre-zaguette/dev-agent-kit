@@ -92,6 +92,7 @@ function typeCheck(doc: Json, type: ContractType, schema: unknown, where: 'reque
   const kind = typeOf(s);
   if (Array.isArray(type)) {
     if (kind !== 'array') push(out, where, 'type', 'error', field || undefined, `${field || 'body'}: expected an array schema`);
+    else if (s.items === undefined) push(out, where, 'type', 'warning', field || undefined, `${field || 'body'}: the array's items are not described`);
     else typeCheck(doc, type[0], s.items, where, `${field}[]`, out);
     return;
   }

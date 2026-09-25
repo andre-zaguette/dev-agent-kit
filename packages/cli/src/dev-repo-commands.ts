@@ -1,0 +1,73 @@
+import { parseArgs } from 'node:util';
+import { findSimilar, indexRepository, loadDevAgentConfig, reviewDiff, writeRepoKnowledge, type DiffFinding, type Role } from '../../core/src/index.js';
+import type { CliIo } from './cli.js';
+import { CliError, PROJECT_JSON, projectRootOf } from './dev-common.js';
+
+const MAX_LISTED_FILES = 40;
+const EXAMPLES_PER_ROLE = 3;
+const FEATURES_SHOWN = 10;
+const MARK: Record<DiffFinding['severity'], string> = { error: '✘ error', warning: '! warning', info: '· info' };
+
+export function repoIndex(args: string[], io: CliIo): number {
+  const { values } = parseArgs({ args, options: { ...PROJECT_JSON, write: { type: 'boolean', default: false } } });
+  const root = projectRootOf(values, io);
+  const config = loadDevAgentConfig(root);
+  const index = indexRepository(root);
+  const written = values.write ? writeRepoKnowledge(root, index, config.knowledgeDir) : undefined;
+  if (values.json) {
+    io.stdout(JSON.stringify(written ? { ...index, written } : index, null, 2));
+    return 0;
+  }
+  io.stdout(`files: ${index.fileCount}${index.truncated ? ' (truncated)' : ''}`);
+  io.stdout(`naming: ${index.conventions.fileNaming}`);
+  io.stdout(`tests: ${index.conventions.testSuffix ?? '-'}${index.conventions.testDirs.length ? ` in ${index.conventions.testDirs.join(', ')}` : ''}`);
+  for (const [role, paths] of Object.entries(index.roles) as Array<[Role, string[]]>) {
+    io.stdout(`${role}: ${paths.slice(0, EXAMPLES_PER_ROLE).join(', ')}${paths.length > EXAMPLES_PER_ROLE ? ` (+${paths.length - EXAMPLES_PER_ROLE})` : ''}`);
+  }
+  for (const f of index.features.slice(0, FEATURES_SHOWN)) io.stdout(`feature ${f.name} — ${f.roles.join(', ')}`);
+  if (written) io.stdout(`wrote: ${written.written.join(', ')} (sourceSha ${written.sourceSha})`);
+  return 0;
+}
+
+export function repoSimilar(args: string[], io: CliIo): number {
+  const { values, positionals } = parseArgs({ args, options: { ...PROJECT_JSON, limit: { type: 'string' } }, allowPositionals: true });
+  let limit = 3;
+  if (values.limit !== undefined) {
+    limit = Number(values.limit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 20) throw new CliError('dev-agent: --limit must be an integer from 1 to 20.');
+  }
+  const results = findSimilar(indexRepository(projectRootOf(values, io)), positionals.join(' '), limit);
+  if (values.json) {
+    io.stdout(JSON.stringify(results, null, 2));
+    return 0;
+  }
+  if (results.length === 0) {
+    io.stdout('no similar feature found');
+    return 0;
+  }
+  for (const r of results) {
+    io.stdout(`${r.name} (${r.reason}, ${r.score.toFixed(1)})`);
+    const byRole = new Map<Role, string[]>();
+    for (const f of r.files) (byRole.get(f.role) ?? byRole.set(f.role, []).get(f.role)!).push(f.path);
+    for (const [role, paths] of byRole) io.stdout(`  ${role}: ${paths.join(', ')}`);
+  }
+  return 0;
+}
+
+export function diffReview(args: string[], io: CliIo): number {
+  const { values } = parseArgs({ args, options: { ...PROJECT_JSON, base: { type: 'string' } } });
+  const review = reviewDiff(projectRootOf(values, io), { base: values.base });
+  const failed = review.findings.some((f) => f.severity === 'error');
+  if (values.json) {
+    io.stdout(JSON.stringify(review, null, 2));
+    return failed ? 2 : 0;
+  }
+  io.stdout(`base: ${review.base}`);
+  for (const f of review.files.slice(0, MAX_LISTED_FILES)) io.stdout(`${f.status} ${f.path}${f.oldPath ? ` (from ${f.oldPath})` : ''}`);
+  if (review.files.length > MAX_LISTED_FILES) io.stdout(`… and ${review.files.length - MAX_LISTED_FILES} more`);
+  for (const f of review.findings) {
+    io.stdout(`${MARK[f.severity]} ${f.id}: ${f.message}`);
+    if (f.files?.length) io.stdout(`    ${f.files.join(', ')}`);
+  }
+  return failed ? 2 : 0;
+}

@@ -3,6 +3,7 @@ import { auditContext, detectProjectProfile, selectBackendReferences } from '../
 import { run, type CliIo } from './cli.js';
 import { CliError, PROJECT_JSON, projectRootOf } from './dev-common.js';
 import { contractShow, contractUsage, contractVerify } from './dev-contract-commands.js';
+import { diffReview, repoIndex, repoSimilar } from './dev-repo-commands.js';
 import { sourcesList, sourcesVerify, taskResolve, taskShow, taskStatus } from './dev-task-commands.js';
 import { readKitVersion } from './util.js';
 
@@ -23,6 +24,9 @@ Usage:
   dev-agent contract show <KEY> [--project <dir>]
   dev-agent contract verify <KEY> [--exchange <file> ...] [--openapi <file>] [--project <dir>] [--json]
   dev-agent contract usage <KEY> --client <dir> [--client <dir> ...] [--strict] [--project <dir>] [--json]
+  dev-agent repo index [--write] [--project <dir>] [--json]
+  dev-agent repo similar <words...> [--limit <n>] [--project <dir>] [--json]
+  dev-agent diff review [--base <ref>] [--project <dir>] [--json]
   dev-agent --help | --version
 
 install and verify are aliases of the frontend-agent commands and keep its exit codes (1 when a check fails).
@@ -111,6 +115,13 @@ export async function runDev(argv: string[], io: CliIo): Promise<number> {
           default:
             throw new CliError(`dev-agent: unknown contract command "${rest[0] ?? ''}" — see --help.`);
         }
+      case 'repo':
+        if (rest[0] === 'index') return repoIndex(rest.slice(1), io);
+        if (rest[0] === 'similar') return repoSimilar(rest.slice(1), io);
+        throw new CliError(`dev-agent: unknown repo command "${rest[0] ?? ''}" — see --help.`);
+      case 'diff':
+        if (rest[0] === 'review') return diffReview(rest.slice(1), io);
+        throw new CliError(`dev-agent: unknown diff command "${rest[0] ?? ''}" — see --help.`);
       default:
         throw new CliError(`dev-agent: unknown command "${command}" — see --help.`);
     }

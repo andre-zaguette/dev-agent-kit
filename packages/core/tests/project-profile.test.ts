@@ -208,3 +208,152 @@ test('message and cache clients are detected from libraries, not only from Compo
     }
   }
 });
+
+const j = (v: unknown) => JSON.stringify(v);
+
+test('Laravel: composer manifest, phpunit, pint and the database from .env.example', () => {
+  const p = project({
+    'composer.json': j({ require: { 'laravel/framework': '^11' }, 'require-dev': { 'phpunit/phpunit': '^11', 'laravel/pint': '^1' } }),
+    '.env.example': 'APP_NAME=x\nDB_CONNECTION=mysql\n'
+  });
+  try {
+    const profile = detectProjectProfile(p.dir);
+    assert.deepEqual(profile.languages, ['php']);
+    assert.deepEqual(profile.frameworks, ['laravel']);
+    assert.equal(profile.packageManager, 'composer');
+    assert.deepEqual(profile.testCommands, ['vendor/bin/phpunit']);
+    assert.deepEqual(profile.lintCommands, ['vendor/bin/pint --test']);
+    assert.equal(profile.database, 'mysql');
+    assert.equal(profile.migrationTool, 'laravel');
+  } finally {
+    p.cleanup();
+  }
+  const scripted = project({ 'composer.json': j({ require: { 'laravel/framework': '^11' }, scripts: { test: 'phpunit', lint: 'pint', analyse: 'phpstan' } }) });
+  try {
+    const profile = detectProjectProfile(scripted.dir);
+    assert.deepEqual([profile.testCommands, profile.lintCommands, profile.typecheckCommands], [['composer test'], ['composer lint'], ['composer analyse']]);
+  } finally {
+    scripted.cleanup();
+  }
+});
+
+test('PHP: Symfony is detected without a migration tool; a plain library has no framework; other databases and clients', () => {
+  const sym = project({ 'composer.json': j({ require: { 'symfony/framework-bundle': '^7' } }) });
+  const lib = project({ 'composer.json': j({ require: { 'monolog/monolog': '^3' } }) });
+  const infra = project({ 'composer.json': j({ require: { 'laravel/framework': '^11', 'php-amqplib/php-amqplib': '^3', 'predis/predis': '^2' } }), '.env': 'DB_CONNECTION=pgsql\n' });
+  const sqlsrv = project({ 'composer.json': j({ require: { 'laravel/framework': '^11' } }), '.env.example': 'DB_CONNECTION=sqlsrv\n' });
+  try {
+    const s = detectProjectProfile(sym.dir);
+    assert.deepEqual([s.frameworks, s.migrationTool], [['symfony'], undefined]);
+    assert.deepEqual([detectProjectProfile(lib.dir).languages, detectProjectProfile(lib.dir).frameworks], [['php'], []]);
+    const i = detectProjectProfile(infra.dir);
+    assert.deepEqual([i.database, i.queues, i.cache], ['postgresql', ['rabbitmq'], 'redis']);
+    assert.equal(detectProjectProfile(sqlsrv.dir).database, 'sqlserver');
+  } finally {
+    [sym, lib, infra, sqlsrv].forEach((x) => x.cleanup());
+  }
+});
+
+test('C#: ASP.NET Core from the web SDK, EF Core, database packages, queue and cache; console apps and a lone solution', () => {
+  const web = project({
+    'Api/Api.csproj': '<Project Sdk="Microsoft.NET.Sdk.Web"><ItemGroup><PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8"/><PackageReference Include="Microsoft.EntityFrameworkCore" Version="8"/><PackageReference Include="RabbitMQ.Client" Version="6"/><PackageReference Include="StackExchange.Redis" Version="2"/></ItemGroup></Project>'
+  });
+  const console = project({ 'Tool/Tool.csproj': '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType></PropertyGroup></Project>' });
+  const sln = project({ 'App.sln': 'Microsoft Visual Studio Solution File' });
+  const sqlserver = project({ 'Api.csproj': '<Project Sdk="Microsoft.NET.Sdk.Web"><PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8"/></Project>' });
+  const mysql = project({ 'Api.csproj': '<Project Sdk="Microsoft.NET.Sdk.Web"><PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8"/></Project>' });
+  try {
+    const w = detectProjectProfile(web.dir);
+    assert.deepEqual([w.languages, w.frameworks, w.packageManager], [['csharp'], ['aspnetcore'], 'dotnet']);
+    assert.deepEqual([w.testCommands, w.typecheckCommands], [['dotnet test'], ['dotnet build']]);
+    assert.deepEqual([w.database, w.migrationTool, w.queues, w.cache], ['postgresql', 'efcore', ['rabbitmq'], 'redis']);
+    const c = detectProjectProfile(console.dir);
+    assert.deepEqual([c.languages, c.frameworks], [['csharp'], []]);
+    assert.deepEqual(detectProjectProfile(sln.dir).languages, ['csharp']);
+    assert.equal(detectProjectProfile(sqlserver.dir).database, 'sqlserver');
+    assert.equal(detectProjectProfile(mysql.dir).database, 'mysql');
+  } finally {
+    [web, console, sln, sqlserver, mysql].forEach((x) => x.cleanup());
+  }
+});
+
+test('Java: Spring Boot with Maven or Gradle, database, migration tool, queue and cache; a Gradle project without Spring', () => {
+  const maven = project({
+    'pom.xml': '<project><dependencies><dependency><artifactId>spring-boot-starter-web</artifactId></dependency><dependency><groupId>org.postgresql</groupId></dependency><dependency><artifactId>flyway-core</artifactId></dependency><dependency><artifactId>spring-boot-starter-amqp</artifactId></dependency><dependency><artifactId>spring-boot-starter-data-redis</artifactId></dependency></dependencies></project>'
+  });
+  const gradle = project({ 'build.gradle.kts': 'plugins { id("org.springframework.boot") } dependencies { implementation("org.springframework.boot:spring-boot-starter-web"); runtimeOnly("com.mysql:mysql-connector-j") }', gradlew: '#!/bin/sh' });
+  const gradleNoWrapper = project({ 'build.gradle': 'dependencies { implementation "org.springframework.boot:spring-boot-starter-web"; runtimeOnly "com.microsoft.sqlserver:mssql-jdbc" }' });
+  const plain = project({ 'build.gradle': 'plugins { id "java-library" }' });
+  const liquibase = project({ 'pom.xml': '<project><artifactId>spring-boot-starter</artifactId><artifactId>liquibase-core</artifactId></project>' });
+  try {
+    const m = detectProjectProfile(maven.dir);
+    assert.deepEqual([m.languages, m.frameworks, m.packageManager, m.testCommands], [['java'], ['spring'], 'maven', ['mvn test']]);
+    assert.deepEqual([m.database, m.migrationTool, m.queues, m.cache], ['postgresql', 'flyway', ['rabbitmq'], 'redis']);
+    const g = detectProjectProfile(gradle.dir);
+    assert.deepEqual([g.packageManager, g.testCommands, g.frameworks, g.database], ['gradle', ['./gradlew test'], ['spring'], 'mysql']);
+    const n = detectProjectProfile(gradleNoWrapper.dir);
+    assert.deepEqual([n.testCommands, n.database], [['gradle test'], 'sqlserver']);
+    assert.deepEqual([detectProjectProfile(plain.dir).languages, detectProjectProfile(plain.dir).frameworks], [['java'], []]);
+    assert.equal(detectProjectProfile(liquibase.dir).migrationTool, 'liquibase');
+  } finally {
+    [maven, gradle, gradleNoWrapper, plain, liquibase].forEach((x) => x.cleanup());
+  }
+});
+
+test('Ruby: Rails, RSpec, RuboCop, PostgreSQL, Redis and RabbitMQ from the Gemfile; a Gemfile without Rails', () => {
+  const rails = project({ Gemfile: "source 'https://rubygems.org'\ngem 'rails', '~> 7.1'\ngem \"pg\"\ngem 'rspec-rails'\ngem 'rubocop'\ngem 'sidekiq'\ngem 'bunny'\n" });
+  const minitest = project({ Gemfile: "gem 'rails'\ngem 'mysql2'\n" });
+  const plain = project({ Gemfile: "source 'https://rubygems.org'\ngem 'rake'\n" });
+  try {
+    const r = detectProjectProfile(rails.dir);
+    assert.deepEqual([r.languages, r.frameworks, r.packageManager], [['ruby'], ['rails'], 'bundler']);
+    assert.deepEqual([r.testCommands, r.lintCommands, r.database, r.migrationTool, r.cache, r.queues], [['bundle exec rspec'], ['bundle exec rubocop'], 'postgresql', 'rails', 'redis', ['rabbitmq']]);
+    const m = detectProjectProfile(minitest.dir);
+    assert.deepEqual([m.testCommands, m.database], [['bin/rails test'], 'mysql']);
+    const p = detectProjectProfile(plain.dir);
+    assert.deepEqual([p.languages, p.frameworks, p.testCommands], [['ruby'], [], []]);
+  } finally {
+    [rails, minitest, plain].forEach((x) => x.cleanup());
+  }
+});
+
+test('Flask is detected from requirements, but flask-cors alone is not Flask', () => {
+  const flask = project({ 'requirements.txt': 'flask==3.0\n' });
+  const cors = project({ 'requirements.txt': 'flask-cors\n' });
+  try {
+    assert.deepEqual(detectProjectProfile(flask.dir).frameworks, ['flask']);
+    assert.deepEqual(detectProjectProfile(cors.dir).frameworks, []);
+  } finally {
+    flask.cleanup();
+    cors.cleanup();
+  }
+});
+
+test('several ecosystems in one repository keep every signal, in a stable order', () => {
+  const p = project({
+    'package.json': j({ dependencies: { express: '^4' } }),
+    'pyproject.toml': '[project]\ndependencies = ["fastapi"]\n',
+    'pom.xml': '<project><artifactId>spring-boot-starter-web</artifactId></project>'
+  });
+  try {
+    const a = detectProjectProfile(p.dir);
+    assert.deepEqual(a.frameworks, ['express', 'fastapi', 'spring']);
+    assert.deepEqual(a.languages, ['javascript', 'python', 'java']);
+    assert.deepEqual(detectProjectProfile(p.dir), a);
+  } finally {
+    p.cleanup();
+  }
+});
+
+test('hostile or huge manifests are read within bounds', () => {
+  const started = performance.now();
+  const files: Record<string, string> = { 'pom.xml': '<x/>\n'.repeat(1_000_000) + 'spring-boot' };
+  for (let i = 0; i < 200; i++) files[`svc${i}/README.md`] = 'x';
+  const p = project(files);
+  try {
+    detectProjectProfile(p.dir);
+    assert.ok(performance.now() - started < 1500, `took ${Math.round(performance.now() - started)}ms`);
+  } finally {
+    p.cleanup();
+  }
+});

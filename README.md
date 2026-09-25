@@ -105,6 +105,10 @@ npm run smoke:package         # installs the tarball into a temp prefix (needs n
 
 Skills stay under 60 lines and name no framework, host or tracker; detail lives in lazily loaded `references/`.
 
+## License
+
+MIT. See `LICENSE`.
+
 ## Version history
 
 - **v1.0.0** — installable package `dev-agent-kit`, compatibility policy, adapter, generic-MCP and migration guides. See `docs/release-notes/v1.0.0.md`.

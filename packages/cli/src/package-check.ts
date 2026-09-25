@@ -3,6 +3,7 @@ import path from 'node:path';
 
 /** Files a working installed copy needs. */
 export const REQUIRED_PACKED = [
+  'LICENSE',
   'bin/dev-agent.mjs',
   'bin/frontend-agent.mjs',
   'integrations/claude/CLAUDE.md',

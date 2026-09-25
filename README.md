@@ -1,222 +1,117 @@
 # Dev Agent Kit
 
-> This repository is the evolution of `andre-zaguette/frontend-agent-kit` (history restarted at v0.5). The kit is growing from a frontend-only agent into a provider-neutral engineering agent; see `docs/superpowers/specs/2026-09-24-dev-agent-kit-evolution.md`. The `frontend-agent` CLI, the seven frontend skills and the MCP tool names are unchanged until v1.0.
+Dev Agent Kit is a provider-neutral engineering agent kit for **Claude Code** and **Codex**. It gives an agent portable skills (frontend, backend, fullstack and shared engineering), a deterministic `dev-agent` CLI that inspects and verifies but never runs a model, and its own MCP server for visual validation. A work item from your tracker goes in; a resumable ledger, a safe Git branch, a verified change and a reviewed diff come out.
 
-Portable Figma-to-code agent kit for Claude Code and Codex: skills, stack references and (from v0.2 onward) an own MCP server for visual validation.
+> This repository is the evolution of `andre-zaguette/frontend-agent-kit` (history restarted at v0.5). The design is in `docs/superpowers/specs/2026-09-24-dev-agent-kit-evolution.md`.
 
-## What's in v0.1
+## Install
 
-- 7 canonical skills under `skills/`, covering the full Figma-to-code workflow, component reuse, responsive design, motion, accessibility and visual validation (v0.6 adds 7 shared engineering skills, v0.7 the `task-orchestrator` skill, v0.8 the ten backend skills and v0.9 the `fullstack-contract` skill, for 26 in total).
-- 8 pre-populated stack references (`skills/figma-to-code/references/`): React, Next.js, Vue 3, Nuxt, Angular, Tailwind CSS, PHP/Laravel, plain HTML/CSS/JS. New stacks are bootstrapped automatically the first time a task needs them (see `skills/component-selection/SKILL.md`).
-- Manual installation into Claude Code and Codex (a CLI installer was added in v0.4 — see below).
-- Documented setup for Figma's official MCP server (design context, screenshots, variables, assets).
-
-The kit's own MCP server ships five tools: `capture_screenshot` and `inspect_dom` (v0.2), plus `compare_screenshots`, `run_responsive_suite` and `run_accessibility_audit` with per-project validation profiles (v0.3). The `frontend-agent` CLI (v0.4) installs all of it into a project. See `docs/superpowers/specs/2026-09-23-frontend-agent-kit-design.md` for the full roadmap.
-
-## Install into a target project (CLI, v0.4)
-
-From the kit checkout, once:
+Requires Node.js 20 or newer.
 
 ```bash
-npm install
-npx --workspace=packages/mcp-server playwright install chromium
-npm link --workspace=packages/cli   # optional: puts `frontend-agent` on your PATH
+# from the tarball attached to the GitHub release
+npm install -g dev-agent-kit-1.0.0.tgz
+
+# or from a checkout
+git clone https://github.com/andre-zaguette/dev-agent-kit.git
+cd dev-agent-kit && npm install && npm link
 ```
+
+The visual-validation tools drive a browser. Install one once: `npx playwright install chromium`.
 
 Then, for each project:
 
 ```bash
-frontend-agent install --project /path/to/project          # every detected host
-frontend-agent install claude --project /path/to/project   # or: codex, --all
-frontend-agent verify --project /path/to/project
+dev-agent install --project /path/to/project          # every detected host (Claude Code, Codex)
+dev-agent verify --project /path/to/project
 ```
 
-(Without `npm link`: `node /path/to/frontend-agent-kit/packages/cli/bin/frontend-agent.mjs install …`, or `npm run frontend-agent -- install …` from the kit root — the latter resolves a relative `--project` from the shell's original working directory via `INIT_CWD`, e.g. `npm run frontend-agent -- install --project ../my-app`, not from the kit root that npm changes into.)
+`install` writes only inside the project: skills (`.claude/skills/`, `.agents/skills/`), a managed block in `CLAUDE.md`/`AGENTS.md`, and the MCP server entries (`.mcp.json`, `.codex/config.toml`). Your own content and other MCP servers are preserved; a skill you edited locally is kept and reported (`--force` overwrites it); `--no-figma` skips the Figma server. Claude Code asks you to approve project MCP servers on first start, and Codex loads `.codex/config.toml` only for trusted projects. `.mcp.json` and `.codex/config.toml` contain absolute paths to the installed kit; keep them out of version control in shared repositories. Without the CLI, see `docs/manual-install.md`.
 
-What `install` writes — only inside the target project:
+## Quick start
 
-| Host | Skills | Instructions | MCP servers |
-|---|---|---|---|
-| Claude Code | `.claude/skills/` | `CLAUDE.md` (managed block) | `.mcp.json` (`frontend-agent`, `figma`) |
-| Codex | `.agents/skills/` | `AGENTS.md` (managed block) | `.codex/config.toml` (managed block) |
+1. Declare your task source in `.dev-agent/config.yml` (no code for an MCP-backed tracker):
 
-- Re-running `install` updates the kit's skills and never touches skills it didn't install; a kit skill you edited locally is kept and reported (`--force` overwrites it).
-- Your own content in `CLAUDE.md`/`AGENTS.md`, other MCP servers, and anything outside the managed blocks is preserved. `--no-figma` skips the Figma server.
-- `verify` checks the files and starts the MCP server to confirm the five tools respond. It exits 1 on any failure.
-- `verify` also compares installed skill files with the kit: kit files newer than the installed copy fail the check (run install); local edits are reported but accepted.
-- Claude Code asks you to approve project MCP servers from `.mcp.json` on first start. Codex loads `.codex/config.toml` only for trusted projects, so trust the project when Codex asks, and `verify` tells you when it isn't trusted yet.
-- `.mcp.json` and `.codex/config.toml` contain absolute paths to your kit checkout. Keep them out of version control in shared repos.
-- Cursor and VS Code adapters are stubs for now.
+   ```yaml
+   baseBranch: main
+   taskSources:
+     company:
+       adapter: generic-mcp
+       server: company-tasks
+       default: true
+       identifiers:
+         - '^HEF-\d+$'
+       tools:
+         get: { name: get_issue, arg: key }
+       mapping:
+         key: key
+         title: summary
+         description: description
+         status: status.name
+   ```
 
-## Install into a target project (manual fallback)
+2. Check it: `dev-agent sources verify`, then `dev-agent task resolve HEF-123`.
+3. In Claude Code or Codex, ask: *"Analyze and execute HEF-123."* The `task-orchestrator` skill reads the work item through your MCP server, writes a ledger to `.dev-agent/tasks/HEF-123.md`, prepares a branch (fast-forward only, never on a dirty tree), classifies the work as frontend, backend or fullstack and hands off to the matching skills.
+4. Before the agent reports done, it can run `dev-agent diff review`; `dev-agent task status HEF-123` tells you whether the repository still matches the saved state.
 
-From your target project's root:
+## What is in the box
+
+**26 skills** under `skills/`, loaded on demand:
+
+| Domain | Skills |
+|---|---|
+| Frontend (7) | `figma-to-code`, `component-selection`, `frontend-design`, `responsive-design`, `motion-design`, `accessibility`, `visual-validation` |
+| Shared engineering (7) | `engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory` |
+| Task orchestration (1) | `task-orchestrator` |
+| Backend (10) | `backend-architecture`, `api-design`, `data-modeling`, `database-migrations`, `backend-testing`, `auth-security`, `external-integrations`, `async-jobs`, `observability`, `backend-performance` |
+| Fullstack (1) | `fullstack-contract` |
+
+Stack references load lazily: Python, Node.js, PHP, C#, Java and Ruby backends with their frameworks, databases, queues and caches (`docs/backend.md`), plus the frontend stacks.
+
+**The `dev-agent` CLI** is deterministic: no model, no network, no Git mutation beyond safe branch preparation. `inspect`, `context audit`, `sources`, `sources verify`, `task resolve|status|show`, `contract show|verify|usage`, `repo index`, `repo similar`, `diff review`, plus `install` and `verify`. Exit codes: 0 ok, 1 usage or environment error, 2 checked and not OK. See `docs/cli.md`.
+
+**The MCP server** exposes five tools: `capture_screenshot`, `inspect_dom`, `compare_screenshots`, `run_responsive_suite`, `run_accessibility_audit`. See `docs/visual-validation.md`.
+
+Guides: `docs/task-orchestrator.md`, `docs/fullstack.md`, `docs/backend.md`, `docs/patterns.md`, `docs/context-efficiency.md`.
+
+## Task sources
+
+A task source is where work items live. Most trackers with an MCP server need only a declarative mapping: [docs/generic-mcp.md](docs/generic-mcp.md). When a source needs more (pagination, unusual authentication, computed fields), write an adapter against the contract in [docs/task-source-adapters.md](docs/task-source-adapters.md). Several sources can coexist and are routed by identifier pattern or an explicit `--source`. Read is separate from write: no shipped adapter writes to a tracker.
+
+## Repository patterns and diff review
+
+`dev-agent repo index --write` drafts repository knowledge from paths only; `dev-agent repo similar <words>` lists the existing features closest to a change so new code copies their structure; `dev-agent diff review` flags edited migrations, secrets in added lines, dependency changes, missing tests and new top-level directories. See `docs/patterns.md`.
+
+## Compatibility
+
+The original `frontend-agent` CLI is kept as a permanent alias: `frontend-agent` and `frontend-agent-kit` are installed next to `dev-agent` and run the same install and verify code with the same commands and exit codes. There is no removal date; removing it later would come with its own migration plan. The seven frontend skills, the five MCP tool names and `.frontend-agent/config.yml` are unchanged. Upgrading from the frontend-only kit: [docs/migration-from-frontend-agent.md](docs/migration-from-frontend-agent.md).
+
+## Benchmarks
+
+Offline validation works today: `npm run evals:validate` checks all 36 eval scenarios without a model, and `npm test` runs every package's tests.
+
+The real Claude and Codex benchmarks are **not yet run** for v1.0.0. They are run by the project owner with `npm run bench -- --host claude` and `npm run bench -- --host codex` (they cost tokens); results land in `evals/results/<timestamp>/`. This README makes no benchmark claims until they exist. Details: `docs/evals.md`.
+
+## Contributing
 
 ```bash
-mkdir -p .claude/skills .agents/skills
-cp -r /path/to/frontend-agent-kit/skills/* .claude/skills/
-cp -r /path/to/frontend-agent-kit/skills/* .agents/skills/
-cp /path/to/frontend-agent-kit/integrations/claude/CLAUDE.md ./CLAUDE.md
-cp /path/to/frontend-agent-kit/integrations/codex/AGENTS.md ./AGENTS.md
+npm test                      # every package, offline
+npm run typecheck --workspaces --if-present
+npm run validate:skills       # frontmatter and structure of every skill
+npm run evals:validate        # the 36 scenarios, offline
+npm run verify:package        # what the npm tarball would contain
+npm run smoke:package         # installs the tarball into a temp prefix (needs network)
 ```
 
-If `CLAUDE.md`/`AGENTS.md` already exist in the target project, merge the kit's workflow instructions manually instead of overwriting.
+Skills stay under 60 lines and name no framework, host or tracker; detail lives in lazily loaded `references/`.
 
-## Configure the Figma MCP
+## Version history
 
-Claude Code, current project:
-
-```bash
-claude mcp add --transport http figma https://mcp.figma.com/mcp
-```
-
-Claude Code, all projects (user scope):
-
-```bash
-claude mcp add --scope user --transport http figma https://mcp.figma.com/mcp
-```
-
-Codex CLI:
-
-```bash
-codex mcp add figma --url https://mcp.figma.com/mcp
-```
-
-After adding, authenticate when prompted and confirm the server is connected (`/mcp` in Claude Code, `codex mcp list` in Codex).
-
-## Register the kit's own MCP server (v0.2)
-
-The CLI above does this for you per project; the manual steps below remain for custom setups.
-
-The kit ships its own MCP server (`packages/mcp-server`) with five tools: `capture_screenshot` and `inspect_dom` (v0.2), plus `compare_screenshots`, `run_responsive_suite` and `run_accessibility_audit` (v0.3). Install its dependencies once from the repo root:
-
-```bash
-npm install
-npx --workspace=packages/mcp-server playwright install chromium
-```
-
-The server resolves its **project root** — where it looks for `.frontend-agent/config.yml` and where `outputPath` for screenshots must stay inside — from the `FRONTEND_AGENT_PROJECT_ROOT` environment variable if set, otherwise from its own current working directory. Because the server is normally launched from the kit's own checkout (not from the target project), **always set `FRONTEND_AGENT_PROJECT_ROOT` explicitly to the target project's absolute path**, and use absolute paths for the launch command too — a plain `npx tsx packages/mcp-server/src/index.ts` resolved from a different cwd will not find the target project's config or be able to write into it.
-
-Register it with `--scope user` so it's available in every project, pointing `FRONTEND_AGENT_PROJECT_ROOT` at whichever project you're validating:
-
-Claude Code:
-
-```bash
-claude mcp add --scope user frontend-agent \
-  -e FRONTEND_AGENT_PROJECT_ROOT=/absolute/path/to/target-project \
-  -- /absolute/path/to/frontend-agent-kit/node_modules/.bin/tsx \
-     /absolute/path/to/frontend-agent-kit/packages/mcp-server/src/index.ts
-```
-
-Codex CLI (`~/.codex/config.toml`):
-
-```toml
-[mcp_servers.frontend-agent]
-command = "/absolute/path/to/frontend-agent-kit/node_modules/.bin/tsx"
-args = ["/absolute/path/to/frontend-agent-kit/packages/mcp-server/src/index.ts"]
-env = { FRONTEND_AGENT_PROJECT_ROOT = "/absolute/path/to/target-project" }
-```
-
-Confirm the tools appear (`/mcp` in Claude Code, `codex mcp list` in Codex).
-
-Without `FRONTEND_AGENT_PROJECT_ROOT`, the server falls back to its own process cwd as the project root, which is almost never what you want when it's registered once and reused across projects.
-
-Every tool that navigates a page only reaches `localhost`/`127.0.0.1`/`[::1]` by default. To allow another host (e.g. a staging server), add it under `.frontend-agent/config.yml` **in the target project root** (i.e. `FRONTEND_AGENT_PROJECT_ROOT`, not the kit's checkout):
-
-```yaml
-allowedHosts:
-  - staging.example.com
-```
-
-The config file is parsed as real YAML (via `yaml` + a `zod` schema), so any valid YAML shape for `allowedHosts:` works, including an inline array (`allowedHosts: [staging.example.com, preview.example.com]`). A config with the wrong shape (e.g. `allowedHosts` as a map, or a value that isn't a string) or an unknown top-level/profile key is a hard error naming the config file — never a silent fallback to defaults.
-
-### Testing the MCP server without a model
-
-```bash
-npm run mcp:inspect
-```
-
-This opens the MCP Inspector against the server so you can call any of the five tools (`capture_screenshot`, `inspect_dom`, `compare_screenshots`, `run_responsive_suite`, `run_accessibility_audit`) directly and see their raw output before wiring a model into the loop.
-
-### Validation tools and profiles (v0.3)
-
-- `compare_screenshots` — pixel-diff a baseline PNG (e.g. the Figma frame exported at 1x) against an actual PNG, and optionally measure elements on a local or allowed page against expected Figma values. Returns a verdict (pass | fail | incomplete) under the project validationProfile; pixel similarity alone never yields pass.
-- `run_responsive_suite` — load a local or allowed page at each breakpoint (project config, or the spec defaults 1440x900, 1280x800, 768x1024, 390x844), report horizontal overflow and the offending elements, and optionally save one screenshot per breakpoint under outputDir.
-- `run_accessibility_audit` — run axe-core on a local or allowed page and report violations by impact. Passes when critical-impact issues do not exceed the profile maxCriticalA11yIssues (0 in every default profile).
-
-Configure tolerances, breakpoints and allowed hosts per project:
-
-```yaml
-# .frontend-agent/config.yml (in the target project root)
-validationProfile: standard      # pixel-perfect | standard (default) | relaxed
-profiles:
-  standard:
-    pixelSimilarityTarget: 0.97  # override single fields; the rest keep spec defaults
-breakpoints:                     # replaces the default set entirely when present
-  desktop: 1440x900
-  mobile: 390x844
-allowedHosts:
-  - staging.example.com
-```
-
-- Pixel similarity alone never approves a screen — `compare_screenshots` returns `incomplete` unless `url` + `elements` are given.
-- Export the Figma baseline at 1× so its size matches the viewport.
-- `capture_screenshot` takes an optional `fullPage` (default `true`, keeping v0.2 behaviour and capturing the whole scrollable page). For a frame-for-frame comparison against a Figma export, capture the *actual* screenshot with `fullPage: false` at the Figma frame's own size, so its dimensions match the baseline exactly.
-- When `compare_screenshots` measures `elements` and no `viewport` is passed, it defaults the width to the baseline PNG's width and the height to the configured breakpoint whose width matches it (else `900`). If the baseline width looks like a 2x/3x export of a configured breakpoint, the result carries a note suggesting an export at 1x or an explicit `viewport`.
-- If the baseline and actual PNGs have the same width but different heights, `compare_screenshots` still diffs the overlapping top region (width × the smaller height) instead of refusing to compare: `dimensionsMatch` stays `false`, but `pixel.comparedRegion` reports the region size, a note explains the height mismatch, and the profile's similarity target applies to that overlap. Only a **width** mismatch is treated as a hard dimension failure.
-- A "critical" accessibility issue means axe-core impact `critical` (serious and lower are reported, not gating).
-- Every path a tool reads or writes (`baselinePath`, `actualPath`, `diffOutputPath`, `outputDir`, `outputPath`) must resolve inside the project root.
-- An invalid config file is an error, not a silent fallback.
-
-## Validate the kit's own skills
-
-```bash
-node scripts/validate-skill.mjs skills
-```
-
-Checks every `SKILL.md` has valid frontmatter (`name`, `description`) and a non-trivial body, and every `references/*.md` has the required frontmatter (`name`, `description`, `status`) and sections (`Princípio`, `Quando aplicar`, `Quando não aplicar`, `Exemplo`, `Fonte`).
-
-## Evals and benchmark (v0.5)
-
-The kit ships 18 eval scenarios (`evals/scenarios`): 7 base (simple screen, existing components, mobile, motion, large Figma file, Figma asset, deliberate visual divergence), 8 stack (React, Next.js, Vue, Nuxt, Angular, Tailwind, PHP, HTML/CSS/JS) and 3 validation profiles (pixel-perfect, standard, relaxed). Each has deterministic `expected`/`forbidden` assertions on the tools the agent called, its final answer and the files it left behind. The Figma MCP is replaced by a mock (`packages/evals/src/figma-mock`) that serves recorded design data under the same server/tool names.
-
-```bash
-npm test                      # all packages, offline, free
-npm run evals:validate        # validate the scenario catalog, free
-npm run bench -- --list
-npm run bench -- --host claude --scenario base-simple-screen        # costs tokens
-npm run bench -- --host all --category stack --model-claude opus    # Claude vs Codex
-```
-
-Each run copies the fixture into `$TMPDIR/fak-bench-*`, installs the kit into it, serves it on `127.0.0.1:<random port>` and starts the host headless with only the kit MCP and the Figma mock:
-
-- Claude Code: `claude -p … --strict-mcp-config --setting-sources project --permission-mode acceptEdits --allowedTools "Read(<ws>/**),Edit(<ws>/**),Write(<ws>/**),Glob(<ws>/**),Grep(<ws>/**),Skill,ToolSearch,mcp__frontend-agent,mcp__figma"` (no Bash; file tools are scoped to the workspace — a bare `Edit`/`Write` would let the agent write anywhere the invoking user can).
-- Codex: `codex exec --json --ignore-user-config --sandbox workspace-write --ephemeral`, MCP servers passed with `-c` (no project trust needed) and their tools auto-approved.
-
-Results land in `evals/results/<timestamp>/` (`report.md`, `summary.json`, transcripts). A timeout, a crash, a missing/unauthenticated host or a truncated transcript is `error`, never `pass`. `--keep` keeps the workspaces for inspection.
-
-## v0.6 — shared engineering core
-
-Seven provider-neutral skills (`engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory`) now ship with the frontend skills, and `packages/core` provides deterministic project inspection, repo-memory freshness and a context audit. The frontend workflow, the `frontend-agent` CLI and the MCP tool names are unchanged; the managed instructions now also ask the agent to run the project's tests, typecheck and lint when configured. See `docs/context-efficiency.md` and `docs/superpowers/specs/2026-09-24-dev-agent-kit-evolution.md`.
-
-## v0.7 — task orchestrator
-
-The `task-orchestrator` skill runs a work item from any configured task source: it resolves the source, normalizes the item into one canonical `WorkItem`, keeps a local ledger under `.dev-agent/tasks/` and `.dev-agent/state/`, prepares a safe Git branch (fast-forward only, never on a dirty tree) and hands off to the domain skills. Sources are declared in `.dev-agent/config.yml` with a field mapping, so a new MCP-backed source needs no code. `packages/core` holds the deterministic parts: source resolution, the mapping engine, the generic MCP adapter, the config parser, the ledger, Git preparation, branch naming and resume validation. The `frontend-agent` CLI, the seven frontend skills and the MCP tool names are unchanged. See `docs/task-orchestrator.md`.
-
-## v0.8 — backend domain
-
-Ten backend skills (`backend-architecture`, `api-design`, `data-modeling`, `database-migrations`, `backend-testing`, `auth-security`, `external-integrations`, `async-jobs`, `observability`, `backend-performance`) and thirteen lazy-loaded references for Python, Django, DRF, FastAPI, Node/TypeScript, NestJS, PostgreSQL, Redis, RabbitMQ, Celery, Docker, OpenAPI and security. `selectBackendReferences` in `packages/core` recommends only the references a repository's profile calls for, and nothing for projects with no backend signal. Nine backend eval scenarios with four fixtures are validated offline. The frontend workflow, the `frontend-agent` CLI and the MCP tool names are unchanged. See `docs/backend.md`.
-
-## v0.9 — fullstack orchestration and the dev-agent CLI
-
-A work item that spans a screen and an API persists one API contract (`.dev-agent/tasks/<KEY>.contract.json`) before either side is written. The `fullstack-contract` skill drives it, and three deterministic verifiers in `packages/core` check evidence against the contract: a captured HTTP exchange, an OpenAPI description, and client source. The new `dev-agent` command exposes them and the earlier modules from a terminal: `inspect`, `context audit`, `sources`, `sources verify`, `task resolve|status|show` and `contract show|verify|usage`, with `install` and `verify` kept as aliases of `frontend-agent`. Three fullstack eval scenarios (30 in total) are validated offline. The `frontend-agent` CLI, the seven frontend skills and the MCP tool names are unchanged. See `docs/fullstack.md` and `docs/cli.md`.
-
-**v0.9.1** closes review debt that affects real use: the contract grammar now describes array bodies, arrays of objects and optional nested fields; `contract usage` checks the method file by file; Git preparation supports remotes not named `origin` and refuses to run during a merge, rebase, cherry-pick, revert or bisect; backend-reference detection recognizes message and cache client libraries.
-
-## v0.10 — backend languages
-
-The backend domain now covers PHP (Laravel), C# (ASP.NET Core), Java (Spring Boot) and Ruby (Rails), and adds Flask and Express next to the existing Python and Node stacks. `detectProjectProfile` recognizes these ecosystems (frameworks, test and lint commands, databases, migration tools, queues, cache), `selectBackendReferences` picks from twenty-five references (twelve new, including MySQL and SQL Server), and six new `backend-stack-*` eval scenarios bring the catalog to 36, validated offline. A language alone is not a backend signal. See `docs/backend.md`.
-
-## v0.11 — repository index and existing patterns
-
-The kit can now reuse what a repository already does well. `dev-agent repo index` builds a bounded index from paths only (it never opens source files; only dependency manifests are read to detect the stack): layers by role, features, naming and test conventions; with `--write` it drafts the repository knowledge files stamped with the source SHA. `dev-agent repo similar <words>` lists the existing features closest to a change so the new code copies their structure, and `dev-agent diff review` flags edited migrations, secrets in added lines, dependency and lockfile changes, missing tests and new top-level directories. The `repo-memory`, `repository-investigation` and `surgical-diff` skills point to them. See `docs/patterns.md`.
+- **v1.0.0** — installable package `dev-agent-kit`, compatibility policy, adapter, generic-MCP and migration guides. See `docs/release-notes/v1.0.0.md`.
+- **v0.11** — repository index, similar-feature search and diff review.
+- **v0.10** — backend languages: PHP, C#, Java and Ruby next to Python and Node.js.
+- **v0.9** — fullstack contract and the `dev-agent` CLI (v0.9.1: review debt).
+- **v0.8** — backend domain: ten skills and lazy references.
+- **v0.7** — task orchestrator and declarative task sources.
+- **v0.6** — shared engineering core.
+- **v0.5** — evals and benchmark harness. Earlier: v0.4 CLI installer, v0.3 validation tools, v0.2 MCP server, v0.1 frontend skills.

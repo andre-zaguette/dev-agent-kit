@@ -6,7 +6,7 @@ Portable Figma-to-code agent kit for Claude Code and Codex: skills, stack refere
 
 ## What's in v0.1
 
-- 7 canonical skills under `skills/`, covering the full Figma-to-code workflow, component reuse, responsive design, motion, accessibility and visual validation (v0.6 adds 7 shared engineering skills, v0.7 the `task-orchestrator` skill v0.8 the ten backend skills and v0.9 the `fullstack-contract` skill, for 26 in total).
+- 7 canonical skills under `skills/`, covering the full Figma-to-code workflow, component reuse, responsive design, motion, accessibility and visual validation (v0.6 adds 7 shared engineering skills, v0.7 the `task-orchestrator` skill, v0.8 the ten backend skills and v0.9 the `fullstack-contract` skill, for 26 in total).
 - 8 pre-populated stack references (`skills/figma-to-code/references/`): React, Next.js, Vue 3, Nuxt, Angular, Tailwind CSS, PHP/Laravel, plain HTML/CSS/JS. New stacks are bootstrapped automatically the first time a task needs them (see `skills/component-selection/SKILL.md`).
 - Manual installation into Claude Code and Codex (a CLI installer was added in v0.4 — see below).
 - Documented setup for Figma's official MCP server (design context, screenshots, variables, assets).
@@ -212,3 +212,7 @@ Ten backend skills (`backend-architecture`, `api-design`, `data-modeling`, `data
 A work item that spans a screen and an API persists one API contract (`.dev-agent/tasks/<KEY>.contract.json`) before either side is written. The `fullstack-contract` skill drives it, and three deterministic verifiers in `packages/core` check evidence against the contract: a captured HTTP exchange, an OpenAPI description, and client source. The new `dev-agent` command exposes them and the earlier modules from a terminal: `inspect`, `context audit`, `sources`, `sources verify`, `task resolve|status|show` and `contract show|verify|usage`, with `install` and `verify` kept as aliases of `frontend-agent`. Three fullstack eval scenarios (30 in total) are validated offline. The `frontend-agent` CLI, the seven frontend skills and the MCP tool names are unchanged. See `docs/fullstack.md` and `docs/cli.md`.
 
 **v0.9.1** closes review debt that affects real use: the contract grammar now describes array bodies, arrays of objects and optional nested fields; `contract usage` checks the method file by file; Git preparation supports remotes not named `origin` and refuses to run during a merge, rebase, cherry-pick, revert or bisect; backend-reference detection recognizes message and cache client libraries.
+
+## v0.10 — backend languages
+
+The backend domain now covers PHP (Laravel), C# (ASP.NET Core), Java (Spring Boot) and Ruby (Rails), and adds Flask and Express next to the existing Python and Node stacks. `detectProjectProfile` recognizes these ecosystems (frameworks, test and lint commands, databases, migration tools, queues, cache), `selectBackendReferences` picks from twenty-five references (twelve new, including MySQL and SQL Server), and six new `backend-stack-*` eval scenarios bring the catalog to 36, validated offline. A language alone is not a backend signal. See `docs/backend.md`.

@@ -129,7 +129,7 @@ test('--help and --version print and exit 0; an unknown command exits 1', async 
   const { io, out, err, cleanup } = setup();
   try {
     assert.equal(await run(['--version'], io), 0);
-    assert.equal(out.at(-1), '0.9.1');
+    assert.equal(out.at(-1), '0.10.0');
     assert.equal(await run(['--help'], io), 0);
     assert.match(out.join('\n'), /frontend-agent install/);
     assert.equal(await run(['frobnicate'], io), 1);
@@ -145,7 +145,7 @@ test('the bin script runs the CLI through tsx from any cwd', () => {
     encoding: 'utf8'
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), '0.9.1');
+  assert.equal(result.stdout.trim(), '0.10.0');
 });
 
 test('a relative --project resolves against INIT_CWD (npm run), not the process cwd the kit runs from', () => {

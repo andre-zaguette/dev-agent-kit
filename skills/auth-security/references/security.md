@@ -30,7 +30,7 @@ allowed = {"title", "body"}
 payload = {k: v for k, v in body.items() if k in allowed}
 ```
 
-Checklist: object-level authorization on every route including bulk and nested ones; no mass assignment; parameterized queries; no shell strings from input; no unsafe deserialization of untrusted data; restrict server-side requests to user URLs (SSRF); bounded uploads with checked type and storage path; rate limits on authentication; CORS and CSRF set for the real clients; no secrets or personal data in logs. Report what you verified and what you could not.
+Checklist: object-level authorization on every route including bulk and nested ones; no mass assignment; parameterized queries; no shell strings from input; no unsafe deserialization of untrusted data; restrict server-side requests to user URLs (SSRF): prefer an allowlist of hosts, otherwise resolve the host and reject private, loopback and link-local addresses, re-check after every redirect, and set a timeout and a response size cap; bounded uploads with checked type and storage path; rate limits on authentication; CORS and CSRF set for the real clients; no secrets or personal data in logs. Report what you verified and what you could not.
 
 ## Fonte
 

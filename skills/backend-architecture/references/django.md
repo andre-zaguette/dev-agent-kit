@@ -39,7 +39,7 @@ def archive(note: Note) -> None:
         locked.save(update_fields=["archived_at"])
 ```
 
-Use `select_related`/`prefetch_related` to avoid N+1 queries, `transaction.atomic()` around multi-step writes, `select_for_update()` for contended rows, and constraints in `Meta` instead of only in forms. Create migrations with `makemigrations`, review the generated file, and never edit one that shipped.
+Use `select_related`/`prefetch_related` to avoid N+1 queries, `transaction.atomic()` around multi-step writes, `select_for_update()` for contended rows, and constraints in `Meta` instead of only in forms. On PostgreSQL create large-table indexes with `AddIndexConcurrently` (from `django.contrib.postgres.operations`) in a migration that sets `atomic = False`. Create migrations with `makemigrations`, review the generated file, and never edit one that shipped.
 
 ## Fonte
 

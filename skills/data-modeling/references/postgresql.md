@@ -29,7 +29,7 @@ EXPLAIN ANALYZE
 SELECT id, title FROM notes WHERE owner_id = 42 AND archived_at IS NULL ORDER BY id LIMIT 50;
 ```
 
-Use `timestamptz` for instants, `numeric` for money, `uuid` or `bigint` keys as the project does. `CREATE INDEX CONCURRENTLY` avoids blocking writes (it cannot run inside a transaction block, so the migration tool needs an option for it). Adding a nullable column is cheap; adding a column with a volatile default or a `NOT NULL` without a default rewrites or fails. Check the plan with `EXPLAIN` (and `EXPLAIN ANALYZE` on disposable data) before and after adding an index.
+Use `timestamptz` for instants, `numeric` for money, `uuid` or `bigint` keys as the project does. `CREATE INDEX CONCURRENTLY` avoids blocking writes (it cannot run inside a transaction block, so the migration tool needs an option for it). Adding a nullable column is cheap; adding a column with a volatile default or a `NOT NULL` without a default rewrites or fails. A failed `CREATE INDEX CONCURRENTLY` leaves an INVALID index behind: check `pg_index.indisvalid`, drop the invalid index and retry, or later queries and writes pay for an index that is never used. Check the plan with `EXPLAIN` (and `EXPLAIN ANALYZE` on disposable data) before and after adding an index.
 
 ## Fonte
 

@@ -24,14 +24,14 @@ services:
     image: postgres:16
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       retries: 10
 ```
 
-Take passwords from the environment or an ignored `.env` file. Use health checks so dependent services wait for readiness. Use the project's existing Compose service names when running smoke tests, and treat any database reached this way as disposable: production stays read-only.
+Publish database and broker ports on `127.0.0.1` only (as above) so a local container is not reachable from the network. Take passwords from the environment or an ignored `.env` file. Use health checks so dependent services wait for readiness. Use the project's existing Compose service names when running smoke tests, and treat any database reached this way as disposable: production stays read-only.
 
 ## Fonte
 

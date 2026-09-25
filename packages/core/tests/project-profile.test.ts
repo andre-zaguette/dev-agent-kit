@@ -187,3 +187,24 @@ test('redis and every queue technology are detected, not just the first', () => 
     bare.cleanup();
   }
 });
+
+test('message and cache clients are detected from libraries, not only from Compose files', () => {
+  const cases: Array<[Record<string, string>, { queues?: string[]; cache?: string }]> = [
+    [{ 'requirements.txt': 'pika==1.3\n' }, { queues: ['rabbitmq'] }],
+    [{ 'requirements.txt': 'aio-pika\n' }, { queues: ['rabbitmq'] }],
+    [{ 'package.json': JSON.stringify({ dependencies: { amqplib: '^0.10' } }) }, { queues: ['rabbitmq'] }],
+    [{ 'package.json': JSON.stringify({ dependencies: { 'amqp-connection-manager': '^4' } }) }, { queues: ['rabbitmq'] }],
+    [{ 'requirements.txt': 'django-redis\n' }, { cache: 'redis' }],
+    [{ 'requirements.txt': 'requests\n' }, {}]
+  ];
+  for (const [files, expected] of cases) {
+    const p = project(files);
+    try {
+      const profile = detectProjectProfile(p.dir);
+      assert.deepEqual(profile.queues, expected.queues, JSON.stringify(files));
+      assert.equal(profile.cache, expected.cache, JSON.stringify(files));
+    } finally {
+      p.cleanup();
+    }
+  }
+});

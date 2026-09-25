@@ -3,3 +3,5 @@ node_modules/
 *.log
 .worktrees/
 evals/results/
+__pycache__/
+*.pyc

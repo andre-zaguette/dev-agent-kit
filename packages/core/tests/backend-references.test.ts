@@ -30,7 +30,7 @@ test('a Django + DRF + PostgreSQL + Celery/RabbitMQ + Docker project gets its ow
     cache: 'redis',
     docker: true
   });
-  assert.deepEqual(refs(p), ['python', 'django', 'drf', 'openapi', 'postgresql', 'rabbitmq', 'celery', 'redis', 'docker', 'security']);
+  assert.deepEqual(refs(p), ['python', 'django', 'drf', 'postgresql', 'rabbitmq', 'celery', 'redis', 'docker', 'security']);
   const first = selectBackendReferences(p)[0];
   assert.deepEqual(first, { skill: 'backend-architecture', reference: 'python', reason: 'Python project' });
 });
@@ -50,4 +50,12 @@ test('every hint names a skill and a reason, and no reference repeats', () => {
   const hints = selectBackendReferences(profile({ languages: ['python'], frameworks: ['django', 'drf', 'fastapi'], queues: ['celery', 'rabbitmq'], queue: 'celery', docker: true }));
   for (const h of hints) assert.ok(h.skill && h.reason, JSON.stringify(h));
   assert.equal(new Set(hints.map((h) => h.reference)).size, hints.length);
+});
+
+test('DRF alone does not imply an OpenAPI description, FastAPI and Nest do, and the reason says "can generate"', () => {
+  assert.equal(refs(profile({ languages: ['python'], frameworks: ['django', 'drf'] })).includes('openapi'), false);
+  assert.ok(refs(profile({ languages: ['python'], frameworks: ['fastapi'] })).includes('openapi'));
+  assert.ok(refs(profile({ languages: ['typescript'], frameworks: ['nestjs'] })).includes('openapi'));
+  const hint = selectBackendReferences(profile({ languages: ['python'], frameworks: ['fastapi'] })).find((h) => h.reference === 'openapi')!;
+  assert.match(hint.reason, /can generate/);
 });

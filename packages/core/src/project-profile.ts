@@ -158,7 +158,7 @@ export function detectProjectProfile(root: string): ProjectProfile {
   if (migrationTool) profile.migrationTool = migrationTool;
 
   const queues = [
-    /image:\s*["']?rabbitmq/.test(compose) ? 'rabbitmq' : undefined,
+    /image:\s*["']?rabbitmq/.test(compose) || mentions(pyText, 'pika') || mentions(pyText, 'aio-pika') || 'amqplib' in deps || 'amqp-connection-manager' in deps ? 'rabbitmq' : undefined,
     mentions(pyText, 'celery') ? 'celery' : undefined,
     'bullmq' in deps ? 'bullmq' : undefined
   ].filter((q): q is string => q !== undefined);
@@ -167,7 +167,7 @@ export function detectProjectProfile(root: string): ProjectProfile {
     profile.queues = queues;
   }
 
-  const cache = /image:\s*["']?redis/.test(compose) || 'redis' in deps || 'ioredis' in deps || 'bullmq' in deps || mentions(pyText, 'redis') ? 'redis' : undefined;
+  const cache = /image:\s*["']?redis/.test(compose) || 'redis' in deps || 'ioredis' in deps || 'bullmq' in deps || mentions(pyText, 'redis') || mentions(pyText, 'django-redis') ? 'redis' : undefined;
   if (cache) profile.cache = cache;
 
   if (isGitRepo(root)) {

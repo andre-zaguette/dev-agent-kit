@@ -69,3 +69,16 @@ test('the Celery reference does not claim a check-then-act is idempotent and men
   assert.match(text, /conditional update|claim/i);
   assert.doesNotMatch(text, /idempotent: a duplicate delivery is a no-op/);
 });
+
+test('the references carry the operational details reviewers asked for', () => {
+  assert.match(refText('data-modeling', 'postgresql'), /indisvalid/);
+  assert.match(refText('data-modeling', 'postgresql'), /INVALID/);
+  const django = refText('backend-architecture', 'django');
+  assert.match(django, /AddIndexConcurrently/);
+  assert.match(django, /atomic = False/);
+  const security = refText('auth-security', 'security');
+  assert.match(security, /link-local/);
+  assert.match(security, /redirect/i);
+  assert.match(security, /allowlist/i);
+  assert.match(refText('backend-architecture', 'docker'), /127\.0\.0\.1:5432:5432/);
+});

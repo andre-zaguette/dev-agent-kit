@@ -29,7 +29,7 @@ export function selectBackendReferences(profile: ProjectProfile): ReferenceHint[
   if (has('fastapi')) add('backend-architecture', 'fastapi', 'FastAPI detected');
   if (node && (has('nestjs') || has('express'))) add('backend-architecture', 'node-typescript', 'Node backend detected');
   if (has('nestjs')) add('backend-architecture', 'nestjs', 'NestJS detected');
-  if (has('drf') || has('fastapi') || has('nestjs')) add('api-design', 'openapi', 'The framework publishes an OpenAPI description');
+  if (has('fastapi') || has('nestjs')) add('api-design', 'openapi', 'The framework can generate an OpenAPI description');
   if (profile.database === 'postgresql') add('data-modeling', 'postgresql', 'PostgreSQL detected');
   if (queues.includes('rabbitmq')) add('async-jobs', 'rabbitmq', 'RabbitMQ detected');
   if (queues.includes('celery')) add('async-jobs', 'celery', 'Celery detected');

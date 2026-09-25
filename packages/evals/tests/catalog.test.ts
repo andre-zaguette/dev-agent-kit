@@ -107,7 +107,7 @@ test('backend fixtures contain no symlinks and no installed dependencies', () =>
   for (const fixture of ['django-app', 'fastapi-app', 'nest-app', 'celery-app']) {
     const ws = createWorkspace(join(layout.fixturesDir, fixture));
     try {
-      assert.equal(existsSync(join(ws, 'node_modules')), false, fixture);
+      for (const dir of ['node_modules', '.venv', 'venv', 'site-packages', '__pycache__', 'vendor']) assert.equal(existsSync(join(ws, dir)), false, `${fixture}/${dir}`);
     } finally {
       removeWorkspace(ws);
     }

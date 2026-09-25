@@ -23,7 +23,7 @@ Usage:
   dev-agent task show <KEY> [--project <dir>]
   dev-agent contract show <KEY> [--project <dir>]
   dev-agent contract verify <KEY> [--exchange <file> ...] [--openapi <file>] [--project <dir>] [--json]
-  dev-agent contract usage <KEY> --client <dir> [--client <dir> ...] [--strict] [--project <dir>] [--json]
+  dev-agent contract usage <KEY> [--client <dir> ...] [--strict] [--project <dir>] [--json]
   dev-agent repo index [--write] [--project <dir>] [--json]
   dev-agent repo similar <words...> [--limit <n>] [--project <dir>] [--json]
   dev-agent diff review [--base <ref>] [--project <dir>] [--json]

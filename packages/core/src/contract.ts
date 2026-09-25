@@ -14,6 +14,10 @@ export interface ApiContract {
   response: ContractBody;
   errors: Record<string, string[]>;
   successStatus?: number;
+  /** Workspace that serves the route, when the project has several. */
+  producer?: string;
+  /** Workspaces that call the route. */
+  consumers?: string[];
 }
 
 const TYPE_RE = /^(?:string|uuid|email|integer|number|boolean|datetime|date|object|any)(?:\[\])?\??$/;
@@ -22,7 +26,9 @@ const CODE_RE = /^[A-Z][A-Z0-9_]{1,63}$/;
 const PATH_RE = /^\/[A-Za-z0-9._~\-/{}:@%]*$/;
 const PARAM_RE = /\{[A-Za-z_][A-Za-z0-9_]*\}/g;
 const FORBIDDEN_FIELDS = new Set(['__proto__', 'constructor', 'prototype']);
-const TOP_KEYS = new Set(['method', 'path', 'request', 'response', 'errors', 'successStatus']);
+const TOP_KEYS = new Set(['method', 'path', 'request', 'response', 'errors', 'successStatus', 'producer', 'consumers']);
+const WORKSPACE_NAME_RE = /^[a-z][a-z0-9-]{0,31}$/;
+const MAX_CONSUMERS = 10;
 const MAX_DEPTH = 4;
 const MAX_FIELDS = 100;
 const MAX_CODES = 50;
@@ -121,6 +127,18 @@ export function parseContract(input: unknown, label = 'contract'): ApiContract {
   if (raw.successStatus !== undefined) {
     if (!Number.isInteger(raw.successStatus) || (raw.successStatus as number) < 200 || (raw.successStatus as number) > 299) fail(label, 'successStatus', 'must be an integer from 200 to 299');
     contract.successStatus = raw.successStatus as number;
+  }
+  if (raw.producer !== undefined) {
+    if (typeof raw.producer !== 'string' || !WORKSPACE_NAME_RE.test(raw.producer)) fail(label, 'producer', 'must be a workspace name such as "cloud-back"');
+    contract.producer = raw.producer;
+  }
+  if (raw.consumers !== undefined) {
+    if (!Array.isArray(raw.consumers)) fail(label, 'consumers', 'must be a list of workspace names');
+    if (raw.consumers.length > MAX_CONSUMERS) fail(label, 'consumers', `may list at most ${MAX_CONSUMERS} workspaces`);
+    if (raw.consumers.some((c) => typeof c !== 'string' || !WORKSPACE_NAME_RE.test(c))) fail(label, 'consumers', 'must contain only workspace names such as "edge-back"');
+    if (new Set(raw.consumers).size !== raw.consumers.length) fail(label, 'consumers', 'lists the same workspace twice');
+    if (contract.producer !== undefined && raw.consumers.includes(contract.producer)) fail(label, 'consumers', 'must not include the producer');
+    contract.consumers = raw.consumers as string[];
   }
   return contract;
 }

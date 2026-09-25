@@ -124,10 +124,11 @@ test('contract usage exits 2 when the route is not called, and --strict also dem
   try {
     assert.equal(await runDev(['contract', 'usage', 'APP-88', '--client', 'client', '--project', other.projectRoot], other.io), 2);
     assert.match(other.text(), /used: no/);
-    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--client', 'frontend', '--project', t.projectRoot], t.io), 0);
+    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--client', 'frontend', '--project', t.projectRoot], t.io), 2);
+    assert.match(t.text(), /used: no/);
+    assert.match(t.text(), /path only: frontend\/a\.ts/);
     t.out.length = 0;
     assert.equal(await runDev(['contract', 'usage', 'APP-88', '--client', 'frontend', '--strict', '--project', t.projectRoot], t.io), 2);
-    assert.match(t.text(), /method confirmed: no/);
     assert.match(t.text(), /unhandled error codes: EMAIL_ALREADY_EXISTS, INVALID_INPUT/);
   } finally {
     t.cleanup();
@@ -136,7 +137,7 @@ test('contract usage exits 2 when the route is not called, and --strict also dem
 });
 
 test('contract usage refuses client directories outside the project and skips symlinks', async () => {
-  const t = project({ 'frontend/a.ts': "fetch('/api/users')" });
+  const t = project({ 'frontend/a.ts': "fetch('/api/users', { method: 'POST' })" });
   try {
     assert.equal(await runDev(['contract', 'usage', 'APP-88', '--client', '../elsewhere', '--project', t.projectRoot], t.io), 1);
     assert.match(t.err.join('\n'), /escapes the project root/);
@@ -158,6 +159,23 @@ test('an exchange file with no exchanges verifies nothing and is a usage error',
   try {
     assert.equal(await runDev(['contract', 'verify', 'APP-88', '--exchange', join(t.projectRoot, 'evidence/empty.json'), '--project', t.projectRoot], t.io), 1);
     assert.match(t.err.join('\n'), /holds no exchanges/);
+  } finally {
+    t.cleanup();
+  }
+});
+
+test('--client errors are clear: missing, a file, the project root as ".", and --strict with a handled method', async () => {
+  const t = project({ 'frontend/a.ts': "axios.post('/api/users', b); if (e.code === 'EMAIL_ALREADY_EXISTS') {} if (e.code === 'INVALID_INPUT') {}" });
+  try {
+    const usage = (...args: string[]) => runDev(['contract', 'usage', 'APP-88', ...args, '--project', t.projectRoot], t.io);
+    assert.equal(await usage('--client', 'nope'), 1);
+    assert.match(t.err.join('\n'), /--client "nope": not a directory inside the project/);
+    assert.equal(await usage('--client', 'frontend/a.ts'), 1);
+    assert.match(t.err.join('\n'), /--client "frontend\/a\.ts": not a directory/);
+    t.out.length = 0;
+    assert.equal(await usage('--client', '.'), 0);
+    assert.match(t.text(), /used: yes/);
+    assert.equal(await usage('--client', 'frontend', '--strict'), 0);
   } finally {
     t.cleanup();
   }

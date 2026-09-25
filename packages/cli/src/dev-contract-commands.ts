@@ -21,6 +21,7 @@ import { CliError, projectRootOf } from './dev-common.js';
 const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
 const MAX_CLIENT_FILES = 2000;
 const MAX_CLIENT_FILE_BYTES = 500 * 1024;
+const MAX_CLIENT_TOTAL_BYTES = 50 * 1024 * 1024;
 const CLIENT_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.vue', '.svelte', '.html']);
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage']);
 
@@ -123,16 +124,20 @@ export function contractVerify(args: string[], io: CliIo): number {
   return ok ? 0 : 2;
 }
 
-function collectClientFiles(root: string, dir: string, out: ClientFile[]): void {
+function collectClientFiles(root: string, dir: string, out: ClientFile[], total: { bytes: number }): void {
   for (const entry of readdirSync(path.join(root, dir), { withFileTypes: true })) {
     if (out.length >= MAX_CLIENT_FILES) return;
     if (entry.isSymbolicLink()) continue;
     const rel = `${dir}/${entry.name}`;
     if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name)) collectClientFiles(root, rel, out);
+      if (!SKIP_DIRS.has(entry.name)) collectClientFiles(root, rel, out, total);
     } else if (entry.isFile() && CLIENT_EXT.has(path.extname(entry.name))) {
       const full = path.join(root, rel);
-      if (lstatSync(full).size <= MAX_CLIENT_FILE_BYTES) out.push({ path: rel, text: readFileSync(full, 'utf8') });
+      const size = lstatSync(full).size;
+      if (size > MAX_CLIENT_FILE_BYTES) continue;
+      total.bytes += size;
+      if (total.bytes > MAX_CLIENT_TOTAL_BYTES) throw new CliError('dev-agent: the client files are larger than 50 MB in total.', 1);
+      out.push({ path: rel, text: readFileSync(full, 'utf8') });
     }
   }
 }
@@ -149,14 +154,17 @@ export function contractUsage(args: string[], io: CliIo): number {
   if (clients.length === 0) throw new CliError('dev-agent: contract usage needs at least one --client <dir> — see --help.');
 
   const files: ClientFile[] = [];
+  const total = { bytes: 0 };
   for (const client of clients) {
     let abs: string;
     try {
-      abs = resolveInside(root, client);
+      abs = client === '.' || client === './' ? root : resolveInside(root, client);
+      if (!lstatSync(abs).isDirectory()) throw new Error('not a directory');
     } catch (error) {
-      throw new CliError(`dev-agent: --client "${client}": ${(error as Error).message}.`, 1);
+      const reason = (error as Error).message;
+      throw new CliError(`dev-agent: --client "${client}": ${/escapes|symbolic|relative/.test(reason) ? reason : 'not a directory inside the project'}.`, 1);
     }
-    collectClientFiles(root, path.relative(root, abs).split(path.sep).join('/'), files);
+    collectClientFiles(root, path.relative(root, abs).split(path.sep).join('/'), files, total);
   }
   const usage = verifyClientUsage(contract, files);
   if (values.json) io.stdout(JSON.stringify({ ...usage, scannedFiles: files.length }, null, 2));
@@ -164,9 +172,10 @@ export function contractUsage(args: string[], io: CliIo): number {
     io.stdout(`used: ${usage.used ? 'yes' : 'no'}`);
     io.stdout(`method confirmed: ${usage.methodConfirmed ? 'yes' : 'no'}`);
     io.stdout(`files: ${usage.files.length > 0 ? usage.files.join(', ') : '-'}`);
+    io.stdout(`path only: ${usage.pathOnlyFiles.length > 0 ? usage.pathOnlyFiles.join(', ') : '-'}`);
     io.stdout(`unhandled error codes: ${usage.missingErrorCodes.length > 0 ? usage.missingErrorCodes.join(', ') : '-'}`);
     io.stdout('(text evidence from client source, not a proof of runtime behavior)');
   }
-  const ok = usage.used && (!values.strict || (usage.methodConfirmed && usage.missingErrorCodes.length === 0));
+  const ok = usage.used && (!values.strict || usage.missingErrorCodes.length === 0);
   return ok ? 0 : 2;
 }

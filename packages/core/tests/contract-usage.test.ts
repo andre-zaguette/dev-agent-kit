@@ -10,21 +10,41 @@ test('a client that posts to the path and handles every error code is fully conf
     { path: 'src/api/users.ts', text: "export const createUser = (b) => request('/api/users', { method: 'POST', body: JSON.stringify(b) });" },
     { path: 'src/components/Form.tsx', text: "if (e.code === 'EMAIL_ALREADY_EXISTS') setError('exists'); else if (e.code === 'INVALID_INPUT') setError('bad');" }
   ]);
-  assert.deepEqual(r, { used: true, methodConfirmed: true, files: ['src/api/users.ts'], missingErrorCodes: [] });
+  assert.deepEqual(r, { used: true, methodConfirmed: true, files: ['src/api/users.ts'], pathOnlyFiles: [], missingErrorCodes: [] });
 });
 
 test('a client that never calls the path is not used, and an unhandled error code is reported', () => {
-  assert.deepEqual(verifyClientUsage(post, [{ path: 'a.ts', text: "fetch('/api/people')" }]), { used: false, methodConfirmed: false, files: [], missingErrorCodes: ['EMAIL_ALREADY_EXISTS', 'INVALID_INPUT'] });
+  assert.deepEqual(verifyClientUsage(post, [{ path: 'a.ts', text: "fetch('/api/people')" }]), { used: false, methodConfirmed: false, files: [], pathOnlyFiles: [], missingErrorCodes: ['EMAIL_ALREADY_EXISTS', 'INVALID_INPUT'] });
   const r = verifyClientUsage(post, [{ path: 'a.ts', text: "axios.post('/api/users', body); // handles EMAIL_ALREADY_EXISTS" }]);
   assert.equal(r.used, true);
   assert.equal(r.methodConfirmed, true);
   assert.deepEqual(r.missingErrorCodes, ['INVALID_INPUT']);
 });
 
-test('the method is not confirmed when the call uses another verb', () => {
+test('a route called only with another verb is not used, and is listed as path-only', () => {
   const r = verifyClientUsage(post, [{ path: 'a.ts', text: "axios.get('/api/users')" }]);
-  assert.equal(r.used, true);
+  assert.equal(r.used, false);
   assert.equal(r.methodConfirmed, false);
+  assert.deepEqual(r.files, []);
+  assert.deepEqual(r.pathOnlyFiles, ['a.ts']);
+});
+
+test('a method: option that belongs to an earlier call never confirms the next one', () => {
+  const text = "fetch('/api/other', { method: 'POST' });\nfetch('/api/users');";
+  const r = verifyClientUsage(post, [{ path: 'a.ts', text }]);
+  assert.equal(r.used, false);
+  assert.deepEqual(r.pathOnlyFiles, ['a.ts']);
+  const both = verifyClientUsage(post, [{ path: 'a.ts', text: "fetch('/api/users');\nfetch('/api/users', { method: 'POST', body });" }]);
+  assert.equal(both.used, true);
+});
+
+test('files are judged one by one: a POST in another file does not confirm this file', () => {
+  const r = verifyClientUsage(post, [
+    { path: 'get.ts', text: "axios.get('/api/users')" },
+    { path: 'post.ts', text: "axios.post('/api/users', body)" }
+  ]);
+  assert.deepEqual(r.files, ['post.ts']);
+  assert.deepEqual(r.pathOnlyFiles, ['get.ts']);
 });
 
 test('GET calls count with fetch defaults or .get, and parameterized paths match templates and concatenation', () => {

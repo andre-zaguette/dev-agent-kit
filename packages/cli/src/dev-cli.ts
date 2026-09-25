@@ -25,7 +25,7 @@ Usage:
   dev-agent contract usage <KEY> --client <dir> [--client <dir> ...] [--strict] [--project <dir>] [--json]
   dev-agent --help | --version
 
-install and verify are aliases of the frontend-agent commands.
+install and verify are aliases of the frontend-agent commands and keep its exit codes (1 when a check fails).
 Exit codes: 0 ok, 1 usage or environment error, 2 checked and not OK.`;
 
 function inspect(args: string[], io: CliIo): number {

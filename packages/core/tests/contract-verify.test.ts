@@ -141,3 +141,9 @@ test('an array request body is verified, and the 204 shortcut does not apply to 
   assert.equal(verifyExchange(c, { method: 'POST', path: '/bulk', requestBody: [{ id: 'x' }], status: 200, responseBody: [] }).ok, false);
   assert.equal(verifyExchange(c, { method: 'POST', path: '/bulk', requestBody: [], status: 200, responseBody: undefined }).ok, false);
 });
+
+test('an undefined body is described as undefined, not "a undefined"', () => {
+  const r = verifyExchange(contract, { ...ok, responseBody: undefined });
+  assert.ok(r.violations.some((v) => /got undefined/.test(v.message)), JSON.stringify(r.violations));
+  assert.ok(!r.violations.some((v) => /a undefined/.test(v.message)));
+});

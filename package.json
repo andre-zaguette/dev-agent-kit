@@ -1,10 +1,57 @@
 {
-  "name": "frontend-agent-kit",
-  "private": true,
+  "name": "dev-agent-kit",
+  "version": "1.0.0",
+  "description": "Provider-neutral engineering agent kit for Claude Code and Codex: skills, a deterministic dev-agent CLI and an MCP server for visual validation.",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "agent-skills",
+    "mcp",
+    "figma"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andre-zaguette/dev-agent-kit.git"
+  },
   "type": "module",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "bin": {
+    "dev-agent": "bin/dev-agent.mjs",
+    "frontend-agent": "bin/frontend-agent.mjs",
+    "frontend-agent-kit": "bin/frontend-agent.mjs"
+  },
+  "files": [
+    "bin",
+    "skills",
+    "integrations",
+    "packages/cli/package.json",
+    "packages/cli/bin",
+    "packages/cli/src",
+    "packages/core/package.json",
+    "packages/core/src",
+    "packages/mcp-server/package.json",
+    "packages/mcp-server/src",
+    "docs/*.md",
+    "docs/release-notes",
+    "README.md"
+  ],
   "workspaces": [
     "packages/*"
   ],
+  "dependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.47.0",
+    "pngjs": "^7.0.0",
+    "smol-toml": "^1.9.0",
+    "tsx": "^4.19.0",
+    "yaml": "^2.9.1",
+    "zod": "^3.23.0"
+  },
   "scripts": {
     "validate:skills": "node scripts/validate-skill.mjs skills",
     "mcp:server": "npm run start --workspace=packages/mcp-server",
@@ -13,6 +60,8 @@
     "test": "npm test --workspaces --if-present",
     "bench": "node packages/evals/bin/bench.mjs",
     "evals:validate": "node packages/evals/bin/bench.mjs --validate",
-    "dev-agent": "node packages/cli/bin/dev-agent.mjs"
+    "dev-agent": "node packages/cli/bin/dev-agent.mjs",
+    "verify:package": "node scripts/verify-package.mjs",
+    "smoke:package": "node scripts/smoke-install.mjs"
   }
 }

@@ -103,7 +103,7 @@ const MAX_WINDOWS = 32;
 const LITERAL_ASSIGNMENT_RE = /\b(?:password|passwd|secret|token|api[_-]?key)\w*\s*[:=]\s*['"][^'"\s]{8,}['"]/i;
 
 /** Label of a secret in one line. Long lines are scanned in bounded windows; plain credential-named code is not a secret. */
-function findLineSecret(line: string): string | null {
+export function findLineSecret(line: string): string | null {
   for (let i = 0, n = 0; i < line.length && n < MAX_WINDOWS; i += SCAN_WINDOW, n++) {
     const label = findSecret(line.slice(i, i + SCAN_WINDOW));
     if (label === null) continue;

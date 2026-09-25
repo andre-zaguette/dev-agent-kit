@@ -129,7 +129,7 @@ test('--help and --version print and exit 0; an unknown command exits 1', async 
   const { io, out, err, cleanup } = setup();
   try {
     assert.equal(await run(['--version'], io), 0);
-    assert.equal(out.at(-1), '0.11.0');
+    assert.equal(out.at(-1), '1.0.0');
     assert.equal(await run(['--help'], io), 0);
     assert.match(out.join('\n'), /frontend-agent install/);
     assert.equal(await run(['frobnicate'], io), 1);
@@ -145,7 +145,7 @@ test('the bin script runs the CLI through tsx from any cwd', () => {
     encoding: 'utf8'
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), '0.11.0');
+  assert.equal(result.stdout.trim(), '1.0.0');
 });
 
 test('a relative --project resolves against INIT_CWD (npm run), not the process cwd the kit runs from', () => {
@@ -193,4 +193,14 @@ test('preflight fails closed on a corrupt skills manifest of a later host', asyn
   } finally {
     cleanup();
   }
+});
+
+test('every bin name in the root package prints the same version and reports the same help', () => {
+  const rootBin = join(packageRoot, '..', '..', 'bin');
+  const run1 = (name: string, arg: string) => spawnSync(process.execPath, [join(rootBin, name), arg], { cwd: tmpdir(), encoding: 'utf8' });
+  const version = run1('dev-agent.mjs', '--version');
+  assert.equal(version.status, 0, version.stderr);
+  assert.equal(run1('frontend-agent.mjs', '--version').stdout, version.stdout);
+  assert.match(run1('frontend-agent.mjs', '--help').stdout, /frontend-agent install/);
+  assert.match(run1('dev-agent.mjs', '--help').stdout, /dev-agent install/);
 });

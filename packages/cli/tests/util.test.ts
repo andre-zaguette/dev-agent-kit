@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, existsSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { findKitRoot, readKitVersion, which, sha256File, listFilesRecursive, assertRealDirInsideRoot } from '../src/util.ts';
+import { effectiveCwd, findKitRoot, readKitVersion, which, sha256File, listFilesRecursive, assertRealDirInsideRoot } from '../src/util.ts';
 
 test('findKitRoot walks up to the directory holding the kit package.json and skills/', () => {
   const root = findKitRoot();
@@ -12,7 +12,7 @@ test('findKitRoot walks up to the directory holding the kit package.json and ski
 });
 
 test('readKitVersion returns the cli package version', () => {
-  assert.equal(readKitVersion(), '0.11.0');
+  assert.equal(readKitVersion(), '1.0.0');
 });
 
 test('which finds an executable on PATH and ignores non-executable files', () => {
@@ -74,6 +74,41 @@ test('assertRealDirInsideRoot rejects a dir that is, or sits under, a symlink to
     }
     assert.throws(() => assertRealDirInsideRoot(linked, root), /resolves outside the project root/);
     assert.throws(() => assertRealDirInsideRoot(join(linked, 'nested', 'missing'), root), /resolves outside the project root/);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('findKitRoot accepts the published name and the historical one, and ignores other packages', () => {
+  const base = mkdtempSync(join(tmpdir(), 'dak-kitroot-'));
+  try {
+    for (const [dir, name] of [['published', 'dev-agent-kit'], ['historical', 'frontend-agent-kit'], ['other', 'something-else']]) {
+      mkdirSync(join(base, dir, 'skills'), { recursive: true });
+      mkdirSync(join(base, dir, 'packages', 'cli', 'src'), { recursive: true });
+      writeFileSync(join(base, dir, 'package.json'), JSON.stringify({ name }));
+    }
+    assert.equal(findKitRoot(join(base, 'published', 'packages', 'cli', 'src')), join(base, 'published'));
+    assert.equal(findKitRoot(join(base, 'historical', 'packages', 'cli', 'src')), join(base, 'historical'));
+    assert.throws(() => findKitRoot(join(base, 'other', 'packages', 'cli', 'src')), /could not find the kit/);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('INIT_CWD is trusted only when npm ran the command from the kit checkout itself', () => {
+  const base = mkdtempSync(join(tmpdir(), 'dak-cwd-'));
+  try {
+    const kit = join(base, 'kit');
+    const other = join(base, 'monorepo', 'packages', 'app');
+    mkdirSync(kit, { recursive: true });
+    mkdirSync(other, { recursive: true });
+    assert.equal(effectiveCwd({ INIT_CWD: '/somewhere/else' }, kit, kit), '/somewhere/else');
+    assert.equal(effectiveCwd({ INIT_CWD: join(base, 'monorepo') }, other, kit), other);
+    assert.equal(effectiveCwd({}, other, kit), other);
+    mkdirSync(join(kit, 'packages', 'cli'), { recursive: true });
+    assert.equal(effectiveCwd({ INIT_CWD: '/y' }, join(kit, 'packages', 'cli'), kit), '/y');
+    symlinkSync(kit, join(base, 'kit-link'));
+    assert.equal(effectiveCwd({ INIT_CWD: '/x' }, join(base, 'kit-link'), kit), '/x');
   } finally {
     rmSync(base, { recursive: true, force: true });
   }

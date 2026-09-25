@@ -6,7 +6,7 @@ import type { CheckResult } from './types.js';
 import type { ServerLaunch } from './mcp-launch.js';
 import { MANIFEST_FILE, readManifest, listSourceSkills } from './sync-skills.js';
 import { inspectMarkdownBlock } from './managed-block.js';
-import { sha256File, listFilesRecursive } from './util.js';
+import { sha256File, listFilesRecursive, readKitVersion } from './util.js';
 
 export const EXPECTED_TOOLS = [
   'capture_screenshot',
@@ -126,7 +126,7 @@ export async function probeServer(launch: ServerLaunch, timeoutMs = 20000): Prom
     env: { ...getDefaultEnvironment(), ...launch.env },
     stderr: 'pipe'
   });
-  const client = new Client({ name: 'frontend-agent-verify', version: '0.4.0' });
+  const client = new Client({ name: 'frontend-agent-verify', version: readKitVersion() });
   let timer: NodeJS.Timeout | undefined;
   let stderrTail = '';
 

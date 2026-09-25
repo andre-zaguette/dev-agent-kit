@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class NoteTest extends TestCase
 {
-    public function test_placeholder_keeps_the_suite_shape(): void
+    public function test_listing_notes_requires_authentication(): void
     {
-        $this->assertTrue(true);
+        $this->getJson('/api/notes')->assertUnauthorized();
     }
 }

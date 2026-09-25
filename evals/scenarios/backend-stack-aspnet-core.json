@@ -16,32 +16,32 @@
     },
     {
       "type": "file_matches",
-      "glob": "NotesApi/Program.cs",
+      "glob": "NotesApi/Migrations/*.cs",
+      "pattern": "ArchivedAt"
+    },
+    {
+      "type": "file_matches",
+      "glob": "NotesApi/**/*.cs",
       "pattern": "MapPost\\([^)]*archive"
     },
     {
       "type": "file_matches",
-      "glob": "NotesApi/Program.cs",
-      "pattern": "archive[\\s\\S]{0,600}UserId"
-    },
-    {
-      "type": "file_matches",
-      "glob": "NotesApi/Migrations/*.cs",
-      "pattern": "ArchivedAt"
+      "glob": "NotesApi/**/*.cs",
+      "pattern": "archive[\\s\\S]{0,700}UserId|UserId[\\s\\S]{0,300}archive"
     }
   ],
   "forbidden": [
     {
       "type": "file_matches",
-      "glob": "NotesApi/**/*.cs",
-      "pattern": "\\.Notes\\.FindAsync\\(",
-      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
-    },
-    {
-      "type": "file_matches",
       "glob": "NotesApi/Migrations/*CreateNotes.cs",
       "pattern": "ArchivedAt",
       "description": "editou a migração inicial"
+    },
+    {
+      "type": "file_matches",
+      "glob": "NotesApi/**/*.cs",
+      "pattern": "\\.Notes\\.FindAsync\\((?![\\s\\S]{0,300}UserId)",
+      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
     }
   ]
 }

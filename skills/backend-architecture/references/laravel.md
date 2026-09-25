@@ -19,16 +19,15 @@ Symfony or plain PHP projects. Do not add packages (Pest, Sanctum, Horizon) the 
 ## Exemplo
 
 ```php
-final class ArchiveNoteController
+final class ArchiveNoteController extends Controller
 {
-    public function __invoke(ArchiveNoteRequest $request, Note $note): NoteResource
+    public function __invoke(Request $request, int $id): NoteResource
     {
-        $this->authorize('archive', $note); // policy: $user->id === $note->user_id
+        // scoped to the caller: someone else's id is a 404
+        $note = $request->user()->notes()->findOrFail($id);
 
-        DB::transaction(function () use ($note) {
-            $note->archived_at ??= now(); // idempotent: a second call keeps the first timestamp
-            $note->save();
-        });
+        $note->archived_at ??= now(); // idempotent: a second call keeps the first timestamp
+        $note->save();
 
         return new NoteResource($note);
     }
@@ -41,7 +40,9 @@ Schema::table('notes', function (Blueprint $table) {
 });
 ```
 
-Eager load with `with()` to avoid N+1 queries; list writable attributes in `$fillable`; use route model binding scoped to the user (`->scopeBindings()`) so someone else's id is a 404. Create migrations with `php artisan make:migration` and never edit one that shipped. Queue work with `ShouldQueue` jobs that are idempotent and set `$tries` and `backoff`. Read `env()` only inside `config/` files. Test with `RefreshDatabase` and `actingAs`.
+Scope by the caller with `$request->user()->notes()->findOrFail($id)` (or `Note::whereBelongsTo($request->user())`). When you use policies, call `Gate::authorize('archive', $note)` (or `$this->authorize()` on a controller that uses the `AuthorizesRequests` trait, which Laravel 11's base controller no longer includes); a denied policy answers 403 unless it returns `Response::denyAsNotFound()`. `scopeBindings()` only scopes a child route binding to its parent in the URI (`/users/{user}/posts/{post}`), it does not tie a route to the authenticated user. Wrap multi-step writes in `DB::transaction` and use `lockForUpdate()` when concurrent requests must not both act.
+
+Eager load with `with()` to avoid N+1 queries and list writable attributes in `$fillable`. Create migrations with `php artisan make:migration` and never edit one that shipped. Queue work with `ShouldQueue` jobs that are idempotent and set `$tries` and `backoff`. Read `env()` only inside `config/` files. Test with `RefreshDatabase` and `actingAs`.
 
 ## Fonte
 

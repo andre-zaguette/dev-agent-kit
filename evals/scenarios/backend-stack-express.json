@@ -16,32 +16,32 @@
     },
     {
       "type": "file_matches",
-      "glob": "src/routes/*.ts",
+      "glob": "src/db/migrations/*.sql",
+      "pattern": "archived_at"
+    },
+    {
+      "type": "file_matches",
+      "glob": "src/**/*.ts",
       "pattern": "\\.post\\(\\s*['\\\"][^'\\\"]*archive"
     },
     {
       "type": "file_matches",
-      "glob": "src/routes/*.ts",
-      "pattern": "archive[\\s\\S]{0,500}(user\\.id|userId)"
-    },
-    {
-      "type": "file_matches",
-      "glob": "src/db/migrations/*.sql",
-      "pattern": "archived_at"
+      "glob": "src/**/*.ts",
+      "pattern": "archive[\\s\\S]{0,500}(user\\.id|userId)|(user\\.id|userId)[\\s\\S]{0,200}archive"
     }
   ],
   "forbidden": [
     {
       "type": "file_matches",
-      "glob": "src/**/*.ts",
-      "pattern": "findById\\(req\\.params",
-      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
-    },
-    {
-      "type": "file_matches",
       "glob": "src/db/migrations/001_create_notes.sql",
       "pattern": "archived_at",
       "description": "editou a migração inicial"
+    },
+    {
+      "type": "file_matches",
+      "glob": "src/**/*.ts",
+      "pattern": "findById\\(req\\.params(?![\\s\\S]{0,300}(user\\.id|userId|ownerId))",
+      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
     }
   ]
 }

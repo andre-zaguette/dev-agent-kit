@@ -31,7 +31,7 @@ SET STATISTICS IO ON;
 SELECT TOP (50) Id, Title FROM dbo.Notes WHERE UserId = @UserId AND ArchivedAt IS NULL ORDER BY Id;
 ```
 
-Use `datetime2` instead of `datetime` and `decimal` for money. Read the actual execution plan and `SET STATISTICS IO` before and after adding an index; an included column can avoid a lookup. `ONLINE = ON` needs Enterprise or Azure SQL editions; check before relying on it. `READ_COMMITTED_SNAPSHOT` reduces reader/writer blocking but is a database-wide setting. Return generated keys with `OUTPUT INSERTED.Id` or `SCOPE_IDENTITY()`, never `@@IDENTITY`. Apply schema changes through the project's migration tool and never edit an applied migration.
+Use `datetime2` instead of `datetime` and `decimal` for money. Read the actual execution plan and `SET STATISTICS IO` before and after adding an index; an included column can avoid a lookup. `ONLINE = ON` needs an edition that supports it (Enterprise, Developer, Evaluation or Azure SQL); on Standard it fails with an error, so check the production edition before relying on it. A filtered index needs the right session options (`SET QUOTED_IDENTIFIER ON`, `ANSI_NULLS ON`) on every connection that writes to the table. `READ_COMMITTED_SNAPSHOT` reduces reader/writer blocking but is a database-wide setting. Return generated keys with `OUTPUT INSERTED.Id` (use `OUTPUT ... INTO` when the table has triggers) or `SCOPE_IDENTITY()`, never `@@IDENTITY`. Apply schema changes through the project's migration tool and never edit an applied migration.
 
 ## Fonte
 

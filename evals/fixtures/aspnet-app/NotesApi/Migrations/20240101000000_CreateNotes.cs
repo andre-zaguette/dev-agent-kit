@@ -1,7 +1,11 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using NotesApi.Data;
 
 namespace NotesApi.Migrations;
 
+[DbContext(typeof(AppDbContext))]
+[Migration("20240101000000_CreateNotes")]
 public partial class CreateNotes : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

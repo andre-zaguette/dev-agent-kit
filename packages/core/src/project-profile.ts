@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { detectBaseBranch, isGitRepo } from './git.js';
 
@@ -58,10 +58,21 @@ const COMPOSE_FILES = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml
 
 const MAX_READ_CHARS = 1_000_000;
 
+/** Text of a regular file, at most MAX_READ_CHARS of it; null for anything else (missing, a directory, a FIFO, unreadable). */
 function read(root: string, rel: string): string | null {
   try {
-    const text = readFileSync(path.join(root, rel), 'utf8');
-    return text.length > MAX_READ_CHARS ? text.slice(0, MAX_READ_CHARS) : text;
+    const full = path.join(root, rel);
+    const stat = statSync(full);
+    if (!stat.isFile()) return null;
+    if (stat.size <= MAX_READ_CHARS) return readFileSync(full, 'utf8');
+    const fd = openSync(full, 'r');
+    try {
+      const buffer = Buffer.alloc(MAX_READ_CHARS);
+      const bytes = readSync(fd, buffer, 0, MAX_READ_CHARS, 0);
+      return buffer.toString('utf8', 0, bytes);
+    } finally {
+      closeSync(fd);
+    }
   } catch {
     return null;
   }
@@ -124,25 +135,35 @@ interface Extra {
   cache?: string;
 }
 
-const gem = (text: string, name: string): boolean => new RegExp(`^\\s*gem\\s+['"]${name}['"]`, 'm').test(text);
+// Horizontal whitespace only: `\\s` would let the scan run across every blank line (quadratic on a hostile file).
+const gem = (text: string, name: string): boolean => new RegExp(`^[ \\t]*gem[ \\t]*\\(?[ \\t]*['"]${name}['"]`, 'm').test(text);
 const SKIP_SCAN = new Set(['node_modules', '.git', 'bin', 'obj', 'target', 'build', 'dist', 'vendor']);
-const MAX_SCAN_ENTRIES = 50;
+const MAX_SCAN_DEPTH = 2;
+const MAX_SCAN_DIRS = 200;
+const MAX_SUBDIRS_PER_DIR = 50;
 
-/** *.sln / *.csproj in the root and one level below (bounded; skips build and dependency directories). */
+/** *.sln / *.csproj in the root and up to two levels below (src/Api/Api.csproj), bounded in directories visited; skips build and dependency directories. */
 function dotnetProjectFiles(root: string): string[] {
   const found: string[] = [];
+  let visited = 0;
   const collect = (dir: string, depth: number): void => {
+    if (visited++ >= MAX_SCAN_DIRS) return;
     let entries;
     try {
       entries = readdirSync(path.join(root, dir), { withFileTypes: true });
     } catch {
       return;
     }
-    for (const entry of entries.slice(0, MAX_SCAN_ENTRIES)) {
+    const subdirs: string[] = [];
+    for (const entry of entries) {
       const rel = dir === '' ? entry.name : `${dir}/${entry.name}`;
-      if (entry.isFile() && (entry.name.endsWith('.sln') || entry.name.endsWith('.csproj'))) found.push(rel);
-      else if (depth === 0 && entry.isDirectory() && !entry.name.startsWith('.') && !SKIP_SCAN.has(entry.name)) collect(rel, 1);
+      if (entry.isFile()) {
+        if (entry.name.endsWith('.sln') || entry.name.endsWith('.csproj')) found.push(rel);
+      } else if (entry.isDirectory() && depth < MAX_SCAN_DEPTH && !entry.name.startsWith('.') && !SKIP_SCAN.has(entry.name)) {
+        subdirs.push(rel);
+      }
     }
+    for (const sub of subdirs.slice(0, MAX_SUBDIRS_PER_DIR)) collect(sub, depth + 1);
   };
   collect('', 0);
   return found;
@@ -155,14 +176,16 @@ function detectExtra(root: string): Extra {
   // PHP
   const composerText = read(root, 'composer.json');
   if (composerText !== null) {
-    let composer: { require?: Record<string, string>; 'require-dev'?: Record<string, string>; scripts?: Record<string, unknown> } = {};
+    let composer: { require?: unknown; 'require-dev'?: unknown; scripts?: unknown } = {};
     try {
       const value: unknown = JSON.parse(composerText);
       if (value && typeof value === 'object' && !Array.isArray(value)) composer = value as typeof composer;
     } catch {
       // an unreadable manifest still means a PHP project
     }
-    const deps: Record<string, string> = { ...composer.require, ...composer['require-dev'] };
+    const plain = (value: unknown): Record<string, unknown> => (value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {});
+    const deps: Record<string, unknown> = { ...plain(composer.require), ...plain(composer['require-dev']) };
+    const scripts = plain(composer.scripts);
     extra.languages.push('php');
     extra.packageManager = 'composer';
     if ('laravel/framework' in deps) {
@@ -170,18 +193,21 @@ function detectExtra(root: string): Extra {
       extra.migrationTool = 'laravel';
     }
     if ('symfony/framework-bundle' in deps || 'symfony/symfony' in deps) extra.frameworks.push('symfony');
-    const script = (name: string): boolean => composer.scripts !== undefined && Object.hasOwn(composer.scripts, name);
+    const script = (name: string): boolean => Object.hasOwn(scripts, name);
     if (script('test')) extra.test.push('composer test');
     else if ('phpunit/phpunit' in deps) extra.test.push('vendor/bin/phpunit');
     if (script('lint')) extra.lint.push('composer lint');
     else if ('laravel/pint' in deps) extra.lint.push('vendor/bin/pint --test');
     if (script('analyse')) extra.typecheck.push('composer analyse');
     else if ('phpstan/phpstan' in deps) extra.typecheck.push('vendor/bin/phpstan analyse');
-    const env = read(root, '.env.example') ?? read(root, '.env') ?? '';
-    const conn = env.match(/^DB_CONNECTION=(\w+)/m)?.[1];
-    if (conn === 'pgsql') extra.database = 'postgresql';
-    else if (conn === 'mysql' || conn === 'mariadb') extra.database = 'mysql';
-    else if (conn === 'sqlsrv') extra.database = 'sqlserver';
+    for (const file of ['.env.example', '.env']) {
+      const conn = read(root, file)?.match(/^[ \t]*DB_CONNECTION[ \t]*=[ \t]*["']?(\w+)/m)?.[1];
+      const mapped = conn === 'pgsql' ? 'postgresql' : conn === 'mysql' || conn === 'mariadb' ? 'mysql' : conn === 'sqlsrv' ? 'sqlserver' : undefined;
+      if (mapped) {
+        extra.database = mapped;
+        break;
+      }
+    }
     if ('php-amqplib/php-amqplib' in deps) queue('rabbitmq');
     if ('predis/predis' in deps || 'ext-redis' in deps) extra.cache = 'redis';
   }
@@ -204,7 +230,7 @@ function detectExtra(root: string): Extra {
     else if (text.includes('Microsoft.EntityFrameworkCore.SqlServer') || text.includes('System.Data.SqlClient') || text.includes('Microsoft.Data.SqlClient')) extra.database = 'sqlserver';
     if (text.includes('Microsoft.EntityFrameworkCore')) extra.migrationTool = 'efcore';
     if (text.includes('RabbitMQ.Client')) queue('rabbitmq');
-    if (text.includes('StackExchange.Redis')) extra.cache = 'redis';
+    if (text.includes('StackExchange.Redis') || text.includes('StackExchangeRedis')) extra.cache = 'redis';
   }
 
   // Java
@@ -220,7 +246,7 @@ function detectExtra(root: string): Extra {
       extra.packageManager ??= 'gradle';
       extra.test.push(has(root, 'gradlew') ? './gradlew test' : 'gradle test');
     }
-    if (text.includes('spring-boot')) extra.frameworks.push('spring');
+    if (text.includes('spring-boot') || text.includes('spring.boot')) extra.frameworks.push('spring');
     if (text.includes('postgresql')) extra.database = 'postgresql';
     else if (text.includes('mysql-connector') || text.includes('mariadb-java-client')) extra.database = 'mysql';
     else if (text.includes('mssql-jdbc')) extra.database = 'sqlserver';
@@ -243,7 +269,7 @@ function detectExtra(root: string): Extra {
     else if (extra.frameworks.includes('rails')) extra.test.push('bin/rails test');
     if (gem(gemfile, 'rubocop')) extra.lint.push('bundle exec rubocop');
     if (gem(gemfile, 'pg')) extra.database = 'postgresql';
-    else if (gem(gemfile, 'mysql2')) extra.database = 'mysql';
+    else if (gem(gemfile, 'mysql2') || gem(gemfile, 'trilogy')) extra.database = 'mysql';
     if (gem(gemfile, 'bunny')) queue('rabbitmq');
     if (gem(gemfile, 'redis') || gem(gemfile, 'sidekiq')) extra.cache = 'redis';
   }

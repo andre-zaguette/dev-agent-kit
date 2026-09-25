@@ -82,3 +82,21 @@ test('the references carry the operational details reviewers asked for', () => {
   assert.match(security, /allowlist/i);
   assert.match(refText('backend-architecture', 'docker'), /127\.0\.0\.1:5432:5432/);
 });
+
+test('the framework references teach current, correct practice on the points reviewers flagged', () => {
+  const laravel = refText('backend-architecture', 'laravel');
+  assert.doesNotMatch(laravel, /scopeBindings\(\)\s*`?\)?\s*so someone else/i);
+  assert.match(laravel, /findOrFail/);
+  assert.match(laravel, /denyAsNotFound|403/);
+  assert.match(laravel, /lockForUpdate/);
+  const rails = refText('backend-architecture', 'rails');
+  assert.match(rails, /separate migration|its own migration/i);
+  assert.match(rails, /PostgreSQL/);
+  const spring = refText('backend-architecture', 'spring-boot');
+  assert.match(spring, /MethodArgumentNotValidException/);
+  assert.match(spring, /EnableMethodSecurity/);
+  assert.match(refText('data-modeling', 'mysql'), /INSTANT/);
+  assert.match(refText('data-modeling', 'mysql'), /metadata lock/i);
+  assert.match(refText('data-modeling', 'sqlserver'), /Enterprise|edition/i);
+  assert.match(refText('data-modeling', 'sqlserver'), /QUOTED_IDENTIFIER/);
+});

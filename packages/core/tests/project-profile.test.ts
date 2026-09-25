@@ -357,3 +357,69 @@ test('hostile or huge manifests are read within bounds', () => {
     p.cleanup();
   }
 });
+
+test('a Gemfile made of blank lines is scanned in linear time, and both gem call styles are recognized', () => {
+  const started = performance.now();
+  const hostile = project({ Gemfile: '\n'.repeat(120_000) + "gem 'rails'\n" });
+  const paren = project({ Gemfile: "gem('rails')\ngem(\"pg\")\n" });
+  try {
+    detectProjectProfile(hostile.dir);
+    assert.ok(performance.now() - started < 500, `took ${Math.round(performance.now() - started)}ms`);
+    const p = detectProjectProfile(paren.dir);
+    assert.deepEqual([p.frameworks, p.database], [['rails'], 'postgresql']);
+  } finally {
+    hostile.cleanup();
+    paren.cleanup();
+  }
+});
+
+test('odd composer.json shapes never throw', () => {
+  for (const composer of [{ scripts: null }, { scripts: ['test'] }, { require: null }, { require: [] , 'require-dev': 5 }, []]) {
+    const p = project({ 'composer.json': JSON.stringify(composer) });
+    try {
+      assert.deepEqual(detectProjectProfile(p.dir).languages, ['php'], JSON.stringify(composer));
+    } finally {
+      p.cleanup();
+    }
+  }
+  const broken = project({ 'composer.json': '{ not json' });
+  try {
+    assert.deepEqual(detectProjectProfile(broken.dir).languages, ['php']);
+  } finally {
+    broken.cleanup();
+  }
+});
+
+test('C# projects are found in the usual src/ layout and a busy root cannot hide them', () => {
+  const layout = project({ 'Foo.sln': 'sln', 'src/Api/Api.csproj': '<Project Sdk="Microsoft.NET.Sdk.Web"></Project>', 'src/Core/Core.csproj': '<Project Sdk="Microsoft.NET.Sdk"></Project>' });
+  const files: Record<string, string> = { 'web/web.csproj': '<Project Sdk="Microsoft.NET.Sdk.Web"></Project>' };
+  for (let i = 0; i < 80; i++) files[`doc${String(i).padStart(2, '0')}.md`] = 'x';
+  const busy = project(files);
+  const skipped = project({ 'node_modules/x/x.csproj': '<Project Sdk="Microsoft.NET.Sdk.Web"></Project>', 'bin/y/y.csproj': '<Project Sdk="Microsoft.NET.Sdk.Web"></Project>' });
+  try {
+    assert.deepEqual(detectProjectProfile(layout.dir).frameworks, ['aspnetcore']);
+    assert.deepEqual(detectProjectProfile(busy.dir).frameworks, ['aspnetcore']);
+    assert.deepEqual(detectProjectProfile(skipped.dir).languages, []);
+  } finally {
+    layout.cleanup();
+    busy.cleanup();
+    skipped.cleanup();
+  }
+});
+
+test('database and client detection: .env fallbacks, quoted values, StackExchangeRedis, Gradle catalogs and trilogy', () => {
+  const fallback = project({ 'composer.json': JSON.stringify({ require: { 'laravel/framework': '^11' } }), '.env.example': 'APP_NAME=x\n', '.env': 'DB_CONNECTION="pgsql"\n' });
+  const sqlite = project({ 'composer.json': JSON.stringify({ require: { 'laravel/framework': '^11' } }), '.env.example': 'DB_CONNECTION=sqlite\n' });
+  const redis = project({ 'Api.csproj': '<Project Sdk="Microsoft.NET.Sdk.Web"><PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8"/></Project>' });
+  const catalog = project({ 'build.gradle.kts': 'plugins { alias(libs.plugins.spring.boot) } dependencies { implementation(libs.spring.boot.starter.web) }' });
+  const trilogy = project({ Gemfile: "gem 'rails'\ngem 'trilogy'\n" });
+  try {
+    assert.equal(detectProjectProfile(fallback.dir).database, 'postgresql');
+    assert.equal(detectProjectProfile(sqlite.dir).database, undefined);
+    assert.equal(detectProjectProfile(redis.dir).cache, 'redis');
+    assert.deepEqual(detectProjectProfile(catalog.dir).frameworks, ['spring']);
+    assert.equal(detectProjectProfile(trilogy.dir).database, 'mysql');
+  } finally {
+    [fallback, sqlite, redis, catalog, trilogy].forEach((x) => x.cleanup());
+  }
+});

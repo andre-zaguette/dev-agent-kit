@@ -33,7 +33,7 @@ var notes = await db.Notes.AsNoTracking().Include(n => n.Tags).Where(n => n.User
 // dotnet ef migrations add AddNoteArchivedAt   (never edit a migration that shipped)
 ```
 
-Scope every query by the current user, use `AsNoTracking()` for reads, `Include` or projections to avoid N+1, transactions for multi-step writes, and `ProblemDetails` (`AddProblemDetails`) so errors share one shape. Add health checks and structured logging. Test with `WebApplicationFactory<Program>` against a throwaway database.
+`user.GetUserId()` above is a small extension you write over `ClaimTypes.NameIdentifier`. Scope every query by the current user, use `AsNoTracking()` for reads, `Include` or projections to avoid N+1, transactions for multi-step writes, and `ProblemDetails` (`AddProblemDetails`) so errors share one shape. Add health checks and structured logging. Test with `WebApplicationFactory<Program>` against a throwaway database.
 
 ## Fonte
 

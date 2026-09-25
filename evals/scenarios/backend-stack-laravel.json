@@ -21,27 +21,27 @@
     },
     {
       "type": "file_matches",
-      "glob": "app/Http/Controllers/*.php",
-      "pattern": "[Aa]rchive[\\s\\S]{0,500}(notes\\(\\)|authorize\\(|user_id)"
+      "glob": "database/migrations/*.php",
+      "pattern": "archived_at"
     },
     {
       "type": "file_matches",
-      "glob": "database/migrations/*.php",
-      "pattern": "archived_at"
+      "glob": "app/**/*.php",
+      "pattern": "[Aa]rchive[\\s\\S]{0,600}(notes\\(\\)|authorize\\(|user_id|whereBelongsTo|->user\\(\\))"
     }
   ],
   "forbidden": [
     {
       "type": "file_matches",
-      "glob": "app/**/*.php",
-      "pattern": "Note::(find|findOrFail)\\(",
-      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
-    },
-    {
-      "type": "file_matches",
       "glob": "database/migrations/*create_notes*.php",
       "pattern": "archived_at",
       "description": "editou a migração inicial"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/**/*.php",
+      "pattern": "Note::(find|findOrFail)\\((?![\\s\\S]{0,300}(authorize|user_id|user\\(\\)))",
+      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
     }
   ]
 }

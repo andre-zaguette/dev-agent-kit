@@ -25,23 +25,26 @@ class NotesController < ApplicationController
     note.update!(archived_at: Time.current) if note.archived_at.nil?
     render json: NoteSerializer.new(note)
   end
-
-  private
-
-  def note_params = params.require(:note).permit(:title, :body)
 end
 
+# db/migrate/20240201000000_add_archived_at_to_notes.rb (schema change, transactional)
 class AddArchivedAtToNotes < ActiveRecord::Migration[7.1]
+  def change
+    add_column :notes, :archived_at, :datetime
+  end
+end
+
+# db/migrate/20240201000100_add_index_on_notes_user_archived.rb (its own migration)
+class AddIndexOnNotesUserArchived < ActiveRecord::Migration[7.1]
   disable_ddl_transaction!
 
   def change
-    add_column :notes, :archived_at, :datetime
     add_index :notes, %i[user_id archived_at], algorithm: :concurrently
   end
 end
 ```
 
-Use `includes` to avoid N+1, scopes for reusable queries, `transaction` for multi-step writes, and `find_by!`/`find` on scoped relations. Generate migrations with `bin/rails g migration`, never edit one that shipped, and use `algorithm: :concurrently` with `disable_ddl_transaction!` for large-table indexes on PostgreSQL. Make jobs idempotent and set retries. Keep secrets in credentials. Test with request specs.
+Use `includes` to avoid N+1, scopes for reusable queries, `transaction` for multi-step writes, and `find_by!`/`find` on scoped relations. Generate migrations with `bin/rails g migration` and never edit one that shipped. On PostgreSQL, build a large-table index with `algorithm: :concurrently` and `disable_ddl_transaction!` in **its own migration**, separate from the column change: if the index build fails the schema change stays applied and re-runnable, instead of leaving a half-applied migration and an INVALID index. `algorithm: :concurrently` is PostgreSQL-only; on MySQL rely on online DDL or a tool such as `gh-ost`. Make jobs idempotent and set retries. Keep secrets in credentials. Test with request specs.
 
 ## Fonte
 

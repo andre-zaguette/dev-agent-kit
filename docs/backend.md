@@ -7,7 +7,7 @@ Backend work items get the same orchestrated workflow as frontend ones, with ten
 - Ten skills: `backend-architecture` (workflow and Definition of Done), `api-design`, `data-modeling`, `database-migrations`, `backend-testing`, `auth-security`, `external-integrations`, `async-jobs`, `observability`, `backend-performance`. Each `SKILL.md` stays under 60 lines and names no framework, database or queue.
 - Twenty-five lazy-loaded references (v0.10 added twelve for more stacks), each owned by one skill; the original thirteen are: under `backend-architecture` (`python`, `django`, `fastapi`, `node-typescript`, `nestjs`, `docker`), `api-design` (`drf`, `openapi`), `data-modeling` (`postgresql`), `async-jobs` (`rabbitmq`, `celery`, `redis`) and `auth-security` (`security`). Reference names are unique across the whole kit.
 - `selectBackendReferences(profile)` in `packages/core`: given the project profile, it returns which references apply. A repository with no backend signal (for example a React app) gets an empty list, so nothing is forced on a project that does not use it.
-- Nine backend eval scenarios (Django, DRF, PostgreSQL migration, FastAPI, root-cause bug fix, external integration, NestJS, Celery, RabbitMQ) with four small fixtures. Scenarios need no Figma and are answerable from the files alone; validate them with `npm run evals:validate`.
+- Fifteen backend eval scenarios (nine feature scenarios and six per-stack scenarios) with ten small fixtures. Scenarios need no Figma and are answerable from the files alone; validate them offline with `npm run evals:validate`.
 
 ## How a backend work item flows
 

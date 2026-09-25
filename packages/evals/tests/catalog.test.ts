@@ -309,3 +309,46 @@ test('backend stack scenarios: a scoped archive endpoint in each stack passes, t
     assert.equal(gradeWith(id, unscoped, 'ok').verdict, 'fail', `${id}: an unscoped lookup must fail`);
   }
 });
+
+test('backend stack scenarios accept correct alternative idioms', () => {
+  const alt: Array<{ id: string; files: Record<string, string> }> = [
+    {
+      id: 'backend-stack-flask',
+      files: {
+        'app/notes.py': '@bp.route("/<int:note_id>/archive", methods=["POST"])\ndef archive(note_id):\n    note = Note.query.get_or_404(note_id)\n    if note.owner_id != current_user_id():\n        abort(404)\n',
+        'migrations/versions/0002_note_archived_at.py': "op.add_column('notes', sa.Column('archived_at', sa.DateTime()))\n"
+      }
+    },
+    {
+      id: 'backend-stack-spring-boot',
+      files: {
+        'src/main/java/com/example/notes/NoteController.java': '@PostMapping("/{id}/archive")\nResponseEntity<Void> archive(@PathVariable UUID id, @AuthenticationPrincipal UserPrincipal user) {\n  var note = notes.findById(id).filter(n -> n.getOwnerId().equals(user.id())).orElseThrow(NotFound::new);\n  users.findById(user.id());\n}\n',
+        'src/main/resources/db/migration/V2__note_archived_at.sql': 'ALTER TABLE note ADD COLUMN archived_at TIMESTAMP;\n'
+      }
+    },
+    {
+      id: 'backend-stack-rails',
+      files: {
+        'config/routes.rb': 'resources :notes do\n  resource :archive, only: :create, module: :notes\nend\n',
+        'app/controllers/notes/archives_controller.rb': 'class Notes::ArchivesController < ApplicationController\n  before_action :set_note\n  def create\n    @note.update!(archived_at: Time.current)\n  end\n\n  private\n\n  def set_note = @note = current_user.notes.find(params[:note_id])\nend\n',
+        'db/migrate/20240201000000_add_archived_at_to_notes.rb': 'add_column :notes, :archived_at, :datetime\n'
+      }
+    },
+    {
+      id: 'backend-stack-aspnet-core',
+      files: {
+        'NotesApi/Endpoints/NoteEndpoints.cs': 'app.MapPost("/notes/{id:guid}/archive", async (Guid id, ClaimsPrincipal user, AppDbContext db) =>\n{\n    var note = await db.Notes.FindAsync(id);\n    if (note is null || note.UserId != user.GetUserId()) return Results.NotFound();\n});\n',
+        'NotesApi/Migrations/20240201000000_AddArchivedAt.cs': 'migrationBuilder.AddColumn<DateTime>(name: "ArchivedAt", table: "Notes", nullable: true);\n'
+      }
+    },
+    {
+      id: 'backend-stack-laravel',
+      files: {
+        'routes/api.php': "Route::post('/notes/{note}/archive', ArchiveNoteController::class);\n",
+        'app/Http/Controllers/Notes/ArchiveNoteController.php': 'final class ArchiveNoteController\n{\n    public function __invoke(Request $request, int $id)\n    {\n        $note = Note::whereBelongsTo($request->user())->findOrFail($id);\n    }\n}\n',
+        'database/migrations/2024_02_01_000000_add_archived_at_to_notes.php': "$table->timestamp('archived_at')->nullable();\n"
+      }
+    }
+  ];
+  for (const { id, files } of alt) assert.equal(gradeWith(id, files, 'ok').verdict, 'pass', `${id}: a correct alternative idiom must pass`);
+});

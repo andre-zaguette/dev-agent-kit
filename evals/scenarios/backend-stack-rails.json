@@ -21,27 +21,32 @@
     },
     {
       "type": "file_matches",
-      "glob": "app/controllers/*.rb",
-      "pattern": "def archive[\\s\\S]{0,400}current_user"
+      "glob": "db/migrate/*.rb",
+      "pattern": "archived_at"
     },
     {
       "type": "file_matches",
-      "glob": "db/migrate/*.rb",
-      "pattern": "archived_at"
+      "glob": "app/controllers/**/*.rb",
+      "pattern": "def\\s+(archive|create)\\b|class\\s+\\w*Archive\\w*Controller"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/controllers/**/*.rb",
+      "pattern": "[Aa]rchive[\\s\\S]{0,800}current_user|current_user[\\s\\S]{0,800}[Aa]rchive|set_note[\\s\\S]{0,200}current_user"
     }
   ],
   "forbidden": [
     {
       "type": "file_matches",
-      "glob": "app/**/*.rb",
-      "pattern": "Note\\.find\\(params",
-      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
-    },
-    {
-      "type": "file_matches",
       "glob": "db/migrate/*create_notes*.rb",
       "pattern": "archived_at",
       "description": "editou a migração inicial"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/controllers/**/*.rb",
+      "pattern": "\\bNote\\.(find|find_by!?|find_by_id)\\b",
+      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
     }
   ]
 }

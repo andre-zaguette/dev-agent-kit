@@ -52,7 +52,7 @@ class ApiErrors {
 }
 ```
 
-Avoid N+1 with `@EntityGraph` or `join fetch`, and project to DTOs for reads. Manage schema with Flyway or Liquibase and never edit an applied migration. Bind settings with `@ConfigurationProperties` and take secrets from the environment. Test slices with `@WebMvcTest` and `@DataJpaTest`.
+Handle `MethodArgumentNotValidException` (raised by `@Valid @RequestBody` failures) as well as `ConstraintViolationException` in the advice. Enable method security with `@EnableMethodSecurity`, otherwise `@PreAuthorize` does nothing. Avoid N+1 with `@EntityGraph` or `join fetch`, and project to DTOs for reads. Manage schema with Flyway or Liquibase and never edit an applied migration. Bind settings with `@ConfigurationProperties` and take secrets from the environment. Test slices with `@WebMvcTest` and `@DataJpaTest`.
 
 ## Fonte
 

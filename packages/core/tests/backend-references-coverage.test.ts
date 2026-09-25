@@ -9,14 +9,14 @@ import type { ProjectProfile } from '../src/project-profile.ts';
 const kitRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const skillsDir = join(kitRoot, 'skills');
 const BACKEND = ['backend-architecture', 'api-design', 'data-modeling', 'database-migrations', 'backend-testing', 'auth-security', 'external-integrations', 'async-jobs', 'observability', 'backend-performance'];
-const EXPECTED = ['python', 'django', 'drf', 'fastapi', 'node-typescript', 'nestjs', 'postgresql', 'redis', 'rabbitmq', 'celery', 'docker', 'openapi', 'security'];
+const EXPECTED = ['python', 'django', 'drf', 'fastapi', 'node-typescript', 'nestjs', 'postgresql', 'redis', 'rabbitmq', 'celery', 'docker', 'openapi', 'security', 'flask', 'express', 'php-backend', 'laravel', 'csharp', 'aspnet-core', 'java', 'spring-boot', 'ruby', 'rails', 'mysql', 'sqlserver'];
 
 const referencesOf = (skill: string): string[] => {
   const dir = join(skillsDir, skill, 'references');
   return existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => f.replace(/\.md$/, '')) : [];
 };
 
-test('the thirteen backend references exist under the skills that own them', () => {
+test('the twenty-five backend references exist under the skills that own them', () => {
   const found = BACKEND.flatMap((skill) => referencesOf(skill));
   assert.deepEqual([...found].sort(), [...EXPECTED].sort());
 });
@@ -36,8 +36,8 @@ test('every reference frontmatter name matches its file name and is marked basel
 });
 
 const everything: ProjectProfile = {
-  languages: ['python', 'typescript'],
-  frameworks: ['django', 'drf', 'fastapi', 'nestjs', 'express'],
+  languages: ['python', 'typescript', 'php', 'csharp', 'java', 'ruby'],
+  frameworks: ['django', 'drf', 'fastapi', 'flask', 'nestjs', 'express', 'laravel', 'symfony', 'aspnetcore', 'spring', 'rails'],
   database: 'postgresql',
   queue: 'rabbitmq',
   queues: ['rabbitmq', 'celery', 'bullmq'],
@@ -49,9 +49,9 @@ const everything: ProjectProfile = {
 };
 
 test('every hint the selector can produce points at a real file, and every reference is reachable', () => {
-  const hints = selectBackendReferences(everything);
+  const hints = [...selectBackendReferences(everything), ...selectBackendReferences({ ...everything, database: 'mysql' }), ...selectBackendReferences({ ...everything, database: 'sqlserver' })];
   for (const hint of hints) assert.ok(existsSync(join(skillsDir, hint.skill, 'references', `${hint.reference}.md`)), `${hint.skill}/${hint.reference}`);
-  assert.deepEqual(hints.map((h) => h.reference).sort(), [...EXPECTED].sort());
+  assert.deepEqual([...new Set(hints.map((h) => h.reference))].sort(), [...EXPECTED].sort());
 });
 
 const refText = (skill: string, name: string) => readFileSync(join(skillsDir, skill, 'references', `${name}.md`), 'utf8');

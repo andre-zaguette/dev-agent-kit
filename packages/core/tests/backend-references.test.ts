@@ -38,7 +38,7 @@ test('a Django + DRF + PostgreSQL + Celery/RabbitMQ + Docker project gets its ow
 test('FastAPI and Nest projects get only what they use', () => {
   assert.deepEqual(refs(profile({ languages: ['python'], frameworks: ['fastapi'] })), ['python', 'fastapi', 'openapi', 'security']);
   assert.deepEqual(refs(profile({ languages: ['typescript'], frameworks: ['nestjs'], database: 'postgresql' })), ['node-typescript', 'nestjs', 'openapi', 'postgresql', 'security']);
-  assert.deepEqual(refs(profile({ languages: ['javascript'], frameworks: ['express'] })), ['node-typescript', 'security']);
+  assert.deepEqual(refs(profile({ languages: ['javascript'], frameworks: ['express'] })), ['node-typescript', 'express', 'security']);
 });
 
 test('a queue alone is a backend signal, and a single legacy `queue` value still works', () => {
@@ -58,4 +58,17 @@ test('DRF alone does not imply an OpenAPI description, FastAPI and Nest do, and 
   assert.ok(refs(profile({ languages: ['typescript'], frameworks: ['nestjs'] })).includes('openapi'));
   const hint = selectBackendReferences(profile({ languages: ['python'], frameworks: ['fastapi'] })).find((h) => h.reference === 'openapi')!;
   assert.match(hint.reason, /can generate/);
+});
+
+test('the new stacks get their language and framework references, and a language alone gets nothing', () => {
+  assert.deepEqual(refs(profile({ languages: ['php'], frameworks: ['laravel'], database: 'mysql', docker: true })), ['php-backend', 'laravel', 'mysql', 'docker', 'security']);
+  assert.deepEqual(refs(profile({ languages: ['csharp'], frameworks: ['aspnetcore'], database: 'sqlserver', queue: 'rabbitmq', queues: ['rabbitmq'] })), ['csharp', 'aspnet-core', 'openapi', 'sqlserver', 'rabbitmq', 'security']);
+  assert.deepEqual(refs(profile({ languages: ['java'], frameworks: ['spring'], database: 'postgresql', cache: 'redis' })), ['java', 'spring-boot', 'postgresql', 'redis', 'security']);
+  assert.deepEqual(refs(profile({ languages: ['ruby'], frameworks: ['rails'], database: 'postgresql', cache: 'redis' })), ['ruby', 'rails', 'postgresql', 'redis', 'security']);
+  assert.deepEqual(refs(profile({ languages: ['python'], frameworks: ['flask'] })), ['python', 'flask', 'security']);
+  assert.deepEqual(refs(profile({ languages: ['php'], frameworks: ['symfony'] })), ['php-backend', 'security']);
+  for (const language of ['php', 'csharp', 'java', 'ruby']) assert.deepEqual(refs(profile({ languages: [language], database: 'postgresql', docker: true })), [], language);
+  const all = selectBackendReferences(profile({ languages: ['python', 'javascript', 'php', 'csharp', 'java', 'ruby'], frameworks: ['django', 'drf', 'fastapi', 'flask', 'nestjs', 'express', 'laravel', 'symfony', 'aspnetcore', 'spring', 'rails'], database: 'mysql', docker: true }));
+  assert.equal(new Set(all.map((h) => h.reference)).size, all.length);
+  for (const h of all) assert.ok(h.skill && h.reason, JSON.stringify(h));
 });

@@ -17,7 +17,7 @@ const SHARED = [
 ];
 // Shared skills must not assume a framework, a host, a design tool or a task-source product (spec §6.1, §27).
 const FORBIDDEN =
-  /\b(react|vue|nuxt|next\.js|angular|django|drf|fastapi|nestjs|express|laravel|tailwind|figma|jira|linear|trello|asana|clickup|azure devops|claude code|codex)\b/i;
+  /\b(react|vue|nuxt|next\.js|angular|django|drf|fastapi|nestjs|express|laravel|tailwind|figma|jira|linear|trello|asana|clickup|azure devops|claude code|codex|spring|rails|symfony|dotnet|aspnet|asp\.net|hibernate|eloquent|activerecord|entityframework|sidekiq|doctrine|sqlserver|mssql)\b/i;
 const MAX_LINES = 60;
 
 for (const name of SHARED) {

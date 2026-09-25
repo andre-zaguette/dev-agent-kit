@@ -8,7 +8,7 @@ const kitRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const skill = readFileSync(join(kitRoot, 'skills', 'fullstack-contract', 'SKILL.md'), 'utf8');
 // Neutral: no framework, ORM, queue, database, test runner, design tool or task-source product (spec §16, §27).
 const FORBIDDEN =
-  /\b(react|vue|nuxt|next\.js|angular|django|drf|fastapi|nestjs|express|flask|laravel|tailwind|figma|jira|linear|trello|asana|clickup|azure devops|claude code|codex|celery|rabbitmq|redis|postgres|postgresql|mysql|sqlalchemy|alembic|prisma|typeorm|pytest|jest|vitest)\b/i;
+  /\b(react|vue|nuxt|next\.js|angular|django|drf|fastapi|nestjs|express|flask|laravel|tailwind|figma|jira|linear|trello|asana|clickup|azure devops|claude code|codex|celery|rabbitmq|redis|postgres|postgresql|mysql|sqlalchemy|alembic|prisma|typeorm|pytest|jest|vitest|spring|rails|symfony|dotnet|aspnet|asp\.net|hibernate|eloquent|activerecord|entityframework|sidekiq|doctrine|sqlserver|mssql)\b/i;
 
 test('the skill has exact frontmatter, is neutral and compact', () => {
   const front = skill.match(/^---\nname: fullstack-contract\ndescription: (.+)\n---\n/);

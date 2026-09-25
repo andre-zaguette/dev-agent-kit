@@ -19,7 +19,7 @@ export const BACKEND_SKILLS = [
 ];
 // Backend skills must not name a framework, ORM, queue, database, test runner, design tool or task-source product (spec §16, §27).
 const FORBIDDEN =
-  /\b(react|vue|nuxt|next\.js|angular|django|drf|fastapi|nestjs|express|flask|laravel|tailwind|figma|jira|linear|trello|asana|clickup|azure devops|claude code|codex|celery|rabbitmq|redis|postgres|postgresql|mysql|sqlalchemy|alembic|prisma|typeorm|pytest|jest|vitest)\b/i;
+  /\b(react|vue|nuxt|next\.js|angular|django|drf|fastapi|nestjs|express|flask|laravel|tailwind|figma|jira|linear|trello|asana|clickup|azure devops|claude code|codex|celery|rabbitmq|redis|postgres|postgresql|mysql|sqlalchemy|alembic|prisma|typeorm|pytest|jest|vitest|spring|rails|symfony|dotnet|aspnet|asp\.net|hibernate|eloquent|activerecord|entityframework|sidekiq|doctrine|sqlserver|mssql)\b/i;
 const MAX_LINES = 60;
 
 for (const name of BACKEND_SKILLS) {

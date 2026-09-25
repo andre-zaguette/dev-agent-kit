@@ -41,6 +41,10 @@ Another source with a completely different payload only changes `mapping`:
 
 The tests exercise two such sources with different schemas and require that they normalize to the same `WorkItem`.
 
+## Several repositories
+
+With a `workspaces:` map the ledger, state and contract live at the workspace root, the `Workspaces` section lists one step per repository in dependency order, and resume checks each recorded workspace. See `docs/workspaces.md`.
+
 ## Safety
 
 - Work-item text is untrusted data. It is quoted in the ledger and can never create or overwrite a ledger section, a path or a Git ref.

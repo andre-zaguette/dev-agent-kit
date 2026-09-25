@@ -198,3 +198,89 @@ test('--client . reports project-relative paths once, skips build output, and ac
     t.cleanup();
   }
 });
+
+const ALTAVE_CONFIG = 'workspaces:\n  cloud-back: { path: cloud-back }\n  edge-back: { path: edge-back }\n  edge-front: { path: edge-front }\n';
+const CALLER = "export const create = (b) => request('/api/users', { method: 'POST', body: JSON.stringify(b) });";
+
+function altave(files: Record<string, string>, contract: object = { ...CONTRACT, producer: 'cloud-back', consumers: ['edge-back', 'edge-front'] }, config: string | null = ALTAVE_CONFIG) {
+  const t = setup({ ...(config === null ? {} : { '.dev-agent/config.yml': config }), 'cloud-back/src/x.ts': 'export {}', ...files });
+  writeContract(t.projectRoot, dirs, 'APP-88', contract);
+  return t;
+}
+
+test('contract usage reads the consumers from the contract and reports each one', async () => {
+  const t = altave({ 'edge-back/src/api.ts': CALLER, 'edge-front/src/api.ts': CALLER });
+  try {
+    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--project', t.projectRoot], t.io), 0);
+    assert.match(t.text(), /consumer edge-back/);
+    assert.match(t.text(), /consumer edge-front/);
+    assert.equal((t.text().match(/used: yes/g) ?? []).length, 2);
+    assert.match(t.text(), /edge-back\/src\/api\.ts/);
+  } finally {
+    t.cleanup();
+  }
+});
+
+test('contract usage exits 2 when any consumer never calls the route', async () => {
+  const t = altave({ 'edge-back/src/api.ts': CALLER, 'edge-front/src/api.ts': 'export {}' });
+  try {
+    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--project', t.projectRoot], t.io), 2);
+    assert.match(t.text(), /consumer edge-front[\s\S]*used: no/);
+    t.out.length = 0;
+    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--project', t.projectRoot, '--json'], t.io), 2);
+    const json = JSON.parse(t.text());
+    assert.equal(json.consumers['edge-back'].used, true);
+    assert.equal(json.consumers['edge-front'].used, false);
+  } finally {
+    t.cleanup();
+  }
+});
+
+test('an explicit --client wins over the contract consumers', async () => {
+  const t = altave({ 'edge-back/src/api.ts': 'export {}', 'other/api.ts': CALLER });
+  try {
+    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--client', 'other', '--project', t.projectRoot], t.io), 0);
+    assert.doesNotMatch(t.text(), /consumer /);
+  } finally {
+    t.cleanup();
+  }
+});
+
+test('consumers without a workspaces configuration, or naming an unknown workspace, are usage errors', async () => {
+  const t = altave({}, undefined, null);
+  try {
+    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--project', t.projectRoot], t.io), 1);
+    assert.match(t.err.join('\n'), /consumers.*workspaces/);
+  } finally {
+    t.cleanup();
+  }
+  const u = altave({}, { ...CONTRACT, consumers: ['ghost'] });
+  try {
+    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--project', u.projectRoot], u.io), 1);
+    assert.match(u.err.join('\n'), /unknown workspace "ghost"/);
+  } finally {
+    u.cleanup();
+  }
+});
+
+test('contract usage still needs --client when the contract lists no consumers', async () => {
+  const t = altave({}, CONTRACT);
+  try {
+    assert.equal(await runDev(['contract', 'usage', 'APP-88', '--project', t.projectRoot], t.io), 1);
+    assert.match(t.err.join('\n'), /--client/);
+  } finally {
+    t.cleanup();
+  }
+});
+
+test('contract show prints producer and consumers unchanged', async () => {
+  const t = altave({});
+  try {
+    assert.equal(await runDev(['contract', 'show', 'APP-88', '--project', t.projectRoot], t.io), 0);
+    const shown = JSON.parse(t.text());
+    assert.equal(shown.producer, 'cloud-back');
+    assert.deepEqual(shown.consumers, ['edge-back', 'edge-front']);
+  } finally {
+    t.cleanup();
+  }
+});

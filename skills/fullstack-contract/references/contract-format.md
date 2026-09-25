@@ -25,6 +25,7 @@ File: `.dev-agent/tasks/<KEY>.contract.json` (next to the task ledger). One file
 - `request`: body fields (omit for no body). `response`: body fields (`{}` for an empty body). Required.
 - `errors`: each 4xx/5xx status maps to a non-empty list of error codes in UPPER_SNAKE_CASE. Required (`{}` for none).
 - `successStatus`: optional integer 200 to 299. When absent any 2xx passes.
+- `producer` and `consumers`: optional workspace names (at most 10 consumers, the producer not among them) for a project with a `workspaces:` map; `contract usage` scans each consumer when `--client` is omitted.
 
 ## Types
 

@@ -29,4 +29,5 @@ One workflow for any task source. Source specifics live in `.dev-agent/config.ym
 - Update the ledger at checkpoints only: after ingestion, investigation, Git, implementation, verification, and at the end. Short factual entries.
 - Never store credentials in the ledger, state or logs.
 - Never reset, clean, rebase, stash or force-push. A dirty tree or a diverged base stops the workflow with a report.
+- Several repositories under one plain folder (a `workspaces:` map in the config): follow `references/workspaces.md`.
 - Resuming: read the state, compare branch and HEAD, refresh the item only if needed, revalidate stale knowledge, continue from the recorded phase. If the repository no longer matches the state, stop and reconcile.

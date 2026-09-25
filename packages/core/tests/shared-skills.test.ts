@@ -32,14 +32,23 @@ for (const name of SHARED) {
   });
 }
 
-test('task-orchestrator ships exactly the six contract references, all with valid frontmatter', () => {
+test('task-orchestrator ships exactly the seven contract references, all with valid frontmatter', () => {
   const dir = join(kitRoot, 'skills', 'task-orchestrator', 'references');
-  const names = ['work-item', 'task-source', 'source-resolution', 'generic-mcp', 'git-workflow', 'task-ledger'];
+  const names = ['work-item', 'task-source', 'source-resolution', 'generic-mcp', 'git-workflow', 'task-ledger', 'workspaces'];
   for (const name of names) {
     const text = readFileSync(join(dir, `${name}.md`), 'utf8');
     assert.match(text, new RegExp(`^---\\nname: ${name}\\ndescription: .{20,300}\\ntype: contract\\n---\\n`), name);
   }
   assert.deepEqual(readdirSync(dir).sort(), names.map((n) => `${n}.md`).sort());
+});
+
+test('the workspaces reference covers the multi-repository rules and the orchestrator points to it', () => {
+  const dir = join(kitRoot, 'skills', 'task-orchestrator');
+  const ref = readFileSync(join(dir, 'references', 'workspaces.md'), 'utf8');
+  for (const needle of ['workspaces:', 'dependsOn', 'workspaces verify', '--workspace all', 'never publish', 'editable', 'producer', 'consumers']) assert.match(ref, new RegExp(needle, 'i'), needle);
+  assert.match(readFileSync(join(dir, 'SKILL.md'), 'utf8'), /references\/workspaces\.md/);
+  assert.match(readFileSync(join(dir, 'references', 'git-workflow.md'), 'utf8'), /## Several repositories/);
+  assert.match(readFileSync(join(kitRoot, 'skills', 'fullstack-contract', 'SKILL.md'), 'utf8'), /consumers/);
 });
 
 test('the orchestrator tells the agent which skills each classification loads', () => {

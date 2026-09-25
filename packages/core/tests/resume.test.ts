@@ -103,3 +103,87 @@ test('a symlinked knowledge directory is reported instead of being read', () => 
     rmSync(other, { recursive: true, force: true });
   }
 });
+
+// ---- multi-workspace (Pumpkin-shaped: a plain root holding one repository per folder) ----
+
+const wsCfg = (names: string[]) => ({ ...cfg, workspaces: names.map((n) => ({ name: n, path: n, dependsOn: [] as string[] })) });
+
+function pumpkin(): { root: string; bases: Record<string, string> } {
+  const root = mkdtempSync(join(tmpdir(), 'dak-pumpkin-'));
+  const bases: Record<string, string> = {};
+  for (const name of ['models', 'backend', 'client']) {
+    const dir = join(root, name);
+    mkdirSync(dir);
+    sh(dir, 'init', '-q', '-b', 'main');
+    sh(dir, 'config', 'user.email', 't@example.com');
+    sh(dir, 'config', 'user.name', 'Test');
+    sh(dir, 'config', 'commit.gpgsign', 'false');
+    commitFile(dir, 'a.txt');
+    bases[name] = sh(dir, 'rev-parse', 'HEAD');
+    sh(dir, 'switch', '-q', '-c', 'feat/hef-1-t');
+  }
+  ingestWorkItem(root, cfg, item, { now: '2026-09-24T14:00:00Z' });
+  const workspaces = Object.fromEntries(Object.entries(bases).map(([n, sha]) => [n, { status: 'in-progress' as const, baseBranch: 'main', baseSha: sha, workingBranch: 'feat/hef-1-t' }]));
+  recordCheckpoint(root, cfg, 'HEF-1', { phase: 'implementation', state: { workspaces } }, '2026-09-24T15:00:00Z');
+  return { root, bases };
+}
+
+test('every recorded workspace on its branch resumes, and the plain root is fine', () => {
+  const { root } = pumpkin();
+  const r = checkResume(root, wsCfg(['models', 'backend', 'client']), 'HEF-1');
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.deepEqual(r.workspaceReports.map((w) => [w.workspace, w.ok]).sort(), [['backend', true], ['client', true], ['models', true]]);
+});
+
+test('uncommitted work in a workspace is a note, not a blocker', () => {
+  const { root } = pumpkin();
+  writeFileSync(join(root, 'backend', 'wip.txt'), 'x');
+  const r = checkResume(root, wsCfg(['models', 'backend', 'client']), 'HEF-1');
+  assert.equal(r.ok, true);
+  if (r.ok) assert.match(r.workspaceReports.find((w) => w.workspace === 'backend')!.notes.join(' '), /uncommitted/);
+});
+
+test('a workspace on the wrong branch is named in the reason', () => {
+  const { root } = pumpkin();
+  sh(join(root, 'client'), 'switch', '-q', 'main');
+  const r = checkResume(root, wsCfg(['models', 'backend', 'client']), 'HEF-1');
+  assert.equal(r.ok, false);
+  if (!r.ok) {
+    assert.ok(r.reasons.includes('client: on branch "main" but the task recorded "feat/hef-1-t"'));
+    assert.equal(r.reasons.filter((x) => !x.startsWith('client: ')).length, 0);
+  }
+});
+
+test('a rewritten base, a non-repository and a workspace missing from the config are reasons', () => {
+  const { root } = pumpkin();
+  const models = join(root, 'models');
+  sh(models, 'checkout', '-q', '--orphan', 'rewritten');
+  commitFile(models, 'b.txt');
+  const r1 = checkResume(root, wsCfg(['models', 'backend', 'client']), 'HEF-1');
+  assert.equal(r1.ok, false);
+  if (!r1.ok) assert.ok(r1.reasons.some((x) => /^models: .*not in the current history|^models: on branch/.test(x)));
+  rmSync(join(root, 'backend', '.git'), { recursive: true });
+  const r2 = checkResume(root, wsCfg(['backend', 'client']), 'HEF-1');
+  assert.equal(r2.ok, false);
+  if (!r2.ok) {
+    assert.ok(r2.reasons.some((x) => /^backend: not a Git repository/.test(x)));
+    assert.ok(r2.reasons.some((x) => /^models: .*workspaces configuration/.test(x)));
+  }
+});
+
+test('a workspace that is a plain folder inside a repository is not its own repository', () => {
+  const { root } = pumpkin();
+  rmSync(join(root, 'backend', '.git'), { recursive: true });
+  sh(root, 'init', '-q', '-b', 'main');
+  const r = checkResume(root, wsCfg(['models', 'backend', 'client']), 'HEF-1');
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.ok(r.reasons.some((x) => /^backend: not a Git repository/.test(x)));
+});
+
+test('without workspaces in the state, resume is the v1.0 check', () => {
+  const { dir } = prepared();
+  const r = checkResume(dir, { ...cfg, workspaces: [{ name: 'x', path: 'x', dependsOn: [] }] }, 'HEF-1');
+  assert.equal(r.ok, true);
+  if (r.ok) assert.deepEqual(r.workspaceReports, []);
+});

@@ -11,7 +11,9 @@ type: contract
 
 ## Markdown sections, in order
 
-Source, Requirement, Acceptance criteria, Relevant comments / decisions, Classification, Repository analysis, Visual source, Implementation plan, Git, Implementation log, Verification, How to run locally, How to test this work item manually, Risks / known differences, Final status.
+Source, Requirement, Acceptance criteria, Relevant comments / decisions, Classification, Repository analysis, Visual source, Implementation plan, Git, Workspaces, Implementation log, Verification, How to run locally, How to test this work item manually, Risks / known differences, Final status.
+
+`Workspaces` is used only with a `workspaces:` map: one step per workspace in dependency order (see `workspaces.md`). Otherwise it stays `_Not yet recorded._`.
 
 External text (requirement, comments) is stored as a blockquote or a single line so it can never form a heading. `Final status` is derived from the phase: planned, blocked, implementing, verifying, done.
 

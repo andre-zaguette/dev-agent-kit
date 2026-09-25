@@ -86,6 +86,15 @@ test('the guides exist and cover their essentials', () => {
   for (const needle of ['frontend-agent install', 'dev-agent install', '.frontend-agent/config.yml', '.dev-agent/config.yml', 'no removal date']) assert.ok(migration.includes(needle), `migration guide needs ${needle}`);
 });
 
+test('the workspaces guide, release notes and README cover multi-repo workspaces', () => {
+  const guide = read('docs/workspaces.md');
+  for (const needle of ['Altave', 'Pumpkin', 'dependsOn', 'workspaces verify', 'workspaces order', '--workspace', 'producer', 'consumers', 'not covered']) assert.ok(guide.toLowerCase().includes(needle.toLowerCase()), `workspaces guide needs ${needle}`);
+  const notes = read('docs/release-notes/v1.1.0.md');
+  assert.match(notes, /without `workspaces`[^\n]*unchanged/i);
+  assert.match(read('README.md'), /\n## Workspaces\n/);
+  assert.match(read('README.md'), /\*\*v1\.1\.0\*\*/);
+});
+
 test('the adapter example runs against the kit\'s core', async () => {
   const { spawnSync } = await import('node:child_process');
   const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');

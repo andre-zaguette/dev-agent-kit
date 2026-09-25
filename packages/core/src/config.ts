@@ -2,6 +2,7 @@ import path from 'node:path';
 import { parse } from 'yaml';
 import { safeReadFile } from './safe-fs.js';
 import { findSecret } from './secrets.js';
+import type { WorkspaceConfig, WorkspaceRole } from './workspaces.js';
 import type { ItemField, SourceMapping, TaskSourceConfig, ToolKind, ToolRef } from './task-sources/types.js';
 
 export const CONFIG_FILE = '.dev-agent/config.yml';
@@ -17,9 +18,14 @@ export interface DevAgentConfig {
   git: { updateStrategy: 'ff-only'; requireCleanTree: true };
   taskMode: { analyzeCommand: 'plan-only' | 'execute-after-plan' };
   taskSources: TaskSourceConfig[];
+  workspaces: WorkspaceConfig[];
 }
 
-const TOP_LEVEL_KEYS = new Set(['baseBranch', 'branchPattern', 'taskDocsDir', 'stateDir', 'knowledgeDir', 'contextMode', 'production', 'git', 'taskMode', 'taskSources']);
+const TOP_LEVEL_KEYS = new Set(['baseBranch', 'branchPattern', 'taskDocsDir', 'stateDir', 'knowledgeDir', 'contextMode', 'production', 'git', 'taskMode', 'taskSources', 'workspaces']);
+const WORKSPACE_KEYS = new Set(['path', 'role', 'dependsOn', 'baseBranch']);
+const WORKSPACE_ROLES: readonly WorkspaceRole[] = ['library', 'backend', 'api', 'frontend', 'infra', 'other'];
+const MAX_WORKSPACES = 30;
+const MAX_DEPENDS_ON = 30;
 const SOURCE_KEYS = new Set(['adapter', 'server', 'default', 'identifiers', 'tools', 'mapping']);
 const SOURCE_ID_RE = /^[a-z][a-z0-9-]{0,31}$/;
 const ADAPTER_RE = /^[a-z][a-z0-9-]{0,31}$/;
@@ -49,7 +55,8 @@ export function defaultConfig(): DevAgentConfig {
     production: { readOnly: true },
     git: { updateStrategy: 'ff-only', requireCleanTree: true },
     taskMode: { analyzeCommand: 'plan-only' },
-    taskSources: []
+    taskSources: [],
+    workspaces: []
   };
 }
 
@@ -160,6 +167,67 @@ function parseSource(label: string, id: string, raw: unknown): TaskSourceConfig 
   return { id, adapter, server, default: raw.default === true, identifiers: parseIdentifiers(label, `${where}.identifiers`, raw.identifiers), tools, mapping };
 }
 
+function parseWorkspaces(label: string, raw: unknown): WorkspaceConfig[] {
+  if (!isRecord(raw)) fail(label, 'workspaces', 'must be a mapping of workspace names');
+  const entries = Object.entries(raw);
+  if (entries.length > MAX_WORKSPACES) fail(label, 'workspaces', `may have at most ${MAX_WORKSPACES} entries`);
+  const list: WorkspaceConfig[] = [];
+  for (const [name, value] of entries) {
+    const where = `workspaces.${name}`;
+    if (name === 'all') fail(label, where, 'uses the reserved name "all"');
+    if (!SOURCE_ID_RE.test(name)) fail(label, where, 'has an invalid name (use lowercase letters, digits and dashes, starting with a letter)');
+    if (!isRecord(value)) fail(label, where, 'must be a mapping with a "path"');
+    for (const key of Object.keys(value)) if (!WORKSPACE_KEYS.has(key)) fail(label, `${where}.${key}`, 'is not a recognized setting');
+    if (value.path === undefined) fail(label, `${where}.path`, 'is required');
+    const wsPath = relativeDir(label, `${where}.path`, value.path, '');
+    if (wsPath === '.git' || wsPath.startsWith('.git/')) fail(label, `${where}.path`, 'must not be inside .git');
+    const ws: WorkspaceConfig = { name, path: wsPath, dependsOn: [] };
+    if (value.role !== undefined) {
+      if (typeof value.role !== 'string' || !(WORKSPACE_ROLES as readonly string[]).includes(value.role)) fail(label, `${where}.role`, `must be one of: ${WORKSPACE_ROLES.join(', ')}`);
+      ws.role = value.role as WorkspaceRole;
+    }
+    if (value.dependsOn !== undefined) {
+      if (!Array.isArray(value.dependsOn)) fail(label, `${where}.dependsOn`, 'must be a list of workspace names');
+      if (value.dependsOn.length > MAX_DEPENDS_ON) fail(label, `${where}.dependsOn`, `may list at most ${MAX_DEPENDS_ON} workspaces`);
+      for (const dep of value.dependsOn) if (typeof dep !== 'string' || !SOURCE_ID_RE.test(dep)) fail(label, `${where}.dependsOn`, 'must contain only workspace names');
+      ws.dependsOn = [...new Set(value.dependsOn as string[])];
+    }
+    if (value.baseBranch !== undefined) {
+      if (typeof value.baseBranch !== 'string' || value.baseBranch.trim() === '') fail(label, `${where}.baseBranch`, 'must be a non-empty string');
+      ws.baseBranch = value.baseBranch.trim();
+    }
+    list.push(ws);
+  }
+  const names = new Set(list.map((w) => w.name));
+  for (const ws of list) {
+    for (const dep of ws.dependsOn) {
+      if (dep === ws.name) fail(label, `workspaces.${ws.name}.dependsOn`, 'lists the workspace itself');
+      if (!names.has(dep)) fail(label, `workspaces.${ws.name}.dependsOn`, `names an unknown workspace "${dep}"`);
+    }
+  }
+  for (let j = 0; j < list.length; j++) {
+    for (let i = 0; i < j; i++) {
+      const [a, b] = [list[i], list[j]];
+      if (a.path === b.path) fail(label, `workspaces.${b.name}.path`, `is the same directory as workspace "${a.name}"`);
+      if (b.path.startsWith(`${a.path}/`)) fail(label, `workspaces.${b.name}.path`, `is inside workspace "${a.name}"`);
+      if (a.path.startsWith(`${b.path}/`)) fail(label, `workspaces.${a.name}.path`, `is inside workspace "${b.name}"`);
+    }
+  }
+  // Kahn: whatever cannot be removed is on or behind a cycle.
+  const pending = new Map(list.map((w) => [w.name, new Set(w.dependsOn)]));
+  for (let progressed = true; progressed && pending.size > 0;) {
+    progressed = false;
+    for (const [name, deps] of [...pending]) {
+      if (deps.size > 0) continue;
+      pending.delete(name);
+      for (const other of pending.values()) other.delete(name);
+      progressed = true;
+    }
+  }
+  if (pending.size > 0) fail(label, 'workspaces', `dependsOn forms a cycle among: ${[...pending.keys()].sort().join(', ')}`);
+  return list;
+}
+
 export function parseDevAgentConfig(yamlText: string, label = CONFIG_FILE): DevAgentConfig {
   const secret = findSecret(yamlText);
   if (secret) throw new Error(`${label}: looks like it contains a secret (${secret}); configuration must not hold credentials`);
@@ -215,6 +283,7 @@ export function parseDevAgentConfig(yamlText: string, label = CONFIG_FILE): DevA
     const defaults = cfg.taskSources.filter((s) => s.default);
     if (defaults.length > 1) fail(label, 'taskSources', `may have only one default source (found: ${defaults.map((s) => s.id).join(', ')})`);
   }
+  if (raw.workspaces !== undefined) cfg.workspaces = parseWorkspaces(label, raw.workspaces);
   return cfg;
 }
 

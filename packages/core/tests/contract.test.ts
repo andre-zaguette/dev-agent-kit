@@ -141,3 +141,29 @@ test('old contracts are unchanged, and the key helpers strip the optional marker
   assert.equal(isOptionalField('nick', 'string?'), true);
   assert.equal(isOptionalField('id', 'uuid'), false);
 });
+
+const BASE_CONTRACT = { method: 'GET', path: '/api/ping', response: { ok: 'boolean' }, errors: {} };
+
+test('producer and consumers name workspaces and round-trip', () => {
+  const parsed = parseContract({ ...BASE_CONTRACT, producer: 'cloud-back', consumers: ['edge-back', 'edge-front'] });
+  assert.equal(parsed.producer, 'cloud-back');
+  assert.deepEqual(parsed.consumers, ['edge-back', 'edge-front']);
+  assert.deepEqual(parseContract(JSON.stringify(parsed)), parsed);
+});
+
+test('a v1.0 contract without producer or consumers is unchanged', () => {
+  const parsed = parseContract(BASE_CONTRACT);
+  assert.equal('producer' in parsed, false);
+  assert.equal('consumers' in parsed, false);
+});
+
+test('bad producer or consumers are errors naming the field', () => {
+  const bad = (extra: object, re: RegExp) => assert.throws(() => parseContract({ ...BASE_CONTRACT, ...extra }), re);
+  bad({ producer: 'a', consumers: ['a'] }, /consumers.*producer/);
+  bad({ producer: 'Bad Name' }, /producer/);
+  bad({ producer: 3 }, /producer/);
+  bad({ consumers: ['Bad Name'] }, /consumers/);
+  bad({ consumers: 'edge-back' }, /consumers.*list/);
+  bad({ consumers: ['a', 'a'] }, /consumers.*twice/);
+  bad({ consumers: Array.from({ length: 11 }, (_, i) => `c${i}`) }, /consumers.*at most 10/);
+});

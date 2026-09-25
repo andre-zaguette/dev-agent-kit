@@ -238,3 +238,41 @@ test('a checkpoint whose state would be refused leaves the ledger untouched', ()
     t.cleanup();
   }
 });
+
+const WS_STATE = { workItemKey: 'HEF-9', source: 'company', phase: 'implementation', skills: [], updatedAt: NOW };
+
+test('task state accepts per-workspace records and rejects malformed ones', () => {
+  const ok = parseTaskState(JSON.stringify({ ...WS_STATE, workspaces: { models: { status: 'done', baseSha: 'abc1234', workingBranch: 'feat/x', baseBranch: 'main' }, 'policy-api': { status: 'pending' } } }));
+  assert.equal(ok.workspaces!.models.status, 'done');
+  assert.equal(ok.workspaces!['policy-api'].workingBranch, undefined);
+  const bad = (workspaces: unknown, re: RegExp) => assert.throws(() => parseTaskState(JSON.stringify({ ...WS_STATE, workspaces })), re);
+  bad([], /"workspaces"/);
+  bad('x', /"workspaces"/);
+  bad({ 'Bad Name': { status: 'done' } }, /"workspaces"/);
+  bad({ all: { status: 'done' } }, /"workspaces"/);
+  bad({ a: { status: 'finished' } }, /"workspaces\.a\.status"/);
+  bad({ a: 'done' }, /"workspaces\.a"/);
+  bad({ a: { status: 'done', workingBranch: 'x'.repeat(201) } }, /"workspaces\.a\.workingBranch"/);
+  bad({ a: { status: 'done', baseSha: 3 } }, /"workspaces\.a\.baseSha"/);
+  bad(Object.fromEntries(Array.from({ length: 31 }, (_, i) => [`w${i}`, { status: 'done' }])), /"workspaces"/);
+});
+
+test('a v1.0 state without workspaces parses and round-trips unchanged', () => {
+  const text = JSON.stringify({ ...WS_STATE, baseBranch: 'main', workingBranch: 'feat/x' }, null, 2);
+  const state = parseTaskState(text);
+  assert.equal('workspaces' in state, false);
+  assert.deepEqual(JSON.parse(JSON.stringify(state)), JSON.parse(text));
+});
+
+test('the Workspaces section follows Git; a v1.0 ledger gets it in place', () => {
+  const md = renderLedger(item(), { syncedAt: NOW });
+  assert.equal(LEDGER_SECTIONS[LEDGER_SECTIONS.indexOf('Git') + 1], 'Workspaces');
+  assert.equal(parseLedger(md).sections.find((s) => s.name === 'Workspaces')!.body, '_Not yet recorded._');
+  const old = md.replace('## Workspaces\n_Not yet recorded._\n\n', '');
+  assert.equal(parseLedger(old).sections.some((s) => s.name === 'Workspaces'), false);
+  const next = setLedgerSection(old, 'Workspaces', '1. models\n2. backend');
+  const parsed = parseLedger(next);
+  assert.deepEqual(parsed.sections.map((s) => s.name), [...LEDGER_SECTIONS]);
+  assert.equal(parsed.sections.find((s) => s.name === 'Workspaces')!.body, '1. models\n2. backend');
+  for (const s of parseLedger(old).sections) assert.equal(parsed.sections.find((x) => x.name === s.name)!.body, s.body);
+});

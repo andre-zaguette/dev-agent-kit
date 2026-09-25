@@ -35,4 +35,8 @@ Without an `origin` remote, use the local base as-is and say so.
 
 Placeholders: `{type}` (feat, fix, chore, docs, refactor), `{key}`, `{keyLower}`, `{slug}`. If several remote topic branches exist and follow no consistent pattern and nothing is configured, ask once instead of inventing a convention.
 
+## Several repositories
+
+With a `workspaces:` map the root is not a repository, so the steps above run inside each touched workspace, one at a time, in dependency order. The base is the workspace's `baseBranch`, else the root's. Use the same branch name in every repository. A refusal (dirty tree, diverged base, existing branch) in one repository stops the run and is reported. Details: `workspaces.md`.
+
 Deterministic implementation: `prepareTaskBranch`, `resolveBranchName` in `packages/core`.

@@ -1,6 +1,6 @@
 # Dev Agent Kit v1.1 Implementation Plan — multi-repo workspaces
 
-> **Status:** decisions confirmed; **execution not started** — the owner asked to record the confirmation only. Do not execute until told to.
+> **Status:** decisions confirmed; executed on branch `feat/v1.1-workspaces` (2026-09-25).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (inline) to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

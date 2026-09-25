@@ -8,6 +8,8 @@ import {
   readContract,
   resolveInside,
   verifyClientUsage,
+  workspaceRoot,
+  findWorkspace,
   verifyExchange,
   verifyOpenApi,
   type ApiContract,
@@ -151,6 +153,7 @@ export function contractUsage(args: string[], io: CliIo): number {
   const root = projectRootOf(values, io);
   const contract = load(root, keyOf(positionals, 'usage'));
   const clients = values.client ?? [];
+  if (clients.length === 0 && contract.consumers && contract.consumers.length > 0) return contractUsageByConsumer(root, contract, values, io);
   if (clients.length === 0) throw new CliError('dev-agent: contract usage needs at least one --client <dir> — see --help.');
 
   const files: ClientFile[] = [];
@@ -174,13 +177,54 @@ export function contractUsage(args: string[], io: CliIo): number {
   const usage = verifyClientUsage(contract, files);
   if (values.json) io.stdout(JSON.stringify({ ...usage, scannedFiles: files.length }, null, 2));
   else {
-    io.stdout(`used: ${usage.used ? 'yes' : 'no'}`);
-    io.stdout(`method confirmed: ${usage.methodConfirmed ? 'yes' : 'no'}`);
-    io.stdout(`files: ${usage.files.length > 0 ? usage.files.join(', ') : '-'}`);
-    io.stdout(`path only: ${usage.pathOnlyFiles.length > 0 ? usage.pathOnlyFiles.join(', ') : '-'}`);
-    io.stdout(`unhandled error codes: ${usage.missingErrorCodes.length > 0 ? usage.missingErrorCodes.join(', ') : '-'}`);
+    printUsage(io, usage);
     io.stdout('(text evidence from client source, not a proof of runtime behavior)');
   }
   const ok = usage.used && (!values.strict || usage.missingErrorCodes.length === 0);
   return ok ? 0 : 2;
+}
+
+type Usage = ReturnType<typeof verifyClientUsage>;
+
+function printUsage(io: CliIo, usage: Usage, indent = ''): void {
+  io.stdout(`${indent}used: ${usage.used ? 'yes' : 'no'}`);
+  io.stdout(`${indent}method confirmed: ${usage.methodConfirmed ? 'yes' : 'no'}`);
+  io.stdout(`${indent}files: ${usage.files.length > 0 ? usage.files.join(', ') : '-'}`);
+  io.stdout(`${indent}path only: ${usage.pathOnlyFiles.length > 0 ? usage.pathOnlyFiles.join(', ') : '-'}`);
+  io.stdout(`${indent}unhandled error codes: ${usage.missingErrorCodes.length > 0 ? usage.missingErrorCodes.join(', ') : '-'}`);
+}
+
+/** No --client: scan each consumer workspace named by the contract, reporting paths relative to that workspace's parent (the project root). */
+function contractUsageByConsumer(root: string, contract: ApiContract, values: { json?: boolean; strict?: boolean }, io: CliIo): number {
+  let cfg;
+  try {
+    cfg = loadDevAgentConfig(root);
+  } catch (error) {
+    throw new CliError((error as Error).message, 1);
+  }
+  if (cfg.workspaces.length === 0) throw new CliError('dev-agent: the contract lists consumers but the config defines no workspaces; add a "workspaces:" map or pass --client <dir>.', 1);
+  const results: Array<{ name: string; usage: Usage; scannedFiles: number }> = [];
+  for (const name of contract.consumers ?? []) {
+    let dir: string;
+    try {
+      dir = workspaceRoot(root, findWorkspace(cfg, name));
+    } catch (error) {
+      throw new CliError(`dev-agent: contract consumer: ${(error as Error).message}.`, 1);
+    }
+    const files: ClientFile[] = [];
+    collectClientFiles(dir, '', files, { bytes: 0 });
+    const prefix = findWorkspace(cfg, name).path;
+    const scoped = files.map((f) => ({ ...f, path: `${prefix}/${f.path}` }));
+    results.push({ name, usage: verifyClientUsage(contract, scoped), scannedFiles: scoped.length });
+  }
+  if (values.json) {
+    io.stdout(JSON.stringify({ consumers: Object.fromEntries(results.map((r) => [r.name, { ...r.usage, scannedFiles: r.scannedFiles }])) }, null, 2));
+  } else {
+    for (const r of results) {
+      io.stdout(`consumer ${r.name}`);
+      printUsage(io, r.usage, '  ');
+    }
+    io.stdout('(text evidence from client source, not a proof of runtime behavior)');
+  }
+  return results.every((r) => r.usage.used && (!values.strict || r.usage.missingErrorCodes.length === 0)) ? 0 : 2;
 }

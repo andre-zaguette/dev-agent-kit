@@ -51,3 +51,14 @@ test('the orchestrator tells the agent which skills each classification loads', 
   for (const skill of ['figma-to-code', 'visual-validation', 'root-cause-analysis', 'repository-investigation']) assert.match(section, new RegExp(skill), skill);
   assert.match(section, /fullstack-contract/);
 });
+
+for (const [name, command] of [
+  ['repo-memory', 'repo index'],
+  ['repository-investigation', 'repo similar'],
+  ['surgical-diff', 'diff review']
+] as const) {
+  test(`skill ${name} points to dev-agent ${command}`, () => {
+    const text = readFileSync(join(kitRoot, 'skills', name, 'SKILL.md'), 'utf8');
+    assert.ok(text.includes(`dev-agent ${command}`), `${name} must mention dev-agent ${command}`);
+  });
+}

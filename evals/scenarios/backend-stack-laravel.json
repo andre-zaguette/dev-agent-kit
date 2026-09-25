@@ -1,0 +1,47 @@
+{
+  "id": "backend-stack-laravel",
+  "category": "backend",
+  "title": "Arquivar nota em Laravel",
+  "fixture": "laravel-app",
+  "prompt": "Adicione o endpoint POST /notes/{id}/archive (Laravel) que arquiva uma nota do usuário autenticado: deve ser idempotente, responder 404 para a nota de outro usuário e incluir a mudança de esquema necessária (coluna archived_at, nula) como uma nova migração, sem editar a migração inicial. Siga as convenções do projeto e as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "reference/laravel"
+    },
+    {
+      "type": "tool_called",
+      "tool": "skill/api-design"
+    },
+    {
+      "type": "file_matches",
+      "glob": "routes/api.php",
+      "pattern": "Route::post\\([^)]*archive"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/Http/Controllers/*.php",
+      "pattern": "[Aa]rchive[\\s\\S]{0,500}(notes\\(\\)|authorize\\(|user_id)"
+    },
+    {
+      "type": "file_matches",
+      "glob": "database/migrations/*.php",
+      "pattern": "archived_at"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "app/**/*.php",
+      "pattern": "Note::(find|findOrFail)\\(",
+      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
+    },
+    {
+      "type": "file_matches",
+      "glob": "database/migrations/*create_notes*.php",
+      "pattern": "archived_at",
+      "description": "editou a migração inicial"
+    }
+  ]
+}

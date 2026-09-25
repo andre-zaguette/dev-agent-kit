@@ -1,0 +1,47 @@
+{
+  "id": "backend-stack-flask",
+  "category": "backend",
+  "title": "Arquivar nota em Flask",
+  "fixture": "flask-app",
+  "prompt": "Adicione o endpoint POST /notes/{id}/archive (Flask) que arquiva uma nota do usuário autenticado: deve ser idempotente, responder 404 para a nota de outro usuário e incluir a mudança de esquema necessária (coluna archived_at, nula) como uma nova migração, sem editar a migração inicial. Siga as convenções do projeto e as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "reference/flask"
+    },
+    {
+      "type": "tool_called",
+      "tool": "skill/api-design"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/**/*.py",
+      "pattern": "\\.post\\([^)]*archive"
+    },
+    {
+      "type": "file_matches",
+      "glob": "app/**/*.py",
+      "pattern": "archive[\\s\\S]{0,400}owner_id"
+    },
+    {
+      "type": "file_matches",
+      "glob": "migrations/versions/*.py",
+      "pattern": "archived_at"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "app/**/*.py",
+      "pattern": "Note\\.query\\.get\\(|db\\.session\\.get\\(\\s*Note",
+      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
+    },
+    {
+      "type": "file_matches",
+      "glob": "migrations/versions/0001_create_notes.py",
+      "pattern": "archived_at",
+      "description": "editou a migração inicial"
+    }
+  ]
+}

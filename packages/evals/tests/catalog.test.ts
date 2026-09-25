@@ -11,10 +11,10 @@ import type { RunRecord } from '../src/types.ts';
 const kitRoot = findKitRoot();
 const layout = evalsLayout(join(kitRoot, 'evals'));
 
-test('the catalog loads: 7 base, 8 stack, 3 profile, 9 backend, 3 fullstack', () => {
+test('the catalog loads: 7 base, 8 stack, 3 profile, 15 backend, 3 fullstack', () => {
   const scenarios = loadScenarios(layout);
   const count = (c: string) => scenarios.filter((s) => s.category === c).length;
-  assert.deepEqual([count('base'), count('stack'), count('profile'), count('backend'), count('fullstack')], [7, 8, 3, 9, 3]);
+  assert.deepEqual([count('base'), count('stack'), count('profile'), count('backend'), count('fullstack')], [7, 8, 3, 15, 3]);
 });
 
 test('every stack scenario maps to a figma-to-code reference and asserts it was read', () => {
@@ -89,7 +89,7 @@ test('backend scenarios need no Figma, name their skills and references, and mat
   const backend = loadScenarios(layout).filter((s) => s.category === 'backend');
   assert.deepEqual(
     backend.map((s) => s.id).sort(),
-    ['backend-celery-task', 'backend-django-api', 'backend-drf-permission', 'backend-external-integration', 'backend-fastapi-api', 'backend-nest-api', 'backend-postgres-migration', 'backend-rabbitmq-consumer', 'backend-root-cause-bugfix']
+    ['backend-celery-task', 'backend-django-api', 'backend-drf-permission', 'backend-external-integration', 'backend-fastapi-api', 'backend-nest-api', 'backend-postgres-migration', 'backend-rabbitmq-consumer', 'backend-root-cause-bugfix', 'backend-stack-aspnet-core', 'backend-stack-express', 'backend-stack-flask', 'backend-stack-laravel', 'backend-stack-rails', 'backend-stack-spring-boot']
   );
   const skills = readdirSync(join(kitRoot, 'skills'));
   const refs = skills.flatMap((s) => (existsSync(join(kitRoot, 'skills', s, 'references')) ? readdirSync(join(kitRoot, 'skills', s, 'references')).map((f) => f.replace(/\.md$/, '')) : []));
@@ -104,10 +104,10 @@ test('backend scenarios need no Figma, name their skills and references, and mat
 });
 
 test('backend fixtures contain no symlinks and no installed dependencies', () => {
-  for (const fixture of ['django-app', 'fastapi-app', 'nest-app', 'celery-app']) {
+  for (const fixture of ['django-app', 'fastapi-app', 'nest-app', 'celery-app', 'flask-app', 'express-app', 'laravel-app', 'aspnet-app', 'spring-app', 'rails-app']) {
     const ws = createWorkspace(join(layout.fixturesDir, fixture));
     try {
-      for (const dir of ['node_modules', '.venv', 'venv', 'site-packages', '__pycache__', 'vendor']) assert.equal(existsSync(join(ws, dir)), false, `${fixture}/${dir}`);
+      for (const dir of ['node_modules', '.venv', 'venv', 'site-packages', '__pycache__', 'vendor', 'bin', 'obj', 'target', 'build', '.gradle', '.bundle', 'tmp', 'log']) assert.equal(existsSync(join(ws, dir)), false, `${fixture}/${dir}`);
     } finally {
       removeWorkspace(ws);
     }
@@ -247,4 +247,65 @@ test('fullstack form: a differently named accessible form component still passes
   assert.equal(gradeWith('fullstack-validation-error-contract', { ...vOk, 'backend/app/routers/users.py': 'raise HTTPException(422, detail={"code": "INVALID_INPUT"})\n' }, 'ok').verdict, 'fail');
   assert.equal(gradeWith('fullstack-validation-error-contract', { ...vOk, 'frontend/src/api/users.ts': "if (e.code === 'INVALID_INPUT') {}\n" }, 'ok').verdict, 'fail');
   assert.equal(gradeWith('fullstack-validation-error-contract', { ...vOk, 'frontend/src/api/users.ts': "try { go(); } catch {}\nif (e.code === 'INVALID_INPUT') setError('Dados inválidos');\n" }, 'ok').verdict, 'fail');
+});
+
+test('backend stack scenarios: a scoped archive endpoint in each stack passes, the unscoped variant fails', () => {
+  const files = (o: Record<string, string>) => o;
+  const stacks: Array<{ id: string; ok: Record<string, string>; unscoped: Record<string, string> }> = [
+    {
+      id: 'backend-stack-flask',
+      ok: files({
+        'app/notes.py': "@bp.post('/<int:note_id>/archive')\ndef archive(note_id):\n    note = Note.query.filter_by(id=note_id, owner_id=current_user_id()).first_or_404()\n    note.archived_at = note.archived_at or now()\n",
+        'migrations/versions/0002_note_archived_at.py': "op.add_column('notes', sa.Column('archived_at', sa.DateTime(), nullable=True))\n"
+      }),
+      unscoped: files({ 'app/notes.py': "@bp.post('/<int:note_id>/archive')\ndef archive(note_id):\n    note = Note.query.get(note_id)\n", 'migrations/versions/0002_note_archived_at.py': "archived_at\n" })
+    },
+    {
+      id: 'backend-stack-express',
+      ok: files({
+        'src/routes/notes.ts': "router.post('/notes/:id/archive', requireAuth, async (req, res) => {\n  const note = await notes.findOwned(req.params.id, req.user.id);\n  if (!note) return res.status(404).json({});\n});\n",
+        'src/db/migrations/002_note_archived_at.sql': 'ALTER TABLE notes ADD COLUMN archived_at TIMESTAMPTZ;\n'
+      }),
+      unscoped: files({ 'src/routes/notes.ts': "router.post('/notes/:id/archive', async (req, res) => {\n  const note = await notes.findById(req.params.id);\n});\n", 'src/db/migrations/002_note_archived_at.sql': 'archived_at\n' })
+    },
+    {
+      id: 'backend-stack-laravel',
+      ok: files({
+        'routes/api.php': "Route::post('/notes/{note}/archive', ArchiveNoteController::class);\n",
+        'app/Http/Controllers/ArchiveNoteController.php': "final class ArchiveNoteController\n{\n    public function __invoke(Request $request, int $id)\n    {\n        $note = $request->user()->notes()->findOrFail($id);\n        $this->authorize('archive', $note);\n    }\n}\n",
+        'database/migrations/2024_02_01_000000_add_archived_at_to_notes.php': "$table->timestamp('archived_at')->nullable();\n"
+      }),
+      unscoped: files({ 'routes/api.php': "Route::post('/notes/{id}/archive', [NoteController::class, 'archive']);\n", 'app/Http/Controllers/NoteController.php': "$note = Note::findOrFail($id);\n", 'database/migrations/2024_02_01_000000_add_archived_at_to_notes.php': "archived_at\n" })
+    },
+    {
+      id: 'backend-stack-aspnet-core',
+      ok: files({
+        'NotesApi/Program.cs': 'app.MapPost("/notes/{id:guid}/archive", async (Guid id, ClaimsPrincipal user, AppDbContext db) =>\n{\n    var note = await db.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == user.GetUserId());\n}).RequireAuthorization();\n',
+        'NotesApi/Migrations/20240201000000_AddArchivedAt.cs': 'migrationBuilder.AddColumn<DateTime>(name: "ArchivedAt", table: "Notes", nullable: true);\n'
+      }),
+      unscoped: files({ 'NotesApi/Program.cs': 'app.MapPost("/notes/{id:guid}/archive", async (Guid id, AppDbContext db) =>\n{\n    var note = await db.Notes.FindAsync(id);\n});\n', 'NotesApi/Migrations/20240201000000_AddArchivedAt.cs': 'ArchivedAt\n' })
+    },
+    {
+      id: 'backend-stack-spring-boot',
+      ok: files({
+        'src/main/java/com/example/notes/NoteController.java': '@PostMapping("/{id}/archive")\nResponseEntity<Void> archive(@PathVariable UUID id, @AuthenticationPrincipal UserPrincipal user) {\n  return notes.archive(id, user.id()) ? ok() : notFound();\n}\n',
+        'src/main/java/com/example/notes/NoteRepository.java': 'Optional<Note> findByIdAndOwnerId(UUID id, UUID ownerId);\n',
+        'src/main/resources/db/migration/V2__note_archived_at.sql': 'ALTER TABLE notes ADD COLUMN archived_at TIMESTAMP;\n'
+      }),
+      unscoped: files({ 'src/main/java/com/example/notes/NoteController.java': '@PostMapping("/{id}/archive")\nResponseEntity<Void> archive(@PathVariable UUID id) {\n  var n = repo.findById(id);\n}\n', 'src/main/resources/db/migration/V2__note_archived_at.sql': 'archived_at\n' })
+    },
+    {
+      id: 'backend-stack-rails',
+      ok: files({
+        'config/routes.rb': "post 'notes/:id/archive', to: 'notes#archive'\n",
+        'app/controllers/notes_controller.rb': 'def archive\n  note = current_user.notes.find(params[:id])\n  note.update!(archived_at: Time.current)\nend\n',
+        'db/migrate/20240201000000_add_archived_at_to_notes.rb': 'add_column :notes, :archived_at, :datetime\n'
+      }),
+      unscoped: files({ 'config/routes.rb': "post 'notes/:id/archive', to: 'notes#archive'\n", 'app/controllers/notes_controller.rb': 'def archive\n  note = Note.find(params[:id])\nend\n', 'db/migrate/20240201000000_add_archived_at_to_notes.rb': 'archived_at\n' })
+    }
+  ];
+  for (const { id, ok, unscoped } of stacks) {
+    assert.equal(gradeWith(id, ok, 'ok').verdict, 'pass', `${id}: a correct solution must pass`);
+    assert.equal(gradeWith(id, unscoped, 'ok').verdict, 'fail', `${id}: an unscoped lookup must fail`);
+  }
 });

@@ -1,0 +1,47 @@
+{
+  "id": "backend-stack-spring-boot",
+  "category": "backend",
+  "title": "Arquivar nota em Spring Boot",
+  "fixture": "spring-app",
+  "prompt": "Adicione o endpoint POST /notes/{id}/archive (Spring Boot) que arquiva uma nota do usuário autenticado: deve ser idempotente, responder 404 para a nota de outro usuário e incluir a mudança de esquema necessária (coluna archived_at, nula) como uma nova migração, sem editar a migração inicial. Siga as convenções do projeto e as skills do kit. Não é preciso rodar o app nem instalar dependências. Termine com um resumo curto.",
+  "timeoutSec": 900,
+  "expected": [
+    {
+      "type": "tool_called",
+      "tool": "reference/spring-boot"
+    },
+    {
+      "type": "tool_called",
+      "tool": "skill/api-design"
+    },
+    {
+      "type": "file_matches",
+      "glob": "src/main/java/**/*.java",
+      "pattern": "@PostMapping\\([^)]*archive"
+    },
+    {
+      "type": "file_matches",
+      "glob": "src/main/java/**/*.java",
+      "pattern": "archive[\\s\\S]{0,700}(user\\.id\\(\\)|ByIdAndOwnerId|ownerId|userId)"
+    },
+    {
+      "type": "file_matches",
+      "glob": "src/main/resources/db/migration/V{2,3,4,5,6}__*.sql",
+      "pattern": "archived_at"
+    }
+  ],
+  "forbidden": [
+    {
+      "type": "file_matches",
+      "glob": "src/main/java/**/*.java",
+      "pattern": "\\.findById\\(",
+      "description": "busca sem escopo do dono: qualquer usuário alcançaria a nota de outro"
+    },
+    {
+      "type": "file_matches",
+      "glob": "src/main/resources/db/migration/V1__create_notes.sql",
+      "pattern": "archived_at",
+      "description": "editou a migração inicial"
+    }
+  ]
+}

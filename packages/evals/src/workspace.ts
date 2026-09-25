@@ -6,9 +6,9 @@ export const WORKSPACE_PREFIX = 'fak-bench-';
 const DEFAULT_MAX_BYTES = 20 * 1024 * 1024;
 
 /** Copy `fixtureDir` into a fresh temp dir. Symlinks and special files are refused, never followed. */
-export function createWorkspace(fixtureDir: string, options: { maxBytes?: number } = {}): string {
+export function createWorkspace(fixtureDir: string, options: { maxBytes?: number; prefix?: string } = {}): string {
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
-  const ws = realpathSync(mkdtempSync(path.join(tmpdir(), WORKSPACE_PREFIX)));
+  const ws = realpathSync(mkdtempSync(path.join(tmpdir(), options.prefix ?? WORKSPACE_PREFIX)));
   let total = 0;
   const copy = (src: string, dst: string, rel: string) => {
     for (const entry of readdirSync(src, { withFileTypes: true })) {
@@ -37,10 +37,11 @@ export function createWorkspace(fixtureDir: string, options: { maxBytes?: number
   return ws;
 }
 
-export function removeWorkspace(dir: string): void {
+/** `prefix` must match the one the workspace was created with; anything else under the temp directory is refused. */
+export function removeWorkspace(dir: string, options: { prefix?: string } = {}): void {
   const resolved = path.resolve(dir);
   const root = realpathSync(tmpdir());
-  if (path.dirname(resolved) !== root || !path.basename(resolved).startsWith(WORKSPACE_PREFIX)) {
+  if (path.dirname(resolved) !== root || !path.basename(resolved).startsWith(options.prefix ?? WORKSPACE_PREFIX)) {
     throw new Error(`refusing to remove ${dir}: not a bench workspace`);
   }
   rmSync(resolved, { recursive: true, force: true });

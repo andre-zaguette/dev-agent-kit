@@ -36,8 +36,8 @@ test('the three profile scenarios cover each validationProfile and demand an exp
 test('every fixture copies cleanly (no symlinks) and every prompt that needs the app uses {{baseUrl}}', () => {
   const scenarios = loadScenarios(layout);
   for (const fixture of new Set(scenarios.map((s) => s.fixture))) {
-    const ws = createWorkspace(join(layout.fixturesDir, fixture));
-    removeWorkspace(ws);
+    const ws = createWorkspace(join(layout.fixturesDir, fixture), { prefix: 'fak-catalog-' });
+    removeWorkspace(ws, { prefix: 'fak-catalog-' });
   }
   // Visual scenarios serve the workspace; stack scenarios and backend scenarios (no served app) do not.
   for (const s of scenarios.filter((s) => s.category === 'base' || s.category === 'profile')) assert.match(s.prompt, /\{\{baseUrl\}\}/, s.id);
@@ -56,7 +56,7 @@ test('every "do not change files" scenario also forbids a shell edit, not just E
 
 test('the shell-write forbidden check actually catches a Codex sed -i edit (final-review finding: file_change alone misses it)', () => {
   const s = loadScenarios(layout).find((sc) => sc.id === 'base-visual-divergence')!;
-  const ws = createWorkspace(join(layout.fixturesDir, s.fixture));
+  const ws = createWorkspace(join(layout.fixturesDir, s.fixture), { prefix: 'fak-catalog-' });
   try {
     const record: RunRecord = {
       host: 'codex',
@@ -75,7 +75,7 @@ test('the shell-write forbidden check actually catches a Codex sed -i edit (fina
     assert.equal(result.verdict, 'fail');
     assert.ok(result.forbidden.some((r) => r.assertion.type === 'tool_called' && r.assertion.tool === 'builtin/shell' && r.satisfied));
   } finally {
-    removeWorkspace(ws);
+    removeWorkspace(ws, { prefix: 'fak-catalog-' });
   }
 });
 
@@ -105,11 +105,11 @@ test('backend scenarios need no Figma, name their skills and references, and mat
 
 test('backend fixtures contain no symlinks and no installed dependencies', () => {
   for (const fixture of ['django-app', 'fastapi-app', 'nest-app', 'celery-app', 'flask-app', 'express-app', 'laravel-app', 'aspnet-app', 'spring-app', 'rails-app']) {
-    const ws = createWorkspace(join(layout.fixturesDir, fixture));
+    const ws = createWorkspace(join(layout.fixturesDir, fixture), { prefix: 'fak-catalog-' });
     try {
       for (const dir of ['node_modules', '.venv', 'venv', 'site-packages', '__pycache__', 'vendor', 'bin', 'obj', 'target', 'build', '.gradle', '.bundle', 'tmp', 'log']) assert.equal(existsSync(join(ws, dir)), false, `${fixture}/${dir}`);
     } finally {
-      removeWorkspace(ws);
+      removeWorkspace(ws, { prefix: 'fak-catalog-' });
     }
   }
 });
@@ -117,7 +117,7 @@ test('backend fixtures contain no symlinks and no installed dependencies', () =>
 /** Grade a scenario as if an agent had read what it should and then produced `files` on top of the fixture. */
 function gradeWith(id: string, files: Record<string, string>, finalText = ''): ReturnType<typeof grade> {
   const s = loadScenarios(layout).find((x) => x.id === id)!;
-  const ws = createWorkspace(join(layout.fixturesDir, s.fixture));
+  const ws = createWorkspace(join(layout.fixturesDir, s.fixture), { prefix: 'fak-catalog-' });
   try {
     for (const [rel, content] of Object.entries(files)) {
       mkdirSync(dirname(join(ws, rel)), { recursive: true });
@@ -127,7 +127,7 @@ function gradeWith(id: string, files: Record<string, string>, finalText = ''): R
     const record: RunRecord = { host: 'claude', durationMs: 1, exitCode: 0, timedOut: false, stderrTail: '', toolCalls: tools.map((tool) => ({ tool, args: {}, ok: true })), finalText };
     return grade(s, record, ws);
   } finally {
-    removeWorkspace(ws);
+    removeWorkspace(ws, { prefix: 'fak-catalog-' });
   }
 }
 

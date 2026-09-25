@@ -25,6 +25,10 @@ One JSON file per endpoint: `method`, `path` (with `{params}`), `request`, `resp
 | OpenAPI | the published description agrees with the contract | that the service really behaves like its description |
 | client usage | client source calls the route **with the contract's method** (judged file by file) and mentions the error codes (text evidence) | that the client behaves correctly at runtime |
 
+## Several repositories
+
+When the client and the service live in different repositories under one workspace root, the contract names `producer` and `consumers` (workspace names) and `contract usage` scans each consumer without `--client`. See `docs/workspaces.md`.
+
 ## Not automated
 
 Running the application, generating a client from the contract, and contract tests against a live service. The agent captures evidence with the project's own tooling; the verifiers judge it.

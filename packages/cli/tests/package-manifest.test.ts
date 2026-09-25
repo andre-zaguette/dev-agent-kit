@@ -13,7 +13,7 @@ test('the root package manifest is publishable and coherent with the workspaces'
   assert.deepEqual(checkManifest(root), []);
   const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   assert.equal(pkg.name, 'dev-agent-kit');
-  assert.equal(pkg.version, '1.0.0');
+  assert.equal(pkg.version, '1.1.0');
   assert.equal(pkg.license, 'MIT');
   assert.match(readFileSync(join(root, 'LICENSE'), 'utf8'), /^MIT License/);
 });

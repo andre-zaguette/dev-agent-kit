@@ -1,6 +1,6 @@
 {
   "name": "dev-agent-kit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Provider-neutral engineering agent kit for Claude Code and Codex: skills, a deterministic dev-agent CLI and an MCP server for visual validation.",
   "license": "MIT",
   "keywords": [

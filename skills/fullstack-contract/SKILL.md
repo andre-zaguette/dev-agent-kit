@@ -17,7 +17,7 @@ One contract, two implementations, one proof that they agree.
 6. Prove the two agree with real evidence, not with prose:
    - capture a real request and response (success and each declared error) and run `dev-agent contract verify <KEY> --exchange <file>`;
    - if the project keeps an API description, add `--openapi <file>`;
-   - run `dev-agent contract usage <KEY> --client <dir> --strict` on the client code.
+   - run `dev-agent contract usage <KEY> --client <dir> --strict` on the client code. With several workspaces, name `producer` and `consumers` in the contract and omit `--client`: each consumer is scanned.
 7. Record both domains, the contract path, the commands run and any known difference in the task ledger.
 
 ## Rules

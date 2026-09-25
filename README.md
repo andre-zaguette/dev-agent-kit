@@ -68,11 +68,11 @@ dev-agent verify --project /path/to/project
 
 Stack references load lazily: Python, Node.js, PHP, C#, Java and Ruby backends with their frameworks, databases, queues and caches (`docs/backend.md`), plus the frontend stacks.
 
-**The `dev-agent` CLI** is deterministic: no model, no network, no Git mutation beyond safe branch preparation. `inspect`, `context audit`, `sources`, `sources verify`, `task resolve|status|show`, `contract show|verify|usage`, `repo index`, `repo similar`, `diff review`, plus `install` and `verify`. Exit codes: 0 ok, 1 usage or environment error, 2 checked and not OK. See `docs/cli.md`.
+**The `dev-agent` CLI** is deterministic: no model, no network, no Git mutation beyond safe branch preparation. `inspect`, `context audit`, `sources`, `sources verify`, `task resolve|status|show`, `contract show|verify|usage`, `repo index`, `repo similar`, `diff review`, `workspaces`, `workspaces verify|order`, plus `install` and `verify`. Exit codes: 0 ok, 1 usage or environment error, 2 checked and not OK. See `docs/cli.md`.
 
 **The MCP server** exposes five tools: `capture_screenshot`, `inspect_dom`, `compare_screenshots`, `run_responsive_suite`, `run_accessibility_audit`. See `docs/visual-validation.md`.
 
-Guides: `docs/task-orchestrator.md`, `docs/fullstack.md`, `docs/backend.md`, `docs/patterns.md`, `docs/context-efficiency.md`.
+Guides: `docs/workspaces.md`, `docs/task-orchestrator.md`, `docs/fullstack.md`, `docs/backend.md`, `docs/patterns.md`, `docs/context-efficiency.md`.
 
 ## Task sources
 
@@ -81,6 +81,10 @@ A task source is where work items live. Most trackers with an MCP server need on
 ## Repository patterns and diff review
 
 `dev-agent repo index --write` drafts repository knowledge from paths only; `dev-agent repo similar <words>` lists the existing features closest to a change so new code copies their structure; `dev-agent diff review` flags edited migrations, secrets in added lines, dependency changes, missing tests and new top-level directories. See `docs/patterns.md`.
+
+## Workspaces
+
+A workspace root can be a plain folder that holds several repositories (for example `models`, `backend`, `client`). A `workspaces:` map in `.dev-agent/config.yml` names them and their `dependsOn` order; `dev-agent workspaces`, `workspaces verify` and `workspaces order` inspect, check version pins and order the work, and `--workspace <name>` runs the per-project commands inside one of them. Without the map nothing changes. See `docs/workspaces.md`.
 
 ## Compatibility
 
@@ -111,6 +115,7 @@ MIT. See `LICENSE`.
 
 ## Version history
 
+- **v1.1.0** — multi-repo workspaces: `workspaces` commands, `--workspace`, version-pin checks, producer/consumer contracts. See `docs/release-notes/v1.1.0.md`.
 - **v1.0.0** — installable package `dev-agent-kit`, compatibility policy, adapter, generic-MCP and migration guides. See `docs/release-notes/v1.0.0.md`.
 - **v0.11** — repository index, similar-feature search and diff review.
 - **v0.10** — backend languages: PHP, C#, Java and Ruby next to Python and Node.js.

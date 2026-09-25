@@ -1,4 +1,4 @@
-# The dev-agent CLI (v0.9)
+# The dev-agent CLI (v1.1)
 
 `dev-agent` makes the deterministic parts of the kit callable from a terminal. It never runs a model, opens a network connection or changes Git; a natural-language task still runs in Claude Code or Codex. `frontend-agent` is unchanged.
 
@@ -12,16 +12,21 @@ Exit codes: `0` ok, `1` usage or environment error, `2` checked and not OK.
 | `sources [--json]` | The task sources configured in `.dev-agent/config.yml`. |
 | `sources verify` | Checks the config parses, each `generic-mcp` adapter builds, and warns about ambiguous patterns, missing defaults and adapters that cannot be loaded. Exit 2 on errors. |
 | `task resolve <id> [--source s] [--probe]` | Which source an identifier resolves to, or why it does not (ambiguous, unknown, unresolved). |
-| `task status <KEY>` | Whether the repository still matches the task's saved state (branch, base commit, stale knowledge). Exit 2 with the reasons to reconcile. |
+| `task status <KEY>` | Whether the repository still matches the task's saved state (branch, base commit, stale knowledge); with workspaces, one report per recorded workspace. Exit 2 with the reasons to reconcile. |
 | `task show <KEY>` | Prints the task ledger. |
 | `contract show <KEY>` | Prints the persisted API contract. |
 | `contract verify <KEY> --exchange f... --openapi f` | Checks captured exchanges and an OpenAPI description against the contract. |
-| `contract usage <KEY> --client dir... [--strict]` | Text evidence that client source calls the route with the contract's method and handles its error codes. Prints `files` (route called with the method), `path only` (route mentioned, method not confirmed) and `unhandled error codes`. Exit 2 when no file calls it with the method; `--strict` also requires every error code to be mentioned. |
+| `contract usage <KEY> [--client dir...] [--strict]` | Text evidence that client source calls the route with the contract's method and handles its error codes. Prints `files` (route called with the method), `path only` (route mentioned, method not confirmed) and `unhandled error codes`. Exit 2 when no file calls it with the method; `--strict` also requires every error code to be mentioned. |
+| `workspaces [--json]` | The workspaces from `.dev-agent/config.yml` in dependency order: path, role, `dependsOn`, languages, frameworks and Git state. `no workspaces configured` when there is no map. |
+| `workspaces verify` | Each workspace path is a real directory (exit 2 otherwise) and a repository (warning if not), plus one `pin` line per `dependsOn` edge: `ok`, `behind`, `ahead`, `unknown` or `not-declared`. |
+| `workspaces order [--only a,b] [--with-deps]` | The implementation order, one name per line, dependencies first. |
 | `repo index [--write]` | A bounded, path-only map of the repository: layers by role, features, naming and test conventions. `--write` regenerates the derived knowledge files (repository, commands, architecture, backend/frontend) stamped with the source SHA; needs a commit. |
 | `repo similar <words...> [--limit n]` | The existing features closest to a described change, with their files grouped by role. Read them and copy their structure. |
 | `diff review [--base ref]` | Reviews the branch (merge-base with the base branch, plus the working tree): edited migrations and secrets in added lines are errors (exit 2); dependency, lockfile, missing-test, generated-file and new-directory findings are warnings or notes. Secret values are never printed. |
 
 Evidence files (`--exchange`, `--openapi`) must be regular files of at most 5 MB. `--client` directories must be directories inside the project (`.` means the project root); symlinks are skipped and `node_modules`, `.git`, `dist`, `build` and `coverage` are not scanned.
+
+`inspect`, `repo index`, `repo similar` and `diff review` also accept `--workspace <name>` to run inside one workspace; `diff review --workspace all` reviews every repository and skips the rest. `contract usage` without `--client` scans the `consumers` the contract names. See `docs/workspaces.md`.
 
 Every command accepts `--project <dir>` (default: the current directory) and, where it prints results, `--json`.
 

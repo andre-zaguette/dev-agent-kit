@@ -1,5 +1,7 @@
 # Dev Agent Kit v1.1 Implementation Plan — multi-repo workspaces
 
+> **Status:** decisions confirmed; **execution not started** — the owner asked to record the confirmation only. Do not execute until told to.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (inline) to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let one workspace root (a plain folder that is not a Git repository) hold several projects, each its own repository, so a single work item can span them: per-project inspection and review, a dependency order, version-pin checks between packages, a multi-repo ledger and a cross-service API contract.
@@ -35,7 +37,7 @@ pumpkin/ models  backend  policy-api  client  admin          (models ← backend
 5. **Graph.** Cycles, self-dependencies and `dependsOn` names that do not exist are config errors naming the offenders; `workspaces order` is deterministic (alphabetical tie-break) and `--only` includes the dependencies a change needs only when asked (`--with-deps`).
 6. **Config injection.** An unknown key, a non-string path, an oversized `dependsOn` or a workspace name colliding with a reserved word (`all`) is a parse error, not a silent default.
 
-## Decisions recorded (confirm or overrule)
+## Decisions recorded (confirmed by the owner on 2026-09-25)
 
 1. **Where things live.** The ledger (`.dev-agent/tasks/<KEY>.md`), state and contract stay at the workspace root, which is not a repository, so they never land in a commit. Per-workspace data (branch, base SHA, status) lives inside the state.
 2. **One branch name per work item, in every touched repository** (the normal pattern rendering). The agent creates them with the existing safe procedure; the CLI only reports.

@@ -12,6 +12,8 @@ export interface HostAdapter {
   installInstructions(): Promise<BlockAction>;
   installMcp(config: McpConfig): Promise<string[]>;
   verify(): Promise<VerificationResult>;
+  /** The MCP servers in this project's host config: {} when the file is absent, null when it cannot be parsed. */
+  configuredServers(): Record<string, unknown> | null;
   /** Host-specific follow-up the user must know about after install (printed by the CLI). */
   notes(): string[];
 }

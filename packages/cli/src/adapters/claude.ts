@@ -110,6 +110,14 @@ export class ClaudeCodeAdapter implements HostAdapter {
     };
   }
 
+  configuredServers(): Record<string, unknown> | null {
+    try {
+      return { ...(this.readMcpJson().mcpServers ?? {}) };
+    } catch {
+      return null;
+    }
+  }
+
   async verify(): Promise<VerificationResult> {
     const { launch, error } = this.configuredLaunch();
     const configCheck = error

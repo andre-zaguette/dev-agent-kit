@@ -13,6 +13,8 @@ export interface CheckResult {
   name: string;
   ok: boolean;
   detail: string;
+  /** Set together with ok: true when something is missing on this machine but the project config is correct. */
+  warn?: boolean;
 }
 
 export interface VerificationResult {

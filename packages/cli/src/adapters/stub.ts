@@ -13,6 +13,10 @@ export class StubAdapter implements HostAdapter {
     return new Error(`frontend-agent: ${this.name} is not supported yet (stub adapter in v0.4 — spec §6).`);
   }
 
+  configuredServers(): null {
+    return null;
+  }
+
   async detect(): Promise<boolean> {
     return false;
   }

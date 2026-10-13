@@ -187,6 +187,15 @@ export class CodexAdapter implements HostAdapter {
     return { name, ok, detail: ok ? `${this.ctx.projectRoot} is trusted in ${globalConfig}` : hint };
   }
 
+  configuredServers(): Record<string, unknown> | null {
+    if (!existsSync(this.configFile)) return {};
+    try {
+      return JSON.parse(JSON.stringify(serversOf(parseToml(readFileSync(this.configFile, 'utf8'), this.configFile))));
+    } catch {
+      return null;
+    }
+  }
+
   async verify(): Promise<VerificationResult> {
     const { launch, error } = this.configuredLaunch();
     const configCheck = error

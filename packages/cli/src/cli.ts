@@ -2,7 +2,7 @@ import { existsSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { ALL_HOSTS, REAL_HOSTS, createAdapter, type HostAdapter } from './adapters/index.js';
-import { INTEGRATIONS, type Detection, type IntegrationId } from './integrations/index.js';
+import { INTEGRATIONS, integrationChecks, type Detection, type IntegrationId } from './integrations/index.js';
 import { resolveSelection, wantedIds, type SelectionFlags } from './integrations/select.js';
 import { assertStateWritable, persistIntegrationState, readIntegrationState } from './integrations/state.js';
 import type { AdapterContext, HostName } from './types.js';
@@ -121,12 +121,16 @@ async function install(adapters: HostAdapter[], ctx: AdapterContext, flags: Sele
   io.stdout(`\nDone. Run "frontend-agent verify${adapters.length === 1 ? ` ${adapters[0].name}` : ''} --project ${ctx.projectRoot}" to check the setup.`);
 }
 
-async function verify(adapters: HostAdapter[], io: CliIo): Promise<boolean> {
+async function verify(adapters: HostAdapter[], ctx: AdapterContext, io: CliIo): Promise<boolean> {
+  const state = readIntegrationState(ctx.projectRoot);
   let allOk = true;
   for (const adapter of adapters) {
     const result = await withHostPrefix(adapter, () => adapter.verify());
-    io.stdout(`\n[${adapter.name}] ${result.ok ? 'ok' : 'NOT OK'}`);
-    for (const check of result.checks) io.stdout(`  ${check.ok ? '✔' : '✘'} ${check.name}: ${check.detail}`);
+    result.checks.push(...(await integrationChecks(adapter, ctx, state)));
+    result.ok = result.checks.every((check) => check.ok);
+    const warned = result.checks.some((check) => check.warn);
+    io.stdout(`\n[${adapter.name}] ${result.ok ? (warned ? 'ok (with warnings)' : 'ok') : 'NOT OK'}`);
+    for (const check of result.checks) io.stdout(`  ${check.warn ? '!' : check.ok ? '✔' : '✘'} ${check.name}: ${check.detail}`);
     allOk &&= result.ok;
   }
   return allOk;
@@ -179,7 +183,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       await install(adapters, ctx, flags, io);
       return 0;
     }
-    return (await verify(adapters, io)) ? 0 : 1;
+    return (await verify(adapters, ctx, io)) ? 0 : 1;
   } catch (error) {
     io.stderr((error as Error).message);
     return 1;

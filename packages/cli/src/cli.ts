@@ -3,6 +3,8 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { ALL_HOSTS, REAL_HOSTS, createAdapter, type HostAdapter } from './adapters/index.js';
 import { INTEGRATIONS, type Detection, type IntegrationId } from './integrations/index.js';
+import { resolveSelection, type SelectionFlags } from './integrations/select.js';
+import { assertStateWritable, persistIntegrationState, readIntegrationState } from './integrations/state.js';
 import type { AdapterContext, HostName } from './types.js';
 import { findKitRoot, readKitVersion } from './util.js';
 
@@ -17,12 +19,13 @@ export interface CliIo {
 const HELP = `frontend-agent — install the Frontend Agent Kit into a project
 
 Usage:
-  frontend-agent install [claude|codex ...] [--all] [--project <dir>] [--force] [--no-figma]
+  frontend-agent install [claude|codex ...] [--all] [--project <dir>] [--force] [--no-figma] [--with <id> ...] [--no-<id> ...]
   frontend-agent verify  [claude|codex ...] [--all] [--project <dir>]
   frontend-agent --help | --version
 
 With no host, install/verify use every detected host (claude, codex).
 --project defaults to the current directory. --force overwrites locally edited kit skills.
+Integrations: figma (default), headroom, claude-mem, cartographer, graphify. --with enables one, --no-<id> disables one. The kit never installs the tools; verify reports what is missing.
 Cursor and VS Code adapters are stubs in v0.4.`;
 
 function resolveProjectRoot(value: string | undefined, io: CliIo, kitRoot: string): string {
@@ -67,15 +70,22 @@ async function withHostPrefix<T>(adapter: HostAdapter, fn: () => Promise<T>): Pr
   }
 }
 
-async function install(adapters: HostAdapter[], ctx: AdapterContext, includeFigma: boolean, io: CliIo): Promise<void> {
+async function install(adapters: HostAdapter[], ctx: AdapterContext, flags: SelectionFlags, io: CliIo): Promise<void> {
   for (const adapter of adapters) {
     if (!adapter.supported) {
       throw new Error(`frontend-agent: ${adapter.name} is not supported yet (stub adapter in v0.4 — spec §6).`);
     }
   }
-  const selected = INTEGRATIONS.filter((integration) => (integration.id === 'figma' ? includeFigma : false));
+  const previous = readIntegrationState(ctx.projectRoot);
+  if (previous.error) throw new Error(`frontend-agent: ${previous.error}`);
+  const selected = resolveSelection(flags, adapters.map((adapter) => adapter.name), previous.ids);
   const detections = new Map<IntegrationId, Detection>();
-  for (const integration of selected) detections.set(integration.id, await integration.detect(ctx));
+  for (const integration of selected) {
+    const detection = await integration.detect(ctx);
+    if (flags.with.includes(integration.id)) integration.assertInstallable?.(detection);
+    detections.set(integration.id, detection);
+  }
+  assertStateWritable(ctx.projectRoot);
   const configFor = (adapter: HostAdapter) => ({
     kitRoot: ctx.kitRoot,
     projectRoot: ctx.projectRoot,
@@ -102,8 +112,12 @@ async function install(adapters: HostAdapter[], ctx: AdapterContext, includeFigm
         io.stdout(`  ${action}`);
       }
       for (const note of adapter.notes()) io.stdout(`  note: ${note}`);
+      for (const integration of selected.filter((candidate) => candidate.hosts.includes(adapter.name))) {
+        for (const note of integration.notes(adapter.name, detections.get(integration.id)!)) io.stdout(`  note: ${note}`);
+      }
     });
   }
+  persistIntegrationState(ctx.projectRoot, selected.map((integration) => integration.id));
   io.stdout(`\nDone. Run "frontend-agent verify${adapters.length === 1 ? ` ${adapters[0].name}` : ''} --project ${ctx.projectRoot}" to check the setup.`);
 }
 
@@ -127,7 +141,8 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         all: { type: 'boolean', default: false },
         project: { type: 'string' },
         force: { type: 'boolean', default: false },
-        'no-figma': { type: 'boolean', default: false },
+        with: { type: 'string', multiple: true, default: [] },
+        ...Object.fromEntries(INTEGRATIONS.map((integration) => [`no-${integration.id}`, { type: 'boolean', default: false }])),
         help: { type: 'boolean', default: false },
         version: { type: 'boolean', default: false }
       }
@@ -157,7 +172,11 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     const adapters = await selectAdapters(hosts, values.all ?? false, ctx);
 
     if (command === 'install') {
-      await install(adapters, ctx, !values['no-figma'], io);
+      const flags: SelectionFlags = {
+        with: (values.with as string[] | undefined) ?? [],
+        without: INTEGRATIONS.filter((integration) => (values as Record<string, unknown>)[`no-${integration.id}`] === true).map((integration) => integration.id)
+      };
+      await install(adapters, ctx, flags, io);
       return 0;
     }
     return (await verify(adapters, io)) ? 0 : 1;

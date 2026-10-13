@@ -13,7 +13,7 @@ export { CliError, projectRootOf } from './dev-common.js';
 export const DEV_HELP = `dev-agent — deterministic helpers for the Dev Agent Kit
 
 Usage:
-  dev-agent install [claude|codex ...] [--all] [--project <dir>] [--force] [--no-figma]
+  dev-agent install [claude|codex ...] [--all] [--project <dir>] [--force] [--no-figma] [--with <id> ...] [--no-<id> ...]
   dev-agent verify  [claude|codex ...] [--all] [--project <dir>]
   dev-agent inspect [--workspace <name>] [--project <dir>] [--json]
   dev-agent context audit [--project <dir>] [--json]
@@ -34,6 +34,7 @@ Usage:
   dev-agent --help | --version
 
 install and verify are aliases of the frontend-agent commands and keep its exit codes (1 when a check fails).
+Integrations: figma (default), headroom, claude-mem, cartographer, graphify. --with enables one, --no-<id> disables one. The kit never installs the tools; verify reports what is missing.
 Exit codes: 0 ok, 1 usage or environment error, 2 checked and not OK.`;
 
 function inspect(args: string[], io: CliIo): number {

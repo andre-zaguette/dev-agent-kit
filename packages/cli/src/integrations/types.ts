@@ -1,6 +1,7 @@
 import type { AdapterContext, CheckResult, HostName } from '../types.js';
 
-export type IntegrationId = 'figma' | 'headroom' | 'claude-mem' | 'cartographer' | 'graphify';
+export const INTEGRATION_IDS = ['figma', 'headroom', 'claude-mem', 'cartographer', 'graphify'] as const;
+export type IntegrationId = (typeof INTEGRATION_IDS)[number];
 
 export type Detection =
   | { state: 'present'; detail?: string; binPath?: string }

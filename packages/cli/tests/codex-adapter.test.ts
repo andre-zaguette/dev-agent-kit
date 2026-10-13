@@ -1,3 +1,4 @@
+import { figmaServers } from './integration-helpers.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, symlinkSync } from 'node:fs';
@@ -56,7 +57,7 @@ test('installMcp writes a managed block to .codex/config.toml, preserving user c
     const userToml = '# my settings\nmodel = "o3"\n\n[mcp_servers.other]\ncommand = "x"\n';
     writeFileSync(join(projectRoot, '.codex', 'config.toml'), userToml);
     const adapter = new CodexAdapter(ctx);
-    await adapter.installMcp({ kitRoot, projectRoot, includeFigma: true });
+    await adapter.installMcp({ kitRoot, projectRoot, extraServers: figmaServers('codex') });
     const first = readFileSync(join(projectRoot, '.codex', 'config.toml'), 'utf8');
     assert.ok(first.startsWith(userToml.trimEnd()));
     assert.ok(first.includes(TOML_BLOCK_START) && first.includes(TOML_BLOCK_END));
@@ -66,7 +67,7 @@ test('installMcp writes a managed block to .codex/config.toml, preserving user c
     assert.equal(parsed.mcp_servers['frontend-agent'].command, join(kitRoot, 'node_modules', '.bin', 'tsx'));
     assert.equal(parsed.mcp_servers['frontend-agent'].env.FRONTEND_AGENT_PROJECT_ROOT, projectRoot);
     assert.equal(parsed.mcp_servers.figma.url, 'https://mcp.figma.com/mcp');
-    await adapter.installMcp({ kitRoot, projectRoot, includeFigma: true });
+    await adapter.installMcp({ kitRoot, projectRoot, extraServers: figmaServers('codex') });
     assert.equal(readFileSync(join(projectRoot, '.codex', 'config.toml'), 'utf8'), first);
   } finally {
     cleanup();
@@ -79,11 +80,11 @@ test('installMcp refuses an unparseable config and a user-defined frontend-agent
     mkdirSync(join(projectRoot, '.codex'));
     const file = join(projectRoot, '.codex', 'config.toml');
     writeFileSync(file, 'model = \n');
-    await assert.rejects(() => new CodexAdapter(ctx).installMcp({ kitRoot, projectRoot, includeFigma: true }), /config\.toml/);
+    await assert.rejects(() => new CodexAdapter(ctx).installMcp({ kitRoot, projectRoot, extraServers: figmaServers('codex') }), /config\.toml/);
     assert.equal(readFileSync(file, 'utf8'), 'model = \n');
     writeFileSync(file, '[mcp_servers.frontend-agent]\ncommand = "mine"\n');
     await assert.rejects(
-      () => new CodexAdapter(ctx).installMcp({ kitRoot, projectRoot, includeFigma: false }),
+      () => new CodexAdapter(ctx).installMcp({ kitRoot, projectRoot, extraServers: [] }),
       /already defines \[mcp_servers\.frontend-agent\]/
     );
   } finally {
@@ -99,7 +100,7 @@ test('a legacy end marker ("# <<< frontend-agent-kit") is still recognized as th
     const legacyToml = `# my settings\nmodel = "o3"\n\n${TOML_BLOCK_START}\n[mcp_servers.frontend-agent]\ncommand = "old"\n${legacyEnd}\n`;
     writeFileSync(join(projectRoot, '.codex', 'config.toml'), legacyToml);
     const adapter = new CodexAdapter(ctx);
-    await adapter.installMcp({ kitRoot, projectRoot, includeFigma: false });
+    await adapter.installMcp({ kitRoot, projectRoot, extraServers: [] });
     const next = readFileSync(join(projectRoot, '.codex', 'config.toml'), 'utf8');
     // Exactly one block remains (the legacy block was replaced, not duplicated), using the new end marker.
     assert.equal(next.split(TOML_BLOCK_START).length - 1, 1);
@@ -118,14 +119,14 @@ test('settings appended below the block that would merge into it are refused, an
   try {
     mkdirSync(join(projectRoot, '.codex'));
     const adapter = new CodexAdapter(ctx);
-    await adapter.installMcp({ kitRoot, projectRoot, includeFigma: false });
+    await adapter.installMcp({ kitRoot, projectRoot, extraServers: [] });
     const file = join(projectRoot, '.codex', 'config.toml');
     const installed = readFileSync(file, 'utf8');
     // Append a setting right after the block that TOML would merge into mcp_servers.frontend-agent.
     const tampered = `${installed}approval_policy = "never"\n`;
     writeFileSync(file, tampered);
     await assert.rejects(
-      () => adapter.installMcp({ kitRoot, projectRoot, includeFigma: false }),
+      () => adapter.installMcp({ kitRoot, projectRoot, extraServers: [] }),
       /settings were added below the frontend-agent-kit block .* and would merge into it/
     );
     assert.equal(readFileSync(file, 'utf8'), tampered, 'file left untouched');
@@ -142,7 +143,7 @@ test('a user mcp_servers inline table that breaks once the block is added is rep
     const original = 'mcp_servers = { other = { command = "x" } }\n';
     writeFileSync(file, original);
     await assert.rejects(
-      () => new CodexAdapter(ctx).installMcp({ kitRoot, projectRoot, includeFigma: false }),
+      () => new CodexAdapter(ctx).installMcp({ kitRoot, projectRoot, extraServers: [] }),
       /cannot add the frontend-agent-kit block to .*config\.toml \(does it define mcp_servers as an inline table\?\)/
     );
     assert.equal(readFileSync(file, 'utf8'), original, 'file left untouched');
@@ -157,7 +158,7 @@ test('verify fails with an actionable trust message until the project is trusted
     const adapter = new CodexAdapter(ctx);
     await adapter.installSkills(join(kitRoot, 'skills'));
     await adapter.installInstructions();
-    await adapter.installMcp({ kitRoot, projectRoot, includeFigma: false });
+    await adapter.installMcp({ kitRoot, projectRoot, extraServers: [] });
     const untrusted = await adapter.verify();
     assert.equal(untrusted.ok, false);
     const trustCheck = untrusted.checks.find((c) => c.name === 'codex-trust')!;
@@ -184,7 +185,7 @@ test('installMcp refuses when .codex is symlinked to a directory outside the pro
       return;
     }
     await assert.rejects(
-      () => new CodexAdapter(ctx).installMcp({ kitRoot, projectRoot, includeFigma: true }),
+      () => new CodexAdapter(ctx).installMcp({ kitRoot, projectRoot, extraServers: figmaServers('codex') }),
       /resolves outside the project root/
     );
     assert.equal(existsSync(join(outsideDir, 'config.toml')), false);
@@ -221,7 +222,7 @@ test('verify reports a corrupt project config.toml as a parse error in mcp-confi
     const adapter = new CodexAdapter(ctx);
     await adapter.installSkills(join(kitRoot, 'skills'));
     await adapter.installInstructions();
-    await adapter.installMcp({ kitRoot, projectRoot, includeFigma: true });
+    await adapter.installMcp({ kitRoot, projectRoot, extraServers: figmaServers('codex') });
     writeFileSync(join(projectRoot, '.codex', 'config.toml'), 'model = \n');
     const result = await adapter.verify();
     assert.equal(result.ok, false);

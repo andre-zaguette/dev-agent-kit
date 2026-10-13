@@ -50,7 +50,7 @@ test('checkInstructions surfaces a parse error instead of "run install" when the
 
 test('checkLaunchConfig verifies the entry exists, its command exists and it points at this project', async () => {
   await withDir((dir) => {
-    const launch = kitServerLaunch({ kitRoot: findKitRoot(), projectRoot: dir, includeFigma: false });
+    const launch = kitServerLaunch({ kitRoot: findKitRoot(), projectRoot: dir });
     assert.equal(checkLaunchConfig(launch, dir, '.mcp.json').ok, true);
     assert.equal(checkLaunchConfig(null, dir, '.mcp.json').ok, false);
     assert.match(checkLaunchConfig({ ...launch, command: '/nonexistent/tsx' }, dir, '.mcp.json').detail, /does not exist/);
@@ -62,7 +62,7 @@ test('probeServer starts the real kit MCP server and sees all five tools', async
   await withDir(async (dir) => {
     mkdirSync(join(dir, '.frontend-agent'));
     writeFileSync(join(dir, '.frontend-agent', 'config.yml'), 'validationProfile: standard\n');
-    const result = await probeServer(kitServerLaunch({ kitRoot: findKitRoot(), projectRoot: dir, includeFigma: false }));
+    const result = await probeServer(kitServerLaunch({ kitRoot: findKitRoot(), projectRoot: dir }));
     assert.equal(result.ok, true, result.detail);
     for (const tool of EXPECTED_TOOLS) assert.match(result.detail, new RegExp(tool));
   });
@@ -95,7 +95,7 @@ test('probeServer reports server that exits with stderr', async () => {
 
 test('checkLaunchConfig accepts trailing slash in FRONTEND_AGENT_PROJECT_ROOT', async () => {
   await withDir((dir) => {
-    const launch = kitServerLaunch({ kitRoot: findKitRoot(), projectRoot: dir, includeFigma: false });
+    const launch = kitServerLaunch({ kitRoot: findKitRoot(), projectRoot: dir });
     const launchWithTrailingSlash = {
       ...launch,
       env: { FRONTEND_AGENT_PROJECT_ROOT: dir.endsWith('/') ? dir : dir + '/' }

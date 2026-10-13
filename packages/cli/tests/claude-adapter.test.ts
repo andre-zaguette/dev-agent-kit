@@ -1,3 +1,4 @@
+import { figmaServers } from './integration-helpers.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, symlinkSync } from 'node:fs';
@@ -50,7 +51,7 @@ test('installMcp merges into an existing .mcp.json, keeping other servers and an
       join(projectRoot, '.mcp.json'),
       JSON.stringify({ mcpServers: { other: { command: 'x' }, figma: { type: 'http', url: 'https://custom' } } })
     );
-    const actions = await new ClaudeCodeAdapter(ctx).installMcp({ kitRoot, projectRoot, includeFigma: true });
+    const actions = await new ClaudeCodeAdapter(ctx).installMcp({ kitRoot, projectRoot, extraServers: figmaServers('claude') });
     const config = JSON.parse(readFileSync(join(projectRoot, '.mcp.json'), 'utf8'));
     assert.deepEqual(config.mcpServers.other, { command: 'x' });
     assert.equal(config.mcpServers.figma.url, 'https://custom');
@@ -70,12 +71,12 @@ test('installMcp merges into an existing .mcp.json, keeping other servers and an
 test('installMcp adds figma when missing, and refuses to touch an unparseable .mcp.json', async () => {
   const { projectRoot, kitRoot, ctx, cleanup } = setup();
   try {
-    await new ClaudeCodeAdapter(ctx).installMcp({ kitRoot, projectRoot, includeFigma: true });
+    await new ClaudeCodeAdapter(ctx).installMcp({ kitRoot, projectRoot, extraServers: figmaServers('claude') });
     const config = JSON.parse(readFileSync(join(projectRoot, '.mcp.json'), 'utf8'));
     assert.deepEqual(config.mcpServers.figma, { type: 'http', url: 'https://mcp.figma.com/mcp' });
     writeFileSync(join(projectRoot, '.mcp.json'), '{ broken');
     await assert.rejects(
-      () => new ClaudeCodeAdapter(ctx).installMcp({ kitRoot, projectRoot, includeFigma: true }),
+      () => new ClaudeCodeAdapter(ctx).installMcp({ kitRoot, projectRoot, extraServers: figmaServers('claude') }),
       /\.mcp\.json/
     );
     assert.equal(readFileSync(join(projectRoot, '.mcp.json'), 'utf8'), '{ broken');
@@ -92,7 +93,7 @@ test('verify passes after a full install (including a live server probe) and fai
     assert.equal(before.ok, false);
     await adapter.installSkills(join(kitRoot, 'skills'));
     await adapter.installInstructions();
-    await adapter.installMcp({ kitRoot, projectRoot, includeFigma: true });
+    await adapter.installMcp({ kitRoot, projectRoot, extraServers: figmaServers('claude') });
     const after = await adapter.verify();
     assert.equal(after.ok, true, JSON.stringify(after.checks, null, 2));
     assert.deepEqual(after.checks.map((c) => c.name), ['skills', 'instructions', 'mcp-config', 'mcp-server']);
@@ -107,7 +108,7 @@ test('verify reports a corrupt .mcp.json as a parse error, not "run install"', a
     const adapter = new ClaudeCodeAdapter(ctx);
     await adapter.installSkills(join(kitRoot, 'skills'));
     await adapter.installInstructions();
-    await adapter.installMcp({ kitRoot, projectRoot, includeFigma: true });
+    await adapter.installMcp({ kitRoot, projectRoot, extraServers: figmaServers('claude') });
     writeFileSync(join(projectRoot, '.mcp.json'), '{ broken');
     const result = await adapter.verify();
     assert.equal(result.ok, false);
@@ -133,7 +134,7 @@ test('installMcp refuses a .mcp.json symlinked outside the project root, leaving
       return;
     }
     await assert.rejects(
-      () => new ClaudeCodeAdapter(ctx).installMcp({ kitRoot, projectRoot, includeFigma: true }),
+      () => new ClaudeCodeAdapter(ctx).installMcp({ kitRoot, projectRoot, extraServers: figmaServers('claude') }),
       /outside the project root|dangling/
     );
     assert.equal(readFileSync(outsideFile, 'utf8'), outsideContent);

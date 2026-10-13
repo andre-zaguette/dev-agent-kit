@@ -21,7 +21,7 @@ export function resolveTsx(kitRoot: string): string {
 }
 
 /** How a host should start the kit's MCP server for `config.projectRoot` (absolute paths into the kit checkout). */
-export function kitServerLaunch(config: McpConfig): ServerLaunch {
+export function kitServerLaunch(config: Pick<McpConfig, 'kitRoot' | 'projectRoot'>): ServerLaunch {
   return {
     command: resolveTsx(config.kitRoot),
     args: [path.join(config.kitRoot, 'packages', 'mcp-server', 'src', 'index.ts')],

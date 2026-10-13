@@ -8,7 +8,7 @@ import { which, assertRealDirInsideRoot } from '../util.js';
 import { syncSkills, readManifest, type SyncReport } from '../sync-skills.js';
 import { findManagedBlock, upsertMarkdownBlock, assertInsideRoot, preflightMarkdownFile, type BlockAction } from '../managed-block.js';
 import { instructionsContent } from '../instructions.js';
-import { FIGMA_MCP_URL, SERVER_NAME, kitServerLaunch, type ServerLaunch } from '../mcp-launch.js';
+import { SERVER_NAME, kitServerLaunch, type ServerLaunch } from '../mcp-launch.js';
 import { checkInstructions, checkLaunchConfig, checkSkills, probeServer } from '../checks.js';
 
 export const TOML_BLOCK_START = '# >>> frontend-agent-kit (managed block — edits inside are overwritten)';
@@ -98,12 +98,14 @@ export class CodexAdapter implements HostAdapter {
     const launch = kitServerLaunch(config);
     const servers: TomlTable = { [SERVER_NAME]: { command: launch.command, args: launch.args, env: launch.env } };
     const actions = [`${SERVER_NAME} MCP server registered in ${this.configFile}`];
-    if (config.includeFigma) {
-      if (userServers.figma) {
-        actions.push(`figma MCP server already configured in ${this.configFile} — kept`);
+    const added: string[] = [];
+    for (const extra of config.extraServers) {
+      if (userServers[extra.name]) {
+        actions.push(`${extra.name} MCP server already configured in ${this.configFile} — kept`);
       } else {
-        servers.figma = { url: FIGMA_MCP_URL };
-        actions.push(`figma MCP server registered in ${this.configFile} (authenticate with: codex mcp login figma)`);
+        servers[extra.name] = extra.entry;
+        added.push(extra.name);
+        actions.push(`${extra.name} MCP server registered in ${this.configFile}${extra.hint ? ` (${extra.hint})` : ''}`);
       }
     }
 
@@ -131,7 +133,7 @@ export class CodexAdapter implements HostAdapter {
     const plain = (value: unknown) => JSON.parse(JSON.stringify(value));
     const wroteCleanly =
       isDeepStrictEqual(plain(nextServers[SERVER_NAME]), plain(servers[SERVER_NAME])) &&
-      (!servers.figma || isDeepStrictEqual(plain(nextServers.figma), plain(servers.figma)));
+      added.every((name) => isDeepStrictEqual(plain(nextServers[name]), plain(servers[name])));
     if (!wroteCleanly) {
       throw new Error(
         `frontend-agent: settings were added below the frontend-agent-kit block in ${this.configFile} and would merge into it; move them above the block and re-run.`
@@ -183,6 +185,15 @@ export class CodexAdapter implements HostAdapter {
     const projects = (table.projects ?? {}) as Record<string, { trust_level?: string }>;
     const ok = projects[this.ctx.projectRoot]?.trust_level === 'trusted';
     return { name, ok, detail: ok ? `${this.ctx.projectRoot} is trusted in ${globalConfig}` : hint };
+  }
+
+  configuredServers(): Record<string, unknown> | null {
+    if (!existsSync(this.configFile)) return {};
+    try {
+      return JSON.parse(JSON.stringify(serversOf(parseToml(readFileSync(this.configFile, 'utf8'), this.configFile))));
+    } catch {
+      return null;
+    }
   }
 
   async verify(): Promise<VerificationResult> {

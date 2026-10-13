@@ -28,6 +28,8 @@ dev-agent verify --project /path/to/project
 
 `install` writes only inside the project: skills (`.claude/skills/`, `.agents/skills/`), a managed block in `CLAUDE.md`/`AGENTS.md`, and the MCP server entries (`.mcp.json`, `.codex/config.toml`). Your own content and other MCP servers are preserved; a skill you edited locally is kept and reported (`--force` overwrites it); `--no-figma` skips the Figma server. Claude Code asks you to approve project MCP servers on first start, and Codex loads `.codex/config.toml` only for trusted projects. `.mcp.json` and `.codex/config.toml` contain absolute paths to the installed kit; keep them out of version control in shared repositories. Without the CLI, see `docs/manual-install.md`.
 
+Optional integrations (Headroom, claude-mem, Cartographer, Graphify): see docs/integrations.md.
+
 ## Quick start
 
 1. Declare your task source in `.dev-agent/config.yml` (no code for an MCP-backed tracker):

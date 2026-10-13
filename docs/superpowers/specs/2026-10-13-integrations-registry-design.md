@@ -110,7 +110,7 @@ dev-agent install [hosts] [--with <id>]... [--no-<id>]... [--no-figma]
 
 - `--with <id>` enables a non-default integration; `--no-<id>` disables a default one. `--no-figma` keeps working exactly as today; it is simply the `--no-<id>` form applied to `figma` (no behavior change).
 - `--with` on a host the integration does not support (for example `--with cartographer` with only `codex`) is a usage error, exit 1, naming the supported hosts.
-- `dev-agent verify` checks the integrations the project has enabled. How "enabled" is known: install records the selected ids in `.dev-agent/integrations.json` (`{"enabled": [...]}`), next to the skills manifest as precedent for a kit-owned state file. Selection is sticky: a later `install` without flags keeps ids recorded earlier (the adapters never remove entries either); only `--no-<id>` drops one. Projects without the file behave as today (no integration checks).
+- `dev-agent verify` checks the integrations the project has enabled. How "enabled" is known: install records the selected ids in `.dev-agent/integrations.json` (`{"enabled": [...]}`), next to the skills manifest as precedent for a kit-owned state file. Selection is sticky: a later `install` without flags keeps ids recorded earlier (`.mcp.json` entries are only ever kept, but the Codex managed block in `.codex/config.toml` is regenerated on every install, so a dropped id or a missing binary removes that integration's Codex entry); only `--no-<id>` drops one. Projects without the file behave as today (no integration checks).
 - `install` never executes an installer. It prints `notes` for anything missing.
 
 ### Check states and exit codes

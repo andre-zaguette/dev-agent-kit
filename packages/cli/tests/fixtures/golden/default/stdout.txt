@@ -1,0 +1,17 @@
+
+[claude] installing into <PROJECT>
+  CLAUDE.md: created
+  frontend-agent MCP server registered in <PROJECT>/.mcp.json
+  figma MCP server registered in <PROJECT>/.mcp.json
+  note: Claude Code asks you to approve project MCP servers from .mcp.json the first time it starts in this project.
+  note: .mcp.json holds absolute paths to this kit checkout — keep it out of version control if the repo is shared.
+  note: Authenticate the Figma MCP from Claude Code with /mcp when prompted.
+
+[codex] installing into <PROJECT>
+  AGENTS.md: created
+  frontend-agent MCP server registered in <PROJECT>/.codex/config.toml
+  figma MCP server registered in <PROJECT>/.codex/config.toml (authenticate with: codex mcp login figma)
+  note: Codex reads <PROJECT>/.codex/config.toml only for trusted projects — trust <PROJECT> the first time you start Codex there.
+  note: .codex/config.toml holds absolute paths to this kit checkout — keep it out of version control if the repo is shared.
+
+Done. Run "frontend-agent verify --project <PROJECT>" to check the setup.

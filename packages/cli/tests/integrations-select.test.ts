@@ -4,7 +4,7 @@ import { resolveSelection, wantedIds } from '../src/integrations/select.ts';
 import { INTEGRATIONS } from '../src/integrations/index.ts';
 import type { Integration } from '../src/integrations/types.ts';
 
-// The registry only holds figma until later tasks add the others, so these tests inject extra entries.
+// Tests inject extra fake entries (e.g. cartographer) to cover host filtering and selection rules.
 const fake = (id: string, hosts: Integration['hosts'], defaultOn = false): Integration =>
   ({ id: id as never, hosts, defaultOn, detect: async () => ({ state: 'absent' }), plan: () => [], verify: () => [], notes: () => [] });
 const registry: readonly Integration[] = [...INTEGRATIONS, fake('cartographer', ['claude'])];

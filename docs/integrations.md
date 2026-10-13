@@ -8,7 +8,7 @@ An integration is an optional tool the kit knows how to wire into a project or c
 
 | id | Hosts | What the kit writes | How `verify` checks it | Install command |
 |---|---|---|---|---|
-| `figma` (default on) | claude, codex | The remote HTTP MCP server entry, as before | The entry is present and well-formed | none (remote server) |
+| `figma` (default on) | claude, codex | The remote HTTP MCP server entry, as before | Not checked by `verify` | none (remote server) |
 | `headroom` | claude, codex | An MCP entry `headroom` with the absolute path of the binary and `mcp serve` args | Entry present and well-formed: ok. Binary at the recorded path gone: warn. Entry malformed: fail | `uv tool install "headroom-ai[all]"` |
 | `claude-mem` | claude | Nothing | Worker health on loopback (`127.0.0.1`): ok. Launcher present but worker down, or not installed: warn | `npx claude-mem install` |
 | `cartographer` | claude | Nothing | Skill found: ok. `docs/CODEBASE_MAP.md` present: extra ok. Neither: warn | `/plugin marketplace add kingbootoshi/cartographer` then `/plugin install cartographer` |
@@ -40,13 +40,13 @@ A missing tool is only a warning because the kit does not install software and t
 
 ## State file
 
-`install` records the selected ids in `.dev-agent/integrations.json` (`{"enabled": [...]}`). `verify` checks the integrations listed there; a project without the file gets no integration checks. The selection is sticky: a later `install` without flags keeps the ids recorded earlier, and a recorded id is not checked against the machine again. Only `--no-<id>` drops one. Dropping an id never removes an entry already written to `.mcp.json` or `.codex/config.toml`; the adapters never remove entries.
+`install` records the selected ids in `.dev-agent/integrations.json` (`{"enabled": [...]}`). `verify` checks the integrations listed there; a project without the file gets no integration checks. The selection is sticky: a later `install` without flags keeps the ids recorded earlier, and `install` does not re-require the tool for an id recorded earlier (`verify` still warns when it is missing). Only `--no-<id>` drops one. `--no-<id>` for a default-on integration (for example `--no-figma`) is not sticky: repeat it on each install. Dropping an id never removes an entry from `.mcp.json`; existing entries there are only ever kept. Codex is different: its managed block in `.codex/config.toml` is regenerated on every install, so `install codex --no-headroom` (or re-installing without the `headroom` binary on `PATH`) removes the headroom entry from `.codex/config.toml`.
 
 ## Safety
 
 - Every file an integration writes goes through the same project-root check as the rest of the installer.
 - Before anything is written, the selected integrations are planned as a dry run for every host. Any failure aborts the whole install (fail closed).
-- Detection never throws and never writes. The only reads outside the project are read-only and limited to `~/.claude-mem` and `~/.claude/skills`.
+- Detection never throws and never writes. The only reads outside the project are read-only and limited to `~/.claude-mem`, `~/.claude/skills`, `~/.local/bin/claude-mem` and the directories on `PATH` (stat only, used to find `headroom` and `graphify`; nothing is executed).
 - The only network access is one loopback request (`127.0.0.1`) in the claude-mem health check.
 - Existing user MCP entries and instruction content are preserved.
 - The kit never runs `graphify install`. That command registers a global `/graphify` skill, edits `CLAUDE.md` and adds PreToolUse hooks that steer Claude toward the graph before grep. Those are machine-level changes and may compete with `repo index`, so run it only if you want that.

@@ -6,10 +6,11 @@ import { join } from 'node:path';
 import { claudeMem } from '../src/integrations/claude-mem.ts';
 import { project, fakeBin } from './integration-helpers.ts';
 
-function stubServer(status: number): Promise<{ port: number; close: () => Promise<void> }> {
+function stubServer(status: number, location?: string): Promise<{ port: number; close: () => Promise<void> }> {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       res.statusCode = req.url === '/api/health' ? status : 404;
+      if (location && req.url === '/api/health') res.setHeader('Location', location);
       res.end('{}');
     });
     server.listen(0, '127.0.0.1', () => {
@@ -55,6 +56,25 @@ test('worker answers with an error status, or nothing listens: unknown, never a 
     await server.close();
     assert.equal((await claudeMem.detect(ctx)).state, 'unknown');
   } finally {
+    await server.close();
+    cleanup();
+  }
+});
+
+test('a redirect is not followed: unknown, and the redirect target is never requested', async () => {
+  const { homeDir, ctx, cleanup } = project();
+  let targetHits = 0;
+  const target = http.createServer((_req, res) => { targetHits++; res.end('{}'); });
+  await new Promise<void>((r) => target.listen(0, '127.0.0.1', () => r()));
+  const targetPort = (target.address() as { port: number }).port;
+  const server = await stubServer(302, `http://127.0.0.1:${targetPort}/api/health`);
+  try {
+    writePort(homeDir, String(server.port));
+    assert.equal((await claudeMem.detect(ctx)).state, 'unknown');
+    assert.equal(targetHits, 0);
+  } finally {
+    await server.close();
+    await new Promise((r) => target.close(() => r(undefined)));
     cleanup();
   }
 });

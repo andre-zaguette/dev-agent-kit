@@ -50,6 +50,62 @@ test('verify: ok, warn (binary gone), fail (malformed or missing entry), nothing
   }
 });
 
+test('verify: a kept user-owned entry without args is not malformed; non-object or non-string command still fails', () => {
+  const { ctx, cleanup } = project();
+  try {
+    const v = (configured: Record<string, unknown>) => headroom.verify('claude', ctx, { state: 'present', binPath: '/x/headroom' }, configured);
+    const [custom] = v({ headroom: { command: 'custom' } });
+    assert.equal(custom.ok, true);
+    assert.equal(custom.warn, true, 'the command "custom" does not exist as a path, so it warns');
+    assert.equal(v({ headroom: { command: 'custom', args: 'x' } })[0].ok, false);
+    assert.equal(v({ headroom: { command: 5 } })[0].ok, false);
+    assert.equal(v({ headroom: 'x' })[0].ok, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test('verify: a missing entry warns when headroom is not installed here, fails when it is installed', () => {
+  const { ctx, cleanup } = project();
+  try {
+    const absent = headroom.verify('codex', ctx, { state: 'absent' }, {});
+    assert.deepEqual([absent[0].ok, absent[0].warn], [true, true]);
+    assert.match(absent[0].detail, /not installed on this machine/);
+    assert.match(absent[0].detail, /uv tool install/);
+    assert.match(absent[0].detail, /dev-agent install --with headroom/);
+    const present = headroom.verify('codex', ctx, { state: 'present', binPath: '/x/headroom' }, {});
+    assert.equal(present[0].ok, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test('notes: not-found hint when absent; host-aware path hint when present', () => {
+  const [hint] = headroom.notes('claude', { state: 'absent' });
+  assert.match(hint, /headroom: not found on PATH/);
+  assert.match(hint, /uv tool install/);
+  assert.match(hint, /re-run install --with headroom \(the kit does not install it\)/);
+  const present = { state: 'present', binPath: '/abs/headroom' } as const;
+  assert.match(headroom.notes('claude', present)[0], /remove the headroom entry from \.mcp\.json, then re-run install --with headroom/);
+  const codex = headroom.notes('codex', present)[0];
+  assert.match(codex, /re-run install --with headroom/);
+  assert.doesNotMatch(codex, /\.mcp\.json/);
+});
+
+test('verify: binary-gone warn is host-aware', () => {
+  const { ctx, cleanup } = project();
+  try {
+    const entry = { headroom: { command: '/no/such/headroom', args: ['mcp', 'serve'] } };
+    const det = { state: 'present', binPath: '/x' } as const;
+    assert.match(headroom.verify('claude', ctx, det, entry)[0].detail, /remove the headroom entry from \.mcp\.json, then re-run install --with headroom/);
+    const codex = headroom.verify('codex', ctx, det, entry)[0].detail;
+    assert.match(codex, /then re-run install --with headroom/);
+    assert.doesNotMatch(codex, /\.mcp\.json/);
+  } finally {
+    cleanup();
+  }
+});
+
 test('install --with headroom: both hosts get the entry, a second run adds no duplicate, plain re-install keeps it (sticky)', async () => {
   const { base, projectRoot, homeDir, cleanup } = project();
   const binDir = join(base, 'bin');

@@ -18,7 +18,8 @@ export const claudeMem: Integration = {
       const port = Number(readFileSync(portFile, 'utf8').trim());
       if (!Number.isInteger(port) || port < 1 || port > 65535) return { state: 'unknown', reason: `no valid port in ${portFile}` };
       try {
-        const response = await fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(1000) });
+        const response = await fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(1000), redirect: 'manual' });
+        try { await response.body?.cancel(); } catch { /* ignore */ }
         return response.ok
           ? { state: 'present', detail: `worker healthy on 127.0.0.1:${port}` }
           : { state: 'unknown', reason: `the worker on 127.0.0.1:${port} answered HTTP ${response.status}` };

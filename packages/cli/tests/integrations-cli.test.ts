@@ -162,3 +162,31 @@ test('end to end: a recorded headroom stays sticky when the binary leaves PATH, 
     cleanup();
   }
 });
+
+test('end to end: Codex drops a sticky headroom entry when the binary is gone; verify warns (never fails) and install prints the hint', async () => {
+  const { base, projectRoot, homeDir, cleanup } = project();
+  const binDir = join(base, 'bin');
+  fakeBin(binDir, 'headroom');
+  const out: string[] = [];
+  const codexHome = join(base, 'codex-home');
+  const withBin: CliIo = { stdout: (l) => out.push(l), stderr: (l) => out.push(l), env: { PATH: binDir, CODEX_HOME: codexHome }, cwd: projectRoot, homeDir };
+  const noBin: CliIo = { ...withBin, env: { PATH: '', CODEX_HOME: codexHome } };
+  try {
+    assert.equal(await run(['install', '--all', '--with', 'headroom', '--project', projectRoot], withBin), 0, out.join('\n'));
+    out.length = 0;
+    assert.equal(await run(['install', '--all', '--project', projectRoot], noBin), 0, out.join('\n'));
+    assert.match(out.join('\n'), /headroom: not found on PATH/);
+    // Documented behavior: the Codex managed block is regenerated, so the entry is dropped; .mcp.json keeps its entry.
+    assert.doesNotMatch(readFileSync(join(projectRoot, '.codex', 'config.toml'), 'utf8'), /headroom/);
+    assert.ok(JSON.parse(readFileSync(join(projectRoot, '.mcp.json'), 'utf8')).mcpServers.headroom);
+    out.length = 0;
+    // The exit code is not asserted: codex-trust fails here for an unrelated reason (the project is not trusted by Codex).
+    await run(['verify', '--all', '--project', projectRoot], noBin);
+    const text = out.join('\n');
+    assert.match(text, /! integration:headroom/);
+    assert.doesNotMatch(text, /✘ integration:headroom/);
+    assert.doesNotMatch(text, /✘ (?!codex-trust)/);
+  } finally {
+    cleanup();
+  }
+});

@@ -1,12 +1,13 @@
 import type { Integration } from './types.js';
 import { figma } from './figma.js';
+import { headroom } from './headroom.js';
 import type { HostAdapter } from '../adapters/host-adapter.js';
 import type { AdapterContext, CheckResult } from '../types.js';
 import type { IntegrationState } from './state.js';
 
 export type { Integration, IntegrationId, Detection, McpServerChange } from './types.js';
 
-export const INTEGRATIONS: readonly Integration[] = [figma];
+export const INTEGRATIONS: readonly Integration[] = [figma, headroom];
 
 export function integrationById(id: string): Integration | undefined {
   return INTEGRATIONS.find((integration) => integration.id === id);

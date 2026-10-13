@@ -7,7 +7,7 @@ import type { Integration } from '../src/integrations/types.ts';
 // The registry only holds figma until later tasks add the others, so these tests inject extra entries.
 const fake = (id: string, hosts: Integration['hosts'], defaultOn = false): Integration =>
   ({ id: id as never, hosts, defaultOn, detect: async () => ({ state: 'absent' }), plan: () => [], verify: () => [], notes: () => [] });
-const registry: readonly Integration[] = [...INTEGRATIONS, fake('headroom', ['claude', 'codex']), fake('cartographer', ['claude'])];
+const registry: readonly Integration[] = [...INTEGRATIONS, fake('cartographer', ['claude'])];
 const ids = (list: Integration[]) => list.map((i) => i.id);
 
 test('defaults only: figma', () => {

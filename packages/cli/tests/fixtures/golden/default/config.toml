@@ -1,0 +1,11 @@
+# >>> frontend-agent-kit (managed block — edits inside are overwritten)
+[mcp_servers.frontend-agent]
+command = "<KIT>/node_modules/.bin/tsx"
+args = [ "<KIT>/packages/mcp-server/src/index.ts" ]
+
+[mcp_servers.frontend-agent.env]
+FRONTEND_AGENT_PROJECT_ROOT = "<PROJECT>"
+
+[mcp_servers.figma]
+url = "https://mcp.figma.com/mcp"
+# <<< frontend-agent-kit (add your own settings above this block)

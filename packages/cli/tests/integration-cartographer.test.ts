@@ -50,6 +50,19 @@ test('verify: skill found → ok; map present → extra ok; neither → warn wit
   }
 });
 
+test('verify: the v2 index (.cartographer/manifest.json) counts as a generated map, with no warn', () => {
+  const { projectRoot, ctx, cleanup } = project();
+  try {
+    mkdirSync(join(projectRoot, '.cartographer'));
+    writeFileSync(join(projectRoot, '.cartographer', 'manifest.json'), '{}');
+    const checks = cartographer.verify('claude', ctx, { state: 'unknown', reason: 'x' }, {});
+    assert.deepEqual(checks.map((c) => [c.ok, !!c.warn]), [[true, false]]);
+    assert.match(checks[0].detail, /\.cartographer\/manifest\.json/);
+  } finally {
+    cleanup();
+  }
+});
+
 test('plan is empty: the kit writes nothing for Cartographer', () => {
   assert.deepEqual(cartographer.plan('claude', { state: 'absent' }), []);
 });

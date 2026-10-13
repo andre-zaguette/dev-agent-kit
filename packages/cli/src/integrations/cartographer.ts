@@ -27,6 +27,9 @@ export const cartographer: Integration = {
     if (existsSync(path.join(ctx.projectRoot, 'docs', 'CODEBASE_MAP.md'))) {
       checks.push({ name: `${name}:map`, ok: true, detail: 'docs/CODEBASE_MAP.md present (map generated)' });
     }
+    if (existsSync(path.join(ctx.projectRoot, '.cartographer', 'manifest.json'))) {
+      checks.push({ name: `${name}:index`, ok: true, detail: '.cartographer/manifest.json present (v2 index generated)' });
+    }
     if (checks.length === 0) {
       checks.push({ name, ok: true, warn: true, detail: `plugin not found; install with: ${MARKETPLACE} then ${INSTALL}` });
     }

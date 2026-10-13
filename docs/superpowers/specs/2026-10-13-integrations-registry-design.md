@@ -100,7 +100,7 @@ export interface McpServerChange { name: string; entry: Record<string, unknown>;
   - `detect`: `graphify` on `PATH` (path lookup only, no execution) → `present`; otherwise `absent`.
   - `plan`: empty. The kit writes nothing.
   - `verify`: binary found → `ok`; `graphify-out/GRAPH_REPORT.md` present → extra `ok` ("graph generated"); binary missing → `warn` with the install hint `uv tool install graphifyy` (PyPI package `graphifyy`, command `graphify`, Python 3.10+).
-  - The kit never runs `graphify install`. That command registers a global `/graphify` skill, edits `CLAUDE.md` and adds PreToolUse hooks that steer Claude toward the graph before grep; those are machine-level changes and may compete with `repo-index`. The `notes` output says so, so the user opts in knowingly.
+  - The kit never runs `graphify install` or any other graphify command. Per the official README: `graphify install` registers the skill, `graphify claude install` adds an always-on config plus a hook that steers Claude toward the graph before search-style tool calls, `graphify hook install` adds git hooks; those are machine-level changes and may compete with `repo-index`. The `notes` output says so, so the user opts in knowingly.
 
 ### CLI surface
 
@@ -155,11 +155,11 @@ Not automated (manual checklist in the plan, because the tools move quickly): re
 
 ## Open items to settle during implementation
 
-1. **Claude Code form of the Headroom entry.** Codex's `[mcp_servers.headroom]` is documented; the `.mcp.json` equivalent is assumed (`command` + `args`, stdio). Confirm with `headroom mcp install` output or `server.json` before release.
-2. **Cartographer detection for marketplace installs.** No documented plugin location. Until confirmed, `unknown` plus the `docs/CODEBASE_MAP.md` signal is the fallback.
+1. **Claude Code form of the Headroom entry.** Codex's `[mcp_servers.headroom]` is documented. For Claude Code the official docs say to run `headroom mcp install` (file and scope not stated) and show a generic stdio entry `{"type":"stdio","command":"headroom","args":["mcp","serve","--proxy-url","http://127.0.0.1:8787"]}`; `server.json` gives `uvx --from "headroom-ai[mcp]" headroom mcp serve`. The kit's entry matches the generic shape but omits `--proxy-url`. Still to confirm by running `headroom mcp install` and loading the entry in Claude Code.
+2. **Cartographer detection for marketplace installs.** No documented plugin location (re-checked 2026-10-13). The fallback is `unknown` plus two generated-output signals: `docs/CODEBASE_MAP.md` (plugin workflow) and `.cartographer/manifest.json` (v2 CLI index). The plugin's `CLAUDE.md` marker text is also undocumented; the coexistence test remains the mitigation.
 3. **Where enabled integrations are recorded.** *Resolved 2026-10-13:* the first draft used an `integrations:` key in `.dev-agent/config.yml`. Rejected after reading the code: `parseDevAgentConfig` rejects unknown top-level keys (so older CLIs would break on such projects), and `install` never writes `config.yml` today (it is user-authored YAML; rewriting it would risk the user's comments). The state goes in `.dev-agent/integrations.json` instead, written by `install`, validated against the registry ids on read, with no change to `packages/core`.
 
-4. **Graphify canonical source.** Search results disagree on the GitHub owner (several forks and organizations share the name). Only the PyPI name `graphifyy` is used in the spec. Before release, confirm the official repository and that the PyPI package belongs to it (typosquatting risk), and read what `graphify install` writes before documenting it.
+4. **Graphify canonical source.** *Resolved 2026-10-13:* the official repository is `Graphify-Labs/graphify`; its README names the PyPI package `graphifyy` and warns that other `graphify*` packages are not affiliated, and the PyPI metadata links back to that repository (the PyPI author field is empty, so this is cross-consistency, not a publisher badge). The earlier description of `graphify install` came from blog posts and was wrong; it is corrected above. No repository URL is hard-coded in code.
 
 ## Out of scope for this spec
 

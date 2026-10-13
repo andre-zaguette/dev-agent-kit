@@ -29,7 +29,7 @@ export const graphify: Integration = {
     if (detection.state === 'present') return [];
     return [
       `graphify: not found on PATH — install with: ${INSTALL} (the kit does not install it).`,
-      'graphify: the kit never runs `graphify install`. That command registers a global /graphify skill, edits CLAUDE.md and adds PreToolUse hooks that steer Claude toward the graph before grep; read what it changes before you run it yourself.'
+      'graphify: the kit never runs `graphify install` (or any other graphify command). Per the official README, `graphify install` registers the skill, `graphify claude install` adds an always-on config plus a hook that steers Claude toward the graph before search-style tool calls, and `graphify hook install` adds git hooks. Those are machine-level changes and may compete with repo-index; read the official README before running them yourself.'
     ];
   }
 };

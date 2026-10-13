@@ -9,9 +9,9 @@ An integration is an optional tool the kit knows how to wire into a project or c
 | id | Hosts | What the kit writes | How `verify` checks it | Install command |
 |---|---|---|---|---|
 | `figma` (default on) | claude, codex | The remote HTTP MCP server entry, as before | Not checked by `verify` | none (remote server) |
-| `headroom` | claude, codex | An MCP entry `headroom` with the absolute path of the binary and `mcp serve` args | Entry present and well-formed: ok. Binary at the recorded path gone: warn. Entry malformed: fail | `uv tool install "headroom-ai[all]"` |
+| `headroom` | claude, codex | An MCP entry `headroom` with the absolute path of the binary and `mcp serve` args | Entry present and well-formed: ok. Binary at the recorded path gone: warn. Entry missing and the binary absent from this machine: warn. Entry missing while the binary is present, or entry malformed: fail | `uv tool install "headroom-ai[all]"` |
 | `claude-mem` | claude | Nothing | Worker health on loopback (`127.0.0.1`): ok. Launcher present but worker down, or not installed: warn | `npx claude-mem install` |
-| `cartographer` | claude | Nothing | Skill found: ok. `docs/CODEBASE_MAP.md` present: extra ok. Neither: warn | `/plugin marketplace add kingbootoshi/cartographer` then `/plugin install cartographer` |
+| `cartographer` | claude | Nothing | Skill found: ok. `docs/CODEBASE_MAP.md` or `.cartographer/manifest.json` (v2 index) present: extra ok. None of them: warn | `/plugin marketplace add kingbootoshi/cartographer` then `/plugin install cartographer` |
 | `graphify` | claude, codex | Nothing | Binary on `PATH`: ok. `graphify-out/GRAPH_REPORT.md` present: extra ok. Binary missing: warn | `uv tool install graphifyy` |
 
 Notes:
@@ -34,7 +34,7 @@ dev-agent install --all --with graphify --no-figma
 |---|---|---|
 | `ok` | Project config is correct and the tool is present | 0 |
 | `warn` | Project config is correct (or there is nothing to configure) but the tool is missing or unhealthy on this machine | 0, with an install note |
-| `fail` | Project config is broken: invalid JSON/TOML, a malformed or missing entry | 1 |
+| `fail` | Project config is broken: invalid JSON/TOML, a malformed entry, or a missing entry whose tool is present | 1 |
 
 A missing tool is only a warning because the kit does not install software and the checkout may run on another machine or in CI. Only configuration the kit wrote (or should have written) can fail `verify`.
 
@@ -49,4 +49,4 @@ A missing tool is only a warning because the kit does not install software and t
 - Detection never throws and never writes. The only reads outside the project are read-only and limited to `~/.claude-mem`, `~/.claude/skills`, `~/.local/bin/claude-mem` and the directories on `PATH` (stat only, used to find `headroom` and `graphify`; nothing is executed).
 - The only network access is one loopback request (`127.0.0.1`) in the claude-mem health check.
 - Existing user MCP entries and instruction content are preserved.
-- The kit never runs `graphify install`. That command registers a global `/graphify` skill, edits `CLAUDE.md` and adds PreToolUse hooks that steer Claude toward the graph before grep. Those are machine-level changes and may compete with `repo index`, so run it only if you want that.
+- The kit never runs `graphify install` or any other graphify command. Per the official README, `graphify install` registers the skill, `graphify claude install` adds an always-on config plus a hook that steers Claude toward the graph before search-style tool calls, and `graphify hook install` adds git hooks. Those are machine-level changes and may compete with `repo index`, so run them only if you want that. The official source is the `Graphify-Labs/graphify` repository (its README names the PyPI package `graphifyy` and warns that other `graphify*` packages are not affiliated).

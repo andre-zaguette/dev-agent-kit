@@ -60,7 +60,7 @@ export interface Integration {
   /** Best-effort, read-only, never throws. */
   detect(ctx: AdapterContext): Promise<Detection>;
   /** Pure: what to write inside the project for this host. Empty for verify-only integrations. */
-  plan(host: HostName, ctx: AdapterContext, detection: Detection): Change[];
+  plan(host: HostName, detection: Detection): McpServerChange[];
   verify(host: HostName, ctx: AdapterContext, detection: Detection): Check[];
   /** Install hints for what is missing on the machine. */
   notes(host: HostName, detection: Detection): string[];
@@ -71,12 +71,11 @@ export type Detection =
   | { state: 'absent' }
   | { state: 'unknown'; reason: string };
 
-export type Change =
-  | { kind: 'mcp-server'; name: string; config: McpServerConfig }
-  | { kind: 'managed-block'; file: string; id: string; body: string };
+/** One MCP server entry an integration wants in a host's project config (the only project write any integration needs). */
+export interface McpServerChange { name: string; entry: Record<string, unknown>; hint?: string }
 ```
 
-`McpConfig` (host adapters' input) becomes `{ kitRoot, projectRoot, integrations: Integration[] }`. Host adapters apply `Change[]` generically: `mcp-server` into `.mcp.json` (Claude) or `.codex/config.toml` (Codex), `managed-block` into the host's instruction file. Adapters keep their existing preserve-user-content behavior (an existing entry with the same name is kept and reported).
+`McpConfig` (host adapters' input) becomes `{ kitRoot, projectRoot, extraServers: McpServerChange[] }`, resolved per host by the CLI. Host adapters apply the entries generically into `.mcp.json` (Claude) or `.codex/config.toml` (Codex). A managed-block change type was dropped from the draft: no integration needs one (YAGNI). Adapters keep their existing preserve-user-content behavior (an existing entry with the same name is kept and reported).
 
 ### The five integrations
 
@@ -111,7 +110,7 @@ dev-agent install [hosts] [--with <id>]... [--no-<id>]... [--no-figma]
 
 - `--with <id>` enables a non-default integration; `--no-<id>` disables a default one. `--no-figma` keeps working exactly as today; it is simply the `--no-<id>` form applied to `figma` (no behavior change).
 - `--with` on a host the integration does not support (for example `--with cartographer` with only `codex`) is a usage error, exit 1, naming the supported hosts.
-- `dev-agent verify` checks the integrations the project has enabled. How "enabled" is known: install records the selected ids in a managed field of `.dev-agent/config.yml` under `integrations:`; verify reads that list. Projects with no list behave as today (Figma only).
+- `dev-agent verify` checks the integrations the project has enabled. How "enabled" is known: install records the selected ids in `.dev-agent/integrations.json` (`{"enabled": [...]}`), next to the skills manifest as precedent for a kit-owned state file. Selection is sticky: a later `install` without flags keeps ids recorded earlier (the adapters never remove entries either); only `--no-<id>` drops one. Projects without the file behave as today (no integration checks).
 - `install` never executes an installer. It prints `notes` for anything missing.
 
 ### Check states and exit codes
@@ -120,7 +119,7 @@ dev-agent install [hosts] [--with <id>]... [--no-<id>]... [--no-figma]
 |-------|---------|------|
 | `ok` | Project config correct and tool present | 0 |
 | `warn` | Project config correct (or nothing to configure) but the tool is missing or unhealthy on this machine | 0, with install note |
-| `fail` | Project config broken: invalid JSON/TOML, malformed entry, corrupted managed block | 2 |
+| `fail` | Project config broken: invalid JSON/TOML, malformed or missing entry | 1 (the exit code `verify` already uses; `dev-agent` documents install/verify as keeping it) |
 
 A missing tool is `warn` because the kit does not install software and the checkout may run on another machine or in CI. Only configuration the kit wrote (or should have written) can fail `verify`.
 
@@ -158,7 +157,7 @@ Not automated (manual checklist in the plan, because the tools move quickly): re
 
 1. **Claude Code form of the Headroom entry.** Codex's `[mcp_servers.headroom]` is documented; the `.mcp.json` equivalent is assumed (`command` + `args`, stdio). Confirm with `headroom mcp install` output or `server.json` before release.
 2. **Cartographer detection for marketplace installs.** No documented plugin location. Until confirmed, `unknown` plus the `docs/CODEBASE_MAP.md` signal is the fallback.
-3. **`integrations:` field in `.dev-agent/config.yml`.** *Resolved 2026-10-13:* `parseDevAgentConfig` rejects any top-level key outside `TOP_LEVEL_KEYS` ("is not a recognized setting"), so the field needs real support: add `integrations` to `TOP_LEVEL_KEYS`, a `parseIntegrations` that accepts a list of known ids (unknown id → config error naming valid ids), and `integrations: IntegrationId[]` in `DevAgentConfig` (default `[]`, meaning Figma only, as today). Projects without the key parse unchanged. Consequence: a project whose config lists `integrations:` fails on a CLI older than v1.2, which is acceptable for an opt-in field but goes in the release notes. Still to confirm in the plan: whether `install` already writes `config.yml`; if not, it only writes the file when at least one non-default integration is selected, preserving existing content and comments.
+3. **Where enabled integrations are recorded.** *Resolved 2026-10-13:* the first draft used an `integrations:` key in `.dev-agent/config.yml`. Rejected after reading the code: `parseDevAgentConfig` rejects unknown top-level keys (so older CLIs would break on such projects), and `install` never writes `config.yml` today (it is user-authored YAML; rewriting it would risk the user's comments). The state goes in `.dev-agent/integrations.json` instead, written by `install`, validated against the registry ids on read, with no change to `packages/core`.
 
 4. **Graphify canonical source.** Search results disagree on the GitHub owner (several forks and organizations share the name). Only the PyPI name `graphifyy` is used in the spec. Before release, confirm the official repository and that the PyPI package belongs to it (typosquatting risk), and read what `graphify install` writes before documenting it.
 

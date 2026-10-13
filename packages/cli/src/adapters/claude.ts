@@ -6,7 +6,7 @@ import { which, assertRealDirInsideRoot } from '../util.js';
 import { syncSkills, readManifest, type SyncReport } from '../sync-skills.js';
 import { upsertMarkdownBlock, assertInsideRoot, preflightMarkdownFile, type BlockAction } from '../managed-block.js';
 import { instructionsContent } from '../instructions.js';
-import { FIGMA_MCP_URL, SERVER_NAME, kitServerLaunch, type ServerLaunch } from '../mcp-launch.js';
+import { SERVER_NAME, kitServerLaunch, type ServerLaunch } from '../mcp-launch.js';
 import { checkInstructions, checkLaunchConfig, checkSkills, probeServer } from '../checks.js';
 
 type McpJson = { mcpServers?: Record<string, Record<string, unknown>> } & Record<string, unknown>;
@@ -79,12 +79,12 @@ export class ClaudeCodeAdapter implements HostAdapter {
     servers[SERVER_NAME] = { type: 'stdio', command: launch.command, args: launch.args, env: launch.env };
     actions.push(`${SERVER_NAME} MCP server registered in ${this.mcpFile}`);
 
-    if (config.includeFigma) {
-      if (servers.figma) {
-        actions.push(`figma MCP server already configured in ${this.mcpFile} — kept`);
+    for (const extra of config.extraServers) {
+      if (servers[extra.name]) {
+        actions.push(`${extra.name} MCP server already configured in ${this.mcpFile} — kept`);
       } else {
-        servers.figma = { type: 'http', url: FIGMA_MCP_URL };
-        actions.push(`figma MCP server registered in ${this.mcpFile}`);
+        servers[extra.name] = extra.entry;
+        actions.push(`${extra.name} MCP server registered in ${this.mcpFile}${extra.hint ? ` (${extra.hint})` : ''}`);
       }
     }
 

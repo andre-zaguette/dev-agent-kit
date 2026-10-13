@@ -34,7 +34,7 @@ test('the server launch uses the resolved tsx and the kit\'s server entry', () =
     const kit = join(base, 'node_modules', 'dev-agent-kit');
     mkdirSync(kit, { recursive: true });
     const hoisted = fakeTsx(base);
-    const launch = kitServerLaunch({ kitRoot: kit, projectRoot: '/p', includeFigma: false });
+    const launch = kitServerLaunch({ kitRoot: kit, projectRoot: '/p' });
     assert.equal(launch.command, hoisted);
     assert.deepEqual(launch.args, [join(kit, 'packages', 'mcp-server', 'src', 'index.ts')]);
     assert.equal(launch.env.FRONTEND_AGENT_PROJECT_ROOT, '/p');

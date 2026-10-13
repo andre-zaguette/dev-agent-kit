@@ -2,6 +2,7 @@ import { existsSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { ALL_HOSTS, REAL_HOSTS, createAdapter, type HostAdapter } from './adapters/index.js';
+import { INTEGRATIONS, type Detection, type IntegrationId } from './integrations/index.js';
 import type { AdapterContext, HostName } from './types.js';
 import { findKitRoot, readKitVersion } from './util.js';
 
@@ -72,11 +73,20 @@ async function install(adapters: HostAdapter[], ctx: AdapterContext, includeFigm
       throw new Error(`frontend-agent: ${adapter.name} is not supported yet (stub adapter in v0.4 — spec §6).`);
     }
   }
-  const mcpConfig = { kitRoot: ctx.kitRoot, projectRoot: ctx.projectRoot, includeFigma };
+  const selected = INTEGRATIONS.filter((integration) => (integration.id === 'figma' ? includeFigma : false));
+  const detections = new Map<IntegrationId, Detection>();
+  for (const integration of selected) detections.set(integration.id, await integration.detect(ctx));
+  const configFor = (adapter: HostAdapter) => ({
+    kitRoot: ctx.kitRoot,
+    projectRoot: ctx.projectRoot,
+    extraServers: selected
+      .filter((integration) => integration.hosts.includes(adapter.name))
+      .flatMap((integration) => integration.plan(adapter.name, detections.get(integration.id)!))
+  });
   // Fail closed: validate everything every selected host will touch before any of them writes
   // anything, so a problem with one host never leaves another partially installed.
   for (const adapter of adapters) {
-    await withHostPrefix(adapter, () => adapter.preflight(mcpConfig));
+    await withHostPrefix(adapter, () => adapter.preflight(configFor(adapter)));
   }
   for (const adapter of adapters) {
     io.stdout(`\n[${adapter.name}] installing into ${ctx.projectRoot}`);
@@ -88,7 +98,7 @@ async function install(adapters: HostAdapter[], ctx: AdapterContext, includeFigm
       for (const skipped of report.skipped) io.stdout(`  ! skipped ${skipped.path}: ${skipped.reason}`);
       const instructions = await adapter.installInstructions();
       io.stdout(`  ${adapter.name === 'claude' ? 'CLAUDE.md' : 'AGENTS.md'}: ${instructions}`);
-      for (const action of await adapter.installMcp(mcpConfig)) {
+      for (const action of await adapter.installMcp(configFor(adapter))) {
         io.stdout(`  ${action}`);
       }
       for (const note of adapter.notes()) io.stdout(`  note: ${note}`);

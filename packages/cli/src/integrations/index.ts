@@ -3,13 +3,14 @@ import { figma } from './figma.js';
 import { headroom } from './headroom.js';
 import { claudeMem } from './claude-mem.js';
 import { cartographer } from './cartographer.js';
+import { graphify } from './graphify.js';
 import type { HostAdapter } from '../adapters/host-adapter.js';
 import type { AdapterContext, CheckResult } from '../types.js';
 import type { IntegrationState } from './state.js';
 
 export type { Integration, IntegrationId, Detection, McpServerChange } from './types.js';
 
-export const INTEGRATIONS: readonly Integration[] = [figma, headroom, claudeMem, cartographer];
+export const INTEGRATIONS: readonly Integration[] = [figma, headroom, claudeMem, cartographer, graphify];
 
 export function integrationById(id: string): Integration | undefined {
   return INTEGRATIONS.find((integration) => integration.id === id);

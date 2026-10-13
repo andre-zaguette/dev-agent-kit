@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { INTEGRATIONS, integrationById } from '../src/integrations/index.ts';
+import { INTEGRATION_IDS } from '../src/integrations/types.ts';
 import { project } from './integration-helpers.ts';
 
 test('figma is the only default-on integration and plans the same entries as before', async () => {
@@ -22,4 +23,8 @@ test('figma is the only default-on integration and plans the same entries as bef
 
 test('integrationById returns undefined for an unknown id', () => {
   assert.equal(integrationById('nope'), undefined);
+});
+
+test('every id in INTEGRATION_IDS has a registered integration, and nothing else is registered', () => {
+  assert.deepEqual(INTEGRATIONS.map((i) => i.id).sort(), [...INTEGRATION_IDS].sort());
 });

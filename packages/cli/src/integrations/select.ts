@@ -1,6 +1,6 @@
 import type { HostName } from '../types.js';
 import { INTEGRATIONS } from './index.js';
-import type { Integration, IntegrationId } from './types.js';
+import { INTEGRATION_IDS, type Integration, type IntegrationId } from './types.js';
 
 export interface SelectionFlags {
   with: string[];
@@ -33,11 +33,17 @@ export function resolveSelection(
       );
     }
   }
+  const wanted = new Set<string>(wantedIds(flags, previous, registry));
+  return registry.filter((integration) => wanted.has(integration.id) && integration.hosts.some((host) => hosts.includes(host)));
+}
+
+/** The ids to record: defaults + previously recorded + --with, minus --no-<id>, not filtered by host. */
+export function wantedIds(flags: SelectionFlags, previous: IntegrationId[], registry: readonly Integration[] = INTEGRATIONS): IntegrationId[] {
   const wanted = new Set<string>([
     ...registry.filter((integration) => integration.defaultOn).map((integration) => integration.id),
     ...previous,
     ...flags.with
   ]);
   for (const id of flags.without) wanted.delete(id);
-  return registry.filter((integration) => wanted.has(integration.id) && integration.hosts.some((host) => hosts.includes(host)));
+  return INTEGRATION_IDS.filter((id) => wanted.has(id));
 }

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { ALL_HOSTS, REAL_HOSTS, createAdapter, type HostAdapter } from './adapters/index.js';
 import { INTEGRATIONS, type Detection, type IntegrationId } from './integrations/index.js';
-import { resolveSelection, type SelectionFlags } from './integrations/select.js';
+import { resolveSelection, wantedIds, type SelectionFlags } from './integrations/select.js';
 import { assertStateWritable, persistIntegrationState, readIntegrationState } from './integrations/state.js';
 import type { AdapterContext, HostName } from './types.js';
 import { findKitRoot, readKitVersion } from './util.js';
@@ -117,7 +117,7 @@ async function install(adapters: HostAdapter[], ctx: AdapterContext, flags: Sele
       }
     });
   }
-  persistIntegrationState(ctx.projectRoot, selected.map((integration) => integration.id));
+  persistIntegrationState(ctx.projectRoot, wantedIds(flags, previous.ids));
   io.stdout(`\nDone. Run "frontend-agent verify${adapters.length === 1 ? ` ${adapters[0].name}` : ''} --project ${ctx.projectRoot}" to check the setup.`);
 }
 

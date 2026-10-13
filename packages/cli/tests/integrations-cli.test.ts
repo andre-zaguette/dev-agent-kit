@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { run, type CliIo } from '../src/cli.ts';
 import { project } from './integration-helpers.ts';
@@ -42,6 +42,41 @@ test('--no-figma still works as before', async () => {
   try {
     assert.equal(await run(['install', 'claude', '--no-figma', '--project', projectRoot], io), 0);
     assert.equal(JSON.parse(readFileSync(join(projectRoot, '.mcp.json'), 'utf8')).mcpServers.figma, undefined);
+  } finally {
+    cleanup();
+  }
+});
+
+test('a recorded id missing from the registry survives a plain install', async () => {
+  const { projectRoot, io, cleanup } = harness();
+  try {
+    mkdirSync(join(projectRoot, '.dev-agent'));
+    writeFileSync(join(projectRoot, '.dev-agent', 'integrations.json'), JSON.stringify({ enabled: ['figma', 'headroom'] }));
+    assert.equal(await run(['install', 'claude', '--project', projectRoot], io), 0);
+    assert.deepEqual(JSON.parse(readFileSync(join(projectRoot, '.dev-agent', 'integrations.json'), 'utf8')), { enabled: ['figma', 'headroom'] });
+  } finally {
+    cleanup();
+  }
+});
+
+test('--no-figma records an empty selection', async () => {
+  const { projectRoot, io, cleanup } = harness();
+  try {
+    assert.equal(await run(['install', 'claude', '--no-figma', '--project', projectRoot], io), 0);
+    assert.deepEqual(JSON.parse(readFileSync(join(projectRoot, '.dev-agent', 'integrations.json'), 'utf8')), { enabled: [] });
+  } finally {
+    cleanup();
+  }
+});
+
+test('a .dev-agent symlink pointing outside the project stops install before any write', async () => {
+  const { base, projectRoot, io, cleanup } = harness();
+  try {
+    const outside = join(base, 'outside');
+    mkdirSync(outside);
+    symlinkSync(outside, join(projectRoot, '.dev-agent'));
+    assert.equal(await run(['install', 'claude', '--project', projectRoot], io), 1);
+    assert.equal(existsSync(join(projectRoot, '.mcp.json')), false);
   } finally {
     cleanup();
   }

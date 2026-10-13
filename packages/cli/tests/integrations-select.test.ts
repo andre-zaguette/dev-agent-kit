@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveSelection } from '../src/integrations/select.ts';
+import { resolveSelection, wantedIds } from '../src/integrations/select.ts';
 import { INTEGRATIONS } from '../src/integrations/index.ts';
 import type { Integration } from '../src/integrations/types.ts';
 
@@ -42,4 +42,10 @@ test('--with x and --no-x together conflict', () => {
 
 test('a recorded id unsupported by the selected hosts is skipped silently', () => {
   assert.deepEqual(ids(resolveSelection({ with: [], without: [] }, ['codex'], ['cartographer'], registry)), ['figma']);
+});
+
+test('wantedIds keeps recorded ids the host does not support; only without drops them; ordered, deduped', () => {
+  assert.deepEqual(wantedIds({ with: [], without: [] }, ['cartographer'], registry), ['figma', 'cartographer']);
+  assert.deepEqual(wantedIds({ with: [], without: ['cartographer'] }, ['cartographer'], registry), ['figma']);
+  assert.deepEqual(wantedIds({ with: ['headroom', 'headroom'], without: [] }, ['cartographer', 'headroom', 'figma'], registry), ['figma', 'headroom', 'cartographer']);
 });

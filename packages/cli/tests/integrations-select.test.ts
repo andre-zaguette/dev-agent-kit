@@ -29,7 +29,7 @@ test('selection is sticky: a plain run keeps previously recorded ids; --no-<id> 
 });
 
 test('unknown id is a usage error listing the valid ids', () => {
-  assert.throws(() => resolveSelection({ with: ['nope'], without: [] }, ['claude'], [], registry), /unknown integration "nope".*figma, headroom, cartographer/);
+  assert.throws(() => resolveSelection({ with: ['nope'], without: [] }, ['claude'], [], registry), /unknown integration "nope".*figma, headroom, claude-mem, cartographer/);
 });
 
 test('--with on a host the integration does not support names the supported hosts', () => {

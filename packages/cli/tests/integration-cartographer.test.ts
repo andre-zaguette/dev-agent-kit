@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cartographer } from '../src/integrations/cartographer.ts';
 import { ClaudeCodeAdapter } from '../src/adapters/claude.ts';
+import { BLOCK_START } from '../src/managed-block.ts';
 import { project } from './integration-helpers.ts';
 
 test('detect: skill directory in the project or in ~/.claude/skills is present; otherwise unknown', async () => {
@@ -62,6 +63,8 @@ test('CLAUDE.md coexistence: Cartographer-style text around the kit block surviv
     writeFileSync(join(projectRoot, 'CLAUDE.md'), before);
     await adapter.installInstructions();
     const first = readFileSync(join(projectRoot, 'CLAUDE.md'), 'utf8');
+    assert.ok(first.length > before.length, 'the kit block was not written');
+    assert.ok(first.includes(BLOCK_START), 'kit block start marker missing');
     assert.ok(first.startsWith(before), 'text before the kit block changed');
     writeFileSync(join(projectRoot, 'CLAUDE.md'), `${first}${after}`);
     await adapter.installInstructions();

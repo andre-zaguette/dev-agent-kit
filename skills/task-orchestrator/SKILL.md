@@ -16,7 +16,7 @@ One workflow for any task source. Source specifics live in `.dev-agent/config.ym
 
 1. **Resolve the source.** Explicit source from the request, then identifier patterns, then the default. Two matches or none: stop and ask. Never try every source. See `references/source-resolution.md`.
 2. **Ingest the work item** through the resolved source and normalize it. Do not invent content: if the source is unavailable, say so and ask for a connection or pasted text. See `references/work-item.md`, `references/task-source.md`, `references/generic-mcp.md`.
-3. **Investigate the repository** (use `repository-investigation`; reuse `repo-memory` when fresh). Then **classify**: frontend, backend, fullstack, investigation-only or infrastructure. Load only that domain's skills.
+3. **Investigate the repository** (use `repository-investigation`; reuse `repo-memory` when fresh). Then **classify**: frontend, backend, fullstack, investigation-only or infrastructure. Load only that domain's skills (for frontend work that includes `frontend-architecture`).
 4. **Write the ledger** at `.dev-agent/tasks/<KEY>.md` and state at `.dev-agent/state/<KEY>.json`. See `references/task-ledger.md`.
 5. **Prepare Git** (execute mode only): clean tree, fetch, fast-forward base, task branch, record base SHA. See `references/git-workflow.md`.
 6. **Implement** with the domain skills and `surgical-diff`; **verify** with `verification`.

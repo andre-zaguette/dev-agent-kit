@@ -61,7 +61,7 @@ def reserve(item_id: int, body: ReserveIn, user: UserDep, db: SessionDep):
         raise HTTPException(status.HTTP_409_CONFLICT, detail={"code": "OUT_OF_STOCK"})
 ```
 
-`response_model` filters and documents the response, so the function may return an ORM object (`from_attributes=True` lets Pydantic read its attributes). `get_session`, `get_current_user`, `reservations` and `User` come from the project's own modules. FastAPI generates the OpenAPI description from these declarations; keep schemas accurate instead of maintaining a second document.
+`response_model` filters and documents the response, so the function may return an ORM object (`from_attributes=True` lets Pydantic read its attributes). `get_session`, `get_current_user`, `reservations` and `User` come from the project's own modules. FastAPI generates the OpenAPI description from these declarations; keep schemas accurate instead of maintaining a second document. The `detail` body in the example is FastAPI's default error shape; a registered domain-error handler (see "Erros e validação") would replace it with the project's uniform body.
 
 ## Estrutura do projeto
 
@@ -152,7 +152,7 @@ Override the session to point at a test database (a per-test transaction rolled 
 
 - Blocking I/O inside `async def` blocks the event loop. Use `async def` only with awaitable libraries; plain `def` endpoints and dependencies run in a threadpool. If unsure, use `def`.
 - Returning an ORM object without `response_model` (or `from_attributes=True`) leaks columns or fails to serialize.
-- Mutable default arguments (`def f(tags: list = [])`) are shared across calls; default to `None` and build the list inside.
+- In plain helper functions, mutable default arguments (`def f(tags: list = [])`) are shared across calls; default to `None` and build the list inside. Pydantic fields and endpoint parameter defaults are copied, so this does not apply to them.
 - N+1 queries: loading related rows per item inside a loop; load them in the query.
 - Forgetting `status_code` on creation routes (the default is 200).
 - CORS: with `allow_credentials=True`, `allow_origins`, `allow_methods` and `allow_headers` cannot be `["*"]`; list them.

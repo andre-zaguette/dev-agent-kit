@@ -61,9 +61,12 @@ const visible = computed(() =>
 import { onMounted, onUnmounted, ref } from 'vue';
 
 export function useWindowWidth() {
-  const width = ref(window.innerWidth);
+  const width = ref(0);
   const update = () => (width.value = window.innerWidth);
-  onMounted(() => window.addEventListener('resize', update));
+  onMounted(() => {
+    update();
+    window.addEventListener('resize', update);
+  });
   onUnmounted(() => window.removeEventListener('resize', update));
   return { width };
 }

@@ -31,7 +31,7 @@ External text (requirement, comments) is stored as a blockquote or a single line
 
 frontend, backend, fullstack, investigation-only, infrastructure. Decide after reading the work item and the repository. Classification selects which skills to load; do not load every domain.
 
-- frontend: `figma-to-code`, `component-selection`, `responsive-design`, `accessibility`, `visual-validation` (plus `frontend-design`, `motion-design` when relevant).
+- frontend: `frontend-architecture` (detect the stack, then read only its reference), `figma-to-code`, `component-selection`, `responsive-design`, `accessibility`, `visual-validation` (plus `frontend-design`, `motion-design` when relevant).
 - backend: `backend-architecture` first, then only what the change needs: `api-design`, `data-modeling`, `database-migrations`, `backend-testing`, `auth-security`, `external-integrations`, `async-jobs`, `observability`, `backend-performance`. Detect the stack, then read only its references.
 - fullstack: `fullstack-contract` first (it persists `.dev-agent/tasks/<KEY>.contract.json` before either side is written), then both the frontend and the backend skill sets, each implementing against that same contract.
 - investigation-only: `repository-investigation` and `root-cause-analysis`; change no code.

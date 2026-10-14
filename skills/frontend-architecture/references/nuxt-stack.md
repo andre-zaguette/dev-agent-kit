@@ -26,7 +26,6 @@ const route = useRoute();
 
 const { data: user, status, error, refresh } = await useFetch(
   () => `/api/users/${route.params.id}`,
-  { key: `user:${route.params.id}` },
 );
 
 async function rename(name: string) {
@@ -37,7 +36,7 @@ async function rename(name: string) {
 
 <template>
   <p v-if="status === 'pending'">Loading</p>
-  <p v-else-if="error">{{ error.statusText }}</p>
+  <p v-else-if="error">{{ error.message }}</p>
   <UserCard v-else-if="user" :user="user" @rename="rename" />
 </template>
 ```
@@ -129,4 +128,4 @@ it('renders the user', async () => {
 
 ## Fonte
 
-Nuxt documentation: https://nuxt.com/docs/4.x/getting-started/data-fetching, https://nuxt.com/docs/4.x/directory-structure, https://nuxt.com/docs/4.x/directory-structure/server, https://nuxt.com/docs/4.x/guide/going-further/runtime-config, https://nuxt.com/docs/4.x/getting-started/state-management, https://nuxt.com/docs/4.x/directory-structure/app/middleware, https://nuxt.com/docs/4.x/guide/concepts/rendering, https://nuxt.com/docs/4.x/api/components/client-only, https://nuxt.com/docs/4.x/getting-started/testing, https://nuxt.com/docs/4.x/getting-started/upgrade.
+Nuxt documentation: https://nuxt.com/docs/4.x/getting-started/data-fetching, https://nuxt.com/docs/4.x/directory-structure, https://nuxt.com/docs/4.x/directory-structure/server, https://nuxt.com/docs/4.x/guide/going-further/runtime-config, https://nuxt.com/docs/4.x/getting-started/state-management, https://nuxt.com/docs/4.x/directory-structure/app/middleware, https://nuxt.com/docs/4.x/guide/concepts/rendering, https://nuxt.com/docs/4.x/api/components/client-only, https://nuxt.com/docs/4.x/getting-started/testing, https://nuxt.com/docs/4.x/getting-started/upgrade, https://nuxt.com/docs/4.x/guide/concepts/auto-imports.

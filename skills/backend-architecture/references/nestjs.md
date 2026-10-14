@@ -64,7 +64,7 @@ export class UsersModule {}
 - `@Global()` makes a module's exports available everywhere; register it once and use it sparingly, since explicit `imports` keep dependencies visible.
 - Providers carry `@Injectable()` and are injected by class type in the constructor; the type must be a runtime class, not an interface.
 - Default scope is singleton. `Scope.REQUEST` creates an instance per request and bubbles up: a controller that injects a request-scoped provider becomes request-scoped. The docs say request scope affects performance and recommend singleton unless a provider must be request-scoped.
-- The request pipeline runs: middleware, guards, interceptors (before the handler), pipes, the handler, interceptors (after), then exception filters. Use guards for authentication and authorization, interceptors for cross-cutting concerns (logging, response mapping, caching), pipes for transformation and validation.
+- The request pipeline runs: middleware, guards, interceptors (before the handler), pipes, the handler, interceptors (after); exception filters run only when an exception escapes any of these steps. Use guards for authentication and authorization, interceptors for cross-cutting concerns (logging, response mapping, caching), pipes for transformation and validation.
 
 ## Dados e estado
 
@@ -104,6 +104,7 @@ Unit-test a provider or controller with `Test.createTestingModule(...).compile()
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import { AuthGuard } from '../../src/auth/auth.guard.js';
 import { UsersModule } from '../../src/users/users.module.js';
 import { UsersService } from '../../src/users/users.service.js';
 
@@ -115,6 +116,8 @@ describe('Users', () => {
     const moduleRef = await Test.createTestingModule({ imports: [UsersModule] })
       .overrideProvider(UsersService)
       .useValue(users)
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
       .compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
@@ -128,7 +131,7 @@ describe('Users', () => {
 });
 ```
 
-The app here comes from `createNestApplication()`, not from `main.ts`, so repeat the global pipes, filters and prefixes in the test setup or the test exercises a different app than production. Vitest is the default runner for ESM projects and Jest for CommonJS; use the project's.
+The app here comes from `createNestApplication()`, not from `main.ts`, so repeat the global pipes, filters and prefixes in the test setup or the test exercises a different app than production. Vitest is the default runner for ESM projects and Jest for CommonJS (per the v12 migration guide); use the project's.
 
 ## Armadilhas
 

@@ -16,7 +16,20 @@ interface Guide {
 }
 
 /** One entry per deepened stack guide. Each guide task appends its entry together with the file. */
-export const GUIDES: Guide[] = [];
+export const GUIDES: Guide[] = [
+  {
+    skill: 'backend-architecture',
+    name: 'fastapi',
+    must: [/lifespan/, /Annotated\[/, /response_model/, /dependency_overrides/, /model_config|from_attributes/, /async def/, /Targets: .*FastAPI/],
+    mustNot: [/@app\.on_event/, /\borm_mode\b/, /@validator\(/, /\.dict\(\)/]
+  },
+  {
+    skill: 'backend-architecture',
+    name: 'nestjs',
+    must: [/Test\.createTestingModule/, /ValidationPipe/, /whitelist/, /overrideProvider|overrideGuard/, /supertest/, /guards?.*interceptors?.*pipes?|middleware.*guards?/is, /Targets: .*NestJS/],
+    mustNot: []
+  }
+];
 
 const SECTIONS = ['Princípio', 'Quando aplicar', 'Quando não aplicar', 'Exemplo', 'Estrutura do projeto', 'Dados e estado', 'Erros e validação', 'Testes', 'Armadilhas', 'Fonte'];
 const read = (guide: Guide): string => readFileSync(join(kitRoot, 'skills', guide.skill, 'references', `${guide.name}.md`), 'utf8');

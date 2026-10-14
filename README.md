@@ -6,11 +6,11 @@ Dev Agent Kit is a provider-neutral engineering agent kit for **Claude Code**, *
 
 ## Install
 
-Requires Node.js 20.6 or newer.
+Requires Node.js 20.6 or newer. Step-by-step guide (Portuguese): `docs/instalacao.md`.
 
 ```bash
 # from the tarball attached to the GitHub release
-npm install -g dev-agent-kit-1.0.0.tgz
+npm install -g dev-agent-kit-1.2.0.tgz
 
 # or from a checkout
 git clone https://github.com/andre-zaguette/dev-agent-kit.git
@@ -117,6 +117,7 @@ MIT. See `LICENSE`.
 
 ## Version history
 
+- **v1.2.0** — integrations registry (Figma, Headroom, claude-mem, Cartographer, Graphify), Cursor as a third host, deeper FastAPI, NestJS, Vue, Nuxt and Next.js guides with the `frontend-architecture` skill. See `docs/release-notes/v1.2.0.md`.
 - **v1.1.0** — multi-repo workspaces: `workspaces` commands, `--workspace`, version-pin checks, producer/consumer contracts. See `docs/release-notes/v1.1.0.md`.
 - **v1.0.0** — installable package `dev-agent-kit`, compatibility policy, adapter, generic-MCP and migration guides. See `docs/release-notes/v1.0.0.md`.
 - **v0.11** — repository index, similar-feature search and diff review.

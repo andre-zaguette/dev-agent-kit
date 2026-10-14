@@ -7,7 +7,7 @@ const ARGS = ['mcp', 'serve'];
 
 export const headroom: Integration = {
   id: 'headroom',
-  hosts: ['claude', 'codex'],
+  hosts: ['claude', 'codex', 'cursor'],
   defaultOn: false,
   async detect(ctx) {
     const binPath = which('headroom', ctx.env);
@@ -20,7 +20,7 @@ export const headroom: Integration = {
   },
   plan(host, detection) {
     if (detection.state !== 'present' || !detection.binPath) return [];
-    const entry = host === 'claude' ? { type: 'stdio', command: detection.binPath, args: [...ARGS] } : { command: detection.binPath, args: [...ARGS] };
+    const entry = host === 'codex' ? { command: detection.binPath, args: [...ARGS] } : { type: 'stdio', command: detection.binPath, args: [...ARGS] };
     return [{ name: 'headroom', entry }];
   },
   verify(host, _ctx, detection, configured) {
@@ -51,5 +51,7 @@ export const headroom: Integration = {
 };
 
 function rerun(host: string): string {
-  return host === 'claude' ? 'remove the headroom entry from .mcp.json, then re-run install --with headroom' : 're-run install --with headroom';
+  if (host === 'claude') return 'remove the headroom entry from .mcp.json, then re-run install --with headroom';
+  if (host === 'cursor') return 'remove the headroom entry from .cursor/mcp.json, then re-run install --with headroom';
+  return 're-run install --with headroom';
 }

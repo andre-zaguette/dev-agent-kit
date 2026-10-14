@@ -8,7 +8,7 @@ const INSTALL = 'uv tool install graphifyy';
 
 export const graphify: Integration = {
   id: 'graphify',
-  hosts: ['claude', 'codex'],
+  hosts: ['claude', 'codex', 'cursor'],
   defaultOn: false,
   async detect(ctx) {
     const binPath = which('graphify', ctx.env);

@@ -16,6 +16,7 @@ export * from './branch.js';
 export * from './resume.js';
 export { redactSecrets } from './secrets.js';
 export * from './backend-references.js';
+export * from './frontend-references.js';
 export * from './contract.js';
 export * from './contract-verify.js';
 export * from './contract-openapi.js';

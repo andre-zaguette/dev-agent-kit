@@ -28,12 +28,12 @@ All commands run from `<worktree>/packages/cli` unless stated. One test file: `n
 
 Failure modes the spec implies but no obvious task exercises; each gets a test in the owning task.
 
-1. `.cursor` is a symlink pointing outside the project, or a regular file → preflight refuses, nothing is written in any host (Tasks 2, 3).
-2. `.cursor/mcp.json` already holds the user's servers, including their own `figma` or `headroom` entry → kept and reported, never overwritten (Tasks 2, 4).
-3. `install codex` then `install cursor`, the reverse order, and a repeat → `AGENTS.md` block not duplicated, skills manifest not rewritten (Task 2).
-4. `CLAUDE.md` is a symlink to `AGENTS.md` → installing `claude` then `cursor` leaves both texts present exactly once (Task 2).
-5. `install --all` creates no `.cursor/`; `--with claude-mem` with only `cursor` selected is a usage error naming `claude` (Tasks 3, 4).
-6. An unparsable `.cursor/mcp.json` together with `install --all cursor`-style multi-host selection (`install claude cursor`) → exit 1, nothing written for claude either (Task 3).
+1. `.cursor` is a symlink pointing outside the project, or a regular file → preflight refuses, nothing is written in any host (Tasks 3, 4).
+2. `.cursor/mcp.json` already holds the user's servers, including their own `figma` or `headroom` entry → kept and reported, never overwritten (Tasks 3, 5).
+3. `install codex` then `install cursor`, the reverse order, and a repeat → `AGENTS.md` block not duplicated, skills manifest not rewritten (Task 3).
+4. `CLAUDE.md` is a symlink to `AGENTS.md` → installing `claude` then `cursor` leaves both texts present exactly once (Task 3).
+5. `install --all` creates no `.cursor/`; `--with claude-mem` with only `cursor` selected is a usage error naming `claude` (Tasks 4, 5).
+6. An unparsable `.cursor/mcp.json` together with `install --all cursor`-style multi-host selection (`install claude cursor`) → exit 1, nothing written for claude either (Task 4).
 
 ---
 
@@ -244,15 +244,138 @@ git commit -m "cli: share the mcpServers JSON helpers between hosts"
 
 ---
 
-### Task 2: `CursorAdapter`
+### Task 2: Integrations list Cursor (hosts, entries, hints)
+
+**Files:**
+- Modify: `packages/cli/src/integrations/figma.ts`, `headroom.ts`, `graphify.ts`
+- Modify: `packages/cli/tests/integrations-registry.test.ts` (the figma `hosts` expectation)
+- Create: `packages/cli/tests/cursor-integrations.test.ts`
+
+**Interfaces:**
+- Consumes: Task 1 is not needed here; `Integration` from `src/integrations/types.ts`; `project` from `tests/integration-helpers.ts`.
+- Produces (used by every later task): `figma`, `headroom`, `graphify` with `hosts` `['claude','codex','cursor']`; `figma.plan('cursor')` = `[{ name: 'figma', entry: { url: FIGMA_MCP_URL } }]`; `headroom.plan('cursor', present)` = `[{ name: 'headroom', entry: { type: 'stdio', command, args: ['mcp','serve'] } }]`. These land before the adapter so that `figmaServers('cursor')` and a default `install cursor` already carry the Figma entry.
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+// packages/cli/tests/cursor-integrations.test.ts
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { figma } from '../src/integrations/figma.ts';
+import { headroom } from '../src/integrations/headroom.ts';
+import { graphify } from '../src/integrations/graphify.ts';
+import { INTEGRATIONS } from '../src/integrations/index.ts';
+import { project } from './integration-helpers.ts';
+
+test('hosts: figma, headroom and graphify list cursor; claude-mem and cartographer stay claude-only', () => {
+  const hosts = Object.fromEntries(INTEGRATIONS.map((i) => [i.id, [...i.hosts]]));
+  assert.deepEqual(hosts.figma, ['claude', 'codex', 'cursor']);
+  assert.deepEqual(hosts.headroom, ['claude', 'codex', 'cursor']);
+  assert.deepEqual(hosts.graphify, ['claude', 'codex', 'cursor']);
+  assert.deepEqual(hosts['claude-mem'], ['claude']);
+  assert.deepEqual(hosts.cartographer, ['claude']);
+});
+
+test('plans on cursor: figma is the remote url form, headroom is the typed stdio form', () => {
+  assert.deepEqual(figma.plan('cursor', { state: 'present' }), [{ name: 'figma', entry: { url: 'https://mcp.figma.com/mcp' } }]);
+  assert.deepEqual(headroom.plan('cursor', { state: 'present', binPath: '/abs/headroom' }), [
+    { name: 'headroom', entry: { type: 'stdio', command: '/abs/headroom', args: ['mcp', 'serve'] } }
+  ]);
+  assert.deepEqual(headroom.plan('codex', { state: 'present', binPath: '/abs/headroom' }), [
+    { name: 'headroom', entry: { command: '/abs/headroom', args: ['mcp', 'serve'] } }
+  ]);
+});
+
+test('headroom hints name .cursor/mcp.json on cursor, .mcp.json on claude, and no file on codex', () => {
+  const present = { state: 'present', binPath: '/abs/headroom' } as const;
+  assert.match(headroom.notes('cursor', present).join(' '), /\.cursor\/mcp\.json/);
+  assert.match(headroom.notes('claude', present).join(' '), /\.mcp\.json/);
+  assert.doesNotMatch(headroom.notes('claude', present).join(' '), /\.cursor/);
+  assert.doesNotMatch(headroom.notes('codex', present).join(' '), /mcp\.json/);
+  const { ctx, cleanup } = project();
+  try {
+    const gone = headroom.verify('cursor', ctx, present, { headroom: { command: '/no/such/headroom', args: ['mcp', 'serve'] } });
+    assert.equal(gone[0].warn, true);
+    assert.match(gone[0].detail, /\.cursor\/mcp\.json/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('graphify verifies on cursor like on the other hosts', () => {
+  const { ctx, cleanup } = project();
+  try {
+    assert.deepEqual(graphify.verify('cursor', ctx, { state: 'present', binPath: '/b/graphify' }, {}).map((c) => [c.ok, !!c.warn]), [[true, false]]);
+    assert.equal(graphify.verify('cursor', ctx, { state: 'absent' }, {})[0].warn, true);
+  } finally {
+    cleanup();
+  }
+});
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `node --import tsx --test tests/cursor-integrations.test.ts`
+Expected: FAIL (hosts lists, plans, hints).
+
+- [ ] **Step 3: Implement**
+
+`src/integrations/figma.ts` — replace the file's `hosts` and `plan`:
+
+```ts
+  hosts: ['claude', 'codex', 'cursor'],
+```
+```ts
+  plan(host) {
+    if (host === 'codex') return [{ name: 'figma', entry: { url: FIGMA_MCP_URL }, hint: 'authenticate with: codex mcp login figma' }];
+    if (host === 'cursor') return [{ name: 'figma', entry: { url: FIGMA_MCP_URL } }];
+    return [{ name: 'figma', entry: { type: 'http', url: FIGMA_MCP_URL } }];
+  },
+```
+
+`src/integrations/headroom.ts`: set `hosts: ['claude', 'codex', 'cursor'],`; in `plan` replace the `const entry = ...` line with:
+
+```ts
+    const entry = host === 'codex' ? { command: detection.binPath, args: [...ARGS] } : { type: 'stdio', command: detection.binPath, args: [...ARGS] };
+```
+
+and replace the `rerun` function with:
+
+```ts
+function rerun(host: string): string {
+  if (host === 'claude') return 'remove the headroom entry from .mcp.json, then re-run install --with headroom';
+  if (host === 'cursor') return 'remove the headroom entry from .cursor/mcp.json, then re-run install --with headroom';
+  return 're-run install --with headroom';
+}
+```
+
+`src/integrations/graphify.ts`: `hosts: ['claude', 'codex', 'cursor'],`.
+
+Update `tests/integrations-registry.test.ts`: the expectation `assert.deepEqual(figma.hosts, ['claude', 'codex'])` becomes `['claude', 'codex', 'cursor']`. Run the whole suite and fix any other test that lists these hosts the same way (only expectation text, not behavior).
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `node --import tsx --test tests/cursor-integrations.test.ts && npm run typecheck && npm test`
+Expected: PASS everywhere; the existing goldens unchanged (no host list change reaches `--all`: Cursor is not selected there yet).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A packages/cli
+git commit -m "cli: figma, headroom and graphify list Cursor"
+```
+
+---
+
+### Task 3: `CursorAdapter`
 
 **Files:**
 - Create: `packages/cli/src/adapters/cursor.ts`
 - Create: `packages/cli/tests/cursor-adapter.test.ts`
 
 **Interfaces:**
-- Consumes: everything produced by Task 1; `syncSkills`, `readManifest`, `upsertMarkdownBlock`, `assertInsideRoot`, `preflightMarkdownFile`, `instructionsContent`, `kitServerLaunch`, `SERVER_NAME`, `checkInstructions`, `checkLaunchConfig`, `checkSkills`, `probeServer`, `which`, `assertRealDirInsideRoot` (all already used by the Codex adapter); test helpers `project()`, `fakeBin()`, `figmaServers()` from `tests/integration-helpers.ts`.
-- Produces: `class CursorAdapter implements HostAdapter` (`name: 'cursor'`, getters `skillsDir`, `instructionsFile`, `cursorDir`, `mcpFile`). Not wired into `createAdapter` yet (Task 3).
+- Consumes: everything produced by Task 1 and the Cursor integration entries of Task 2; `syncSkills`, `readManifest`, `upsertMarkdownBlock`, `assertInsideRoot`, `preflightMarkdownFile`, `instructionsContent`, `kitServerLaunch`, `SERVER_NAME`, `checkInstructions`, `checkLaunchConfig`, `checkSkills`, `probeServer`, `which`, `assertRealDirInsideRoot` (all already used by the Codex adapter); test helpers `project()`, `fakeBin()`, `figmaServers()` from `tests/integration-helpers.ts`.
+- Produces: `class CursorAdapter implements HostAdapter` (`name: 'cursor'`, getters `skillsDir`, `instructionsFile`, `cursorDir`, `mcpFile`). Not wired into `createAdapter` yet (Task 4).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -620,7 +743,7 @@ git commit -m "cli: CursorAdapter (skills and AGENTS.md shared with Codex, .curs
 
 ---
 
-### Task 3: Wire Cursor into the CLI, `--all` stays claude + codex, new golden
+### Task 4: Wire Cursor into the CLI, `--all` stays claude + codex, new golden
 
 **Files:**
 - Modify: `packages/cli/src/adapters/index.ts`
@@ -634,7 +757,7 @@ git commit -m "cli: CursorAdapter (skills and AGENTS.md shared with Codex, .curs
 - Create: `packages/cli/tests/cursor-cli.test.ts`
 
 **Interfaces:**
-- Consumes: `CursorAdapter` (Task 2).
+- Consumes: `CursorAdapter` (Task 3).
 - Produces: `REAL_HOSTS: HostName[] = ['claude','codex','cursor']`, `ALL_FLAG_HOSTS: HostName[] = ['claude','codex']`, `createAdapter('cursor')`; test helper `captureGolden(argv, files, absent?)` and `expectGolden(name, actual)` in `tests/golden-helpers.ts`.
 
 - [ ] **Step 1: Extract the golden harness, fixtures untouched**
@@ -915,77 +1038,25 @@ git commit -m "cli: Cursor as a real host; --all stays claude + codex"
 
 ---
 
-### Task 4: Integrations on Cursor
+### Task 5: Integrations end to end on Cursor
 
 **Files:**
-- Modify: `packages/cli/src/integrations/figma.ts`, `headroom.ts`, `graphify.ts`
-- Modify: `packages/cli/tests/integrations-registry.test.ts` (the figma `hosts` expectation)
-- Modify: `packages/cli/tests/integration-headroom.test.ts`, `integration-graphify.test.ts`
-- Create: `packages/cli/tests/cursor-integrations.test.ts`
+- Create: `packages/cli/tests/cursor-integrations-e2e.test.ts`
 
 **Interfaces:**
-- Consumes: Tasks 1–3; `Integration` from `src/integrations/types.ts`; `figmaServers`, `project`, `fakeBin` from `tests/integration-helpers.ts`.
-- Produces: `figma`, `headroom`, `graphify` with `hosts` `['claude','codex','cursor']`; `figma.plan('cursor')` = `[{ name: 'figma', entry: { url: FIGMA_MCP_URL } }]`; `headroom.plan('cursor', present)` = `[{ name: 'headroom', entry: { type: 'stdio', command, args: ['mcp','serve'] } }]`.
+- Consumes: Tasks 2–4 (integrations on Cursor, `CursorAdapter`, the wired CLI); `project`, `fakeBin` from `tests/integration-helpers.ts`.
+- Produces: end-to-end coverage only; no source change expected. If a test fails, it is a real bug in an earlier task: fix the source minimally, add nothing else, and say so in the report.
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write the tests**
 
 ```ts
-// packages/cli/tests/cursor-integrations.test.ts
+// packages/cli/tests/cursor-integrations-e2e.test.ts
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { run, type CliIo } from '../src/cli.ts';
-import { figma } from '../src/integrations/figma.ts';
-import { headroom } from '../src/integrations/headroom.ts';
-import { graphify } from '../src/integrations/graphify.ts';
-import { INTEGRATIONS } from '../src/integrations/index.ts';
 import { project, fakeBin } from './integration-helpers.ts';
-
-test('hosts: figma, headroom and graphify list cursor; claude-mem and cartographer stay claude-only', () => {
-  const hosts = Object.fromEntries(INTEGRATIONS.map((i) => [i.id, [...i.hosts]]));
-  assert.deepEqual(hosts.figma, ['claude', 'codex', 'cursor']);
-  assert.deepEqual(hosts.headroom, ['claude', 'codex', 'cursor']);
-  assert.deepEqual(hosts.graphify, ['claude', 'codex', 'cursor']);
-  assert.deepEqual(hosts['claude-mem'], ['claude']);
-  assert.deepEqual(hosts.cartographer, ['claude']);
-});
-
-test('plans on cursor: figma is the remote url form, headroom is the typed stdio form', () => {
-  assert.deepEqual(figma.plan('cursor', { state: 'present' }), [{ name: 'figma', entry: { url: 'https://mcp.figma.com/mcp' } }]);
-  assert.deepEqual(headroom.plan('cursor', { state: 'present', binPath: '/abs/headroom' }), [
-    { name: 'headroom', entry: { type: 'stdio', command: '/abs/headroom', args: ['mcp', 'serve'] } }
-  ]);
-  assert.deepEqual(headroom.plan('codex', { state: 'present', binPath: '/abs/headroom' }), [
-    { name: 'headroom', entry: { command: '/abs/headroom', args: ['mcp', 'serve'] } }
-  ]);
-});
-
-test('headroom hints name .cursor/mcp.json on cursor, .mcp.json on claude, and no file on codex', () => {
-  const present = { state: 'present', binPath: '/abs/headroom' } as const;
-  assert.match(headroom.notes('cursor', present).join(' '), /\.cursor\/mcp\.json/);
-  assert.match(headroom.notes('claude', present).join(' '), /\.mcp\.json/);
-  assert.doesNotMatch(headroom.notes('claude', present).join(' '), /\.cursor/);
-  assert.doesNotMatch(headroom.notes('codex', present).join(' '), /mcp\.json/);
-  const { ctx, cleanup } = project();
-  try {
-    const gone = headroom.verify('cursor', ctx, present, { headroom: { command: '/no/such/headroom', args: ['mcp', 'serve'] } });
-    assert.equal(gone[0].warn, true);
-    assert.match(gone[0].detail, /\.cursor\/mcp\.json/);
-  } finally {
-    cleanup();
-  }
-});
-
-test('graphify verifies on cursor like on the other hosts', () => {
-  const { ctx, cleanup } = project();
-  try {
-    assert.deepEqual(graphify.verify('cursor', ctx, { state: 'present', binPath: '/b/graphify' }, {}).map((c) => [c.ok, !!c.warn]), [[true, false]]);
-    assert.equal(graphify.verify('cursor', ctx, { state: 'absent' }, {})[0].warn, true);
-  } finally {
-    cleanup();
-  }
-});
 
 function harness(env: NodeJS.ProcessEnv) {
   const p = project(env);
@@ -1044,61 +1115,21 @@ test('e2e: --with claude-mem on cursor alone is a usage error naming claude; not
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [ ] **Step 2: Run to verify they pass**
 
-Run: `node --import tsx --test tests/cursor-integrations.test.ts`
-Expected: FAIL (hosts lists, plans, hints).
+Run: `node --import tsx --test tests/cursor-integrations-e2e.test.ts && npm run typecheck && npm test`
+Expected: PASS (these exercise code from earlier tasks, so there is no RED step); goldens unchanged.
 
-- [ ] **Step 3: Implement**
-
-`src/integrations/figma.ts` — replace the file's `hosts` and `plan`:
-
-```ts
-  hosts: ['claude', 'codex', 'cursor'],
-```
-```ts
-  plan(host) {
-    if (host === 'codex') return [{ name: 'figma', entry: { url: FIGMA_MCP_URL }, hint: 'authenticate with: codex mcp login figma' }];
-    if (host === 'cursor') return [{ name: 'figma', entry: { url: FIGMA_MCP_URL } }];
-    return [{ name: 'figma', entry: { type: 'http', url: FIGMA_MCP_URL } }];
-  },
-```
-
-`src/integrations/headroom.ts`: set `hosts: ['claude', 'codex', 'cursor'],`; in `plan` replace the `const entry = ...` line with:
-
-```ts
-    const entry = host === 'codex' ? { command: detection.binPath, args: [...ARGS] } : { type: 'stdio', command: detection.binPath, args: [...ARGS] };
-```
-
-and replace the `rerun` function with:
-
-```ts
-function rerun(host: string): string {
-  if (host === 'claude') return 'remove the headroom entry from .mcp.json, then re-run install --with headroom';
-  if (host === 'cursor') return 'remove the headroom entry from .cursor/mcp.json, then re-run install --with headroom';
-  return 're-run install --with headroom';
-}
-```
-
-`src/integrations/graphify.ts`: `hosts: ['claude', 'codex', 'cursor'],`.
-
-Update `tests/integrations-registry.test.ts`: the expectation `assert.deepEqual(figma.hosts, ['claude', 'codex'])` becomes `['claude', 'codex', 'cursor']`. Run the whole suite and fix any other test that lists these hosts the same way (only expectation text, not behavior).
-
-- [ ] **Step 4: Run to verify it passes**
-
-Run: `node --import tsx --test tests/cursor-integrations.test.ts && npm run typecheck && npm test`
-Expected: PASS everywhere; goldens unchanged (default, no-figma, cursor).
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add -A packages/cli
-git commit -m "cli: figma, headroom and graphify on Cursor"
+git add packages/cli/tests/cursor-integrations-e2e.test.ts
+git commit -m "test: integrations end to end on Cursor"
 ```
 
 ---
 
-### Task 5: Docs and full suite
+### Task 6: Docs and full suite
 
 **Files:**
 - Modify: `README.md`, `docs/cli.md`, `docs/manual-install.md`, `docs/integrations.md`
@@ -1148,14 +1179,14 @@ Manual checklist (not run — needs a machine with Cursor):
 **Spec coverage**
 - Files (`mcp-json.ts`, `cursor.ts`, `index.ts`, `stub.ts`, `cli.ts`, integrations): Tasks 1–4.
 - `CursorAdapter` table (detect, preflight, installSkills/Instructions/Mcp, configuredServers, verify, notes): Task 2, one test per row.
-- Sharing with Codex idempotent, both orders; CLAUDE.md symlink: Task 2 tests.
+- Sharing with Codex idempotent, both orders; CLAUDE.md symlink: Task 3 tests.
 - Integrations table (figma url, headroom typed stdio, graphify, claude-only ones): Task 4.
 - CLI behavior (`install cursor`, detection, `--all` unchanged, unknown host list, vscode stub): Task 3 tests.
 - Safety (`.cursor` symlink and regular file, `~/.cursor` never written): Tasks 2–3 (no code writes under the home dir; `detect` only reads).
-- Testing items 1–8: goldens unchanged (Tasks 1, 3, 4), new Cursor golden (Task 3), adapter tests (2), sharing (2), helper unit tests (1), CLI tests (3), integrations on Cursor (4), docs test (5).
+- Testing items 1–8: goldens unchanged (Tasks 1, 2, 4, 5), new Cursor golden (Task 4), adapter tests (3), sharing with Codex (3, 4), helper unit tests (1), CLI tests (4), integrations on Cursor (2, 5), docs test (6).
 - Release-notes mention from the spec CLI section: not in this plan; a release-notes file belongs to the v1.2 release step, and the behavior is documented in `docs/cli.md` (Task 5).
 - Open items 1–3: the manual checklist in Task 5.
 
 **Placeholder scan:** none; every code step has code. Two conditional notes (Task 2 step 4 marker strings, Task 3 step 8 doc line) name the exact condition and fix.
 
-**Type consistency:** `McpJson`, `readMcpJsonFile`, `applyExtraServers`, `readConfiguredServers`, `readConfiguredLaunch` (Task 1) are used with those names and signatures in Task 2; `ALL_FLAG_HOSTS`, `REAL_HOSTS`, `createAdapter` (Task 3) match the CLI edits; `McpServerChange` entries in Task 4 match `applyExtraServers`.
+**Type consistency:** `McpJson`, `readMcpJsonFile`, `applyExtraServers`, `readConfiguredServers`, `readConfiguredLaunch` (Task 1) are used with those names and signatures in Task 3; `ALL_FLAG_HOSTS`, `REAL_HOSTS`, `createAdapter` (Task 4) match the CLI edits; `McpServerChange` entries in Task 2 match `applyExtraServers`.

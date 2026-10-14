@@ -6,10 +6,15 @@ import {
   createGenericMcpAdapter,
   loadDevAgentConfig,
   parseDevAgentConfig,
+  SourceUnavailableError,
+  WorkItemNotFoundError,
+  createNativeAdapter,
+  isNativeAdapter,
   readLedger,
   resolveSource,
   routeOf,
   safeReadFile,
+  type FetchLike,
   type TaskSourceConfig,
   type WorkspaceReport
 } from '../../core/src/index.js';
@@ -66,6 +71,11 @@ export function sourcesVerify(args: string[], io: CliIo): number {
         } catch (error) {
           add('error', `${s.id}: ${(error as Error).message}`);
         }
+      } else if (isNativeAdapter(s.adapter)) {
+        add('ok', `${s.id}: ${s.adapter} adapter configured`);
+        for (const name of [s.tokenEnv, s.emailEnv]) {
+          if (name) add(io.env[name]?.trim() ? 'ok' : 'warn', `${s.id}: ${name} is ${io.env[name]?.trim() ? 'set' : 'not set'}`);
+        }
       } else {
         add('warn', `${s.id}: adapter "${s.adapter}" cannot be loaded in this version`);
       }
@@ -114,6 +124,59 @@ export function taskResolve(args: string[], io: CliIo): number {
     }
   }
   return result.status === 'resolved' || result.status === 'probe' ? 0 : 2;
+}
+
+const describeResolution = (r: ReturnType<typeof resolveSource>): string => {
+  switch (r.status) {
+    case 'ambiguous':
+      return `ambiguous: ${r.candidates.join(', ')}`;
+    case 'unknown-source':
+      return `unknown source "${r.source}" (known: ${r.known.join(', ') || '-'})`;
+    case 'unresolved':
+      return r.reason;
+    default:
+      return r.status;
+  }
+};
+
+function fetchFailure(io: CliIo, json: boolean | undefined, token: 'unresolved' | 'not-found' | 'auth' | 'unavailable', message: string): number {
+  if (json) io.stdout(JSON.stringify({ error: token, message }, null, 2));
+  else io.stderr(`${token}: ${message}`);
+  return 2;
+}
+
+export async function taskFetch(args: string[], io: CliIo): Promise<number> {
+  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { ...PROJECT_JSON, source: { type: 'string' } } });
+  const identifier = positionals[0];
+  if (!identifier) throw new CliError('dev-agent: task fetch needs an identifier — see --help.');
+  const config = loadConfig(projectRootOf(values, io));
+  const resolution = resolveSource(identifier, config.taskSources.map(routeOf), { explicit: values.source });
+  if (resolution.status !== 'resolved') return fetchFailure(io, values.json, 'unresolved', describeResolution(resolution));
+  const source = config.taskSources.find((s) => s.id === resolution.source);
+  if (!source || !isNativeAdapter(source.adapter)) {
+    return fetchFailure(io, values.json, 'unresolved', `source "${resolution.source}" is a ${source?.adapter ?? 'unknown'} source: read it through its MCP server, not with task fetch`);
+  }
+  try {
+    const adapter = createNativeAdapter(source, { env: io.env, fetch: io.fetch ?? (globalThis.fetch as unknown as FetchLike) });
+    const item = await adapter.getWorkItem(identifier);
+    if (values.json) {
+      io.stdout(JSON.stringify(item, null, 2));
+    } else {
+      io.stdout(`${item.key}  ${item.title}`);
+      io.stdout(`source: ${item.source}`);
+      io.stdout(`status: ${item.status ?? '-'}`);
+      io.stdout(`url: ${item.rawUrl ?? '-'}`);
+      io.stdout(`acceptance criteria: ${item.acceptanceCriteria.length}, comments: ${item.comments.length}, links: ${item.links.length}, attachments: ${item.attachments.length}`);
+      const partial = item.metadata?.partial;
+      if (Array.isArray(partial) && partial.length > 0) io.stdout(`partial: ${partial.join(', ')}`);
+    }
+    return 0;
+  } catch (error) {
+    const message = (error as Error).message;
+    if (error instanceof WorkItemNotFoundError) return fetchFailure(io, values.json, 'not-found', message);
+    if (error instanceof SourceUnavailableError) return fetchFailure(io, values.json, error.reason === 'auth' ? 'auth' : 'unavailable', message);
+    return fetchFailure(io, values.json, 'unavailable', message);
+  }
 }
 
 function keyOf(positionals: string[], what: string): string {

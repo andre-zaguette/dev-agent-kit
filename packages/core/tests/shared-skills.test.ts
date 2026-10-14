@@ -32,9 +32,9 @@ for (const name of SHARED) {
   });
 }
 
-test('task-orchestrator ships exactly the seven contract references, all with valid frontmatter', () => {
+test('task-orchestrator ships exactly the eight contract references, all with valid frontmatter', () => {
   const dir = join(kitRoot, 'skills', 'task-orchestrator', 'references');
-  const names = ['work-item', 'task-source', 'source-resolution', 'generic-mcp', 'git-workflow', 'task-ledger', 'workspaces'];
+  const names = ['work-item', 'task-source', 'source-resolution', 'generic-mcp', 'git-workflow', 'task-ledger', 'workspaces', 'native-sources'];
   for (const name of names) {
     const text = readFileSync(join(dir, `${name}.md`), 'utf8');
     assert.match(text, new RegExp(`^---\\nname: ${name}\\ndescription: .{20,300}\\ntype: contract\\n---\\n`), name);

@@ -1,6 +1,6 @@
-# The dev-agent CLI (v1.1)
+# The dev-agent CLI (v1.2)
 
-`dev-agent` makes the deterministic parts of the kit callable from a terminal. It never runs a model, opens a network connection or changes Git; a natural-language task still runs in Claude Code, Codex or Cursor. `frontend-agent` is unchanged.
+`dev-agent` makes the deterministic parts of the kit callable from a terminal. It never runs a model or changes Git, and the only command that opens a network connection is `task fetch` (to a configured native task source, with a token read from the environment); a natural-language task still runs in Claude Code, Codex or Cursor. `frontend-agent` is unchanged.
 
 Exit codes: `0` ok, `1` usage or environment error, `2` checked and not OK.
 
@@ -10,8 +10,9 @@ Exit codes: `0` ok, `1` usage or environment error, `2` checked and not OK.
 | `inspect [--json]` | Detected languages, frameworks, commands, database, queues, cache, Docker, base branch, and the backend and frontend references that apply. |
 | `context audit [--json]` | Always-on token size and the findings that waste context. |
 | `sources [--json]` | The task sources configured in `.dev-agent/config.yml`. |
-| `sources verify` | Checks the config parses, each `generic-mcp` adapter builds, and warns about ambiguous patterns, missing defaults and adapters that cannot be loaded. Exit 2 on errors. |
+| `sources verify` | Checks the config parses, each `generic-mcp` adapter builds, warns about ambiguous patterns, missing defaults and adapters that cannot be loaded, and, for native sources, whether the token variable is set (never its value). Exit 2 on errors. |
 | `task resolve <id> [--source s] [--probe]` | Which source an identifier resolves to, or why it does not (ambiguous, unknown, unresolved). |
+| `task fetch <id> [--source s] [--json]` | Reads the work item from a native task source (GitHub Issues, Linear, Jira, YouTrack) and prints it; with `--json`, the `WorkItem`. Exit 2 with a first token of `unresolved:`, `not-found:`, `auth:` or `unavailable:`. The token comes from the variable named by `tokenEnv`; see `docs/native-task-sources.md`. |
 | `task status <KEY>` | Whether the repository still matches the task's saved state (branch, base commit, stale knowledge); with workspaces, one report per recorded workspace. Exit 2 with the reasons to reconcile. |
 | `task show <KEY>` | Prints the task ledger. |
 | `contract show <KEY>` | Prints the persisted API contract. |

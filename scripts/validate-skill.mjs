@@ -2,7 +2,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const VALID_STATUS_VALUES = ['baseline', 'draft-auto', 'reviewed'];
+const VALID_STATUS_VALUES = ['baseline', 'draft-auto', 'reviewed', 'guide'];
 
 const REQUIRED_REF_SECTIONS = [
   '## Princípio',
@@ -56,7 +56,7 @@ function validateReferenceFile(path) {
   if (!parsed.fields.status) {
     errors.push(`${path}: frontmatter missing "status"`);
   } else if (!VALID_STATUS_VALUES.includes(parsed.fields.status)) {
-    errors.push(`${path}: frontmatter "status" must be one of baseline|draft-auto|reviewed (got "${parsed.fields.status}")`);
+    errors.push(`${path}: frontmatter "status" must be one of baseline|draft-auto|reviewed|guide (got "${parsed.fields.status}")`);
   }
   for (const section of REQUIRED_REF_SECTIONS) {
     if (!parsed.body.includes(section)) errors.push(`${path}: missing section "${section}"`);

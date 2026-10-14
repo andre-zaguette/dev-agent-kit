@@ -106,6 +106,10 @@ export interface ToolRef {
   list?: string;
 }
 
+export const NATIVE_ADAPTERS = ['github-issues', 'linear', 'jira', 'youtrack'] as const;
+export type NativeAdapterId = (typeof NATIVE_ADAPTERS)[number];
+export const isNativeAdapter = (adapter: string): adapter is NativeAdapterId => (NATIVE_ADAPTERS as readonly string[]).includes(adapter);
+
 export interface TaskSourceConfig {
   id: string;
   adapter: string;
@@ -114,6 +118,12 @@ export interface TaskSourceConfig {
   identifiers: RegExp[];
   tools: Partial<Record<ToolKind, ToolRef>>;
   mapping: SourceMapping;
+  /** Native adapters only. `tokenEnv`/`emailEnv` are environment variable NAMES, never values. */
+  baseUrl?: string;
+  tokenEnv?: string;
+  emailEnv?: string;
+  auth?: 'cloud' | 'bearer';
+  repo?: string;
 }
 
 export interface SourceRoute {

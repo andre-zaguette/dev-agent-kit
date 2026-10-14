@@ -54,6 +54,6 @@ With a `workspaces:` map the ledger, state and contract live at the workspace ro
 
 ## Not in v0.7
 
-- CLI commands (`dev-agent sources`, `dev-agent task resolve|status|show`): planned for v0.9. Until then the skill's references describe the same rules for the agent, and the modules in `packages/core` are the deterministic reference implementation.
+- CLI commands: `dev-agent sources`, `sources verify` and `task resolve|status|show|fetch`; `task fetch` reads a work item from a native task source (see [native-task-sources.md](native-task-sources.md)). The skill's references describe the same rules for the agent, and the modules in `packages/core` are the deterministic reference implementation.
 - Mock task-source MCP servers, orchestrator benchmark scenarios and their graders: they need a real-host benchmark run. Resolution, ambiguity, normalization equivalence and Git fixtures are covered by offline tests in `packages/core`.
 - Loading custom adapters from `integrations/task-sources/`, and write operations on sources.

@@ -1,6 +1,7 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import type { FetchLike } from '../../core/src/index.js';
 import { ALL_FLAG_HOSTS, ALL_HOSTS, REAL_HOSTS, createAdapter, type HostAdapter } from './adapters/index.js';
 import { INTEGRATIONS, integrationChecks, type Detection, type IntegrationId } from './integrations/index.js';
 import { resolveSelection, wantedIds, type SelectionFlags } from './integrations/select.js';
@@ -14,6 +15,8 @@ export interface CliIo {
   env: NodeJS.ProcessEnv;
   cwd: string;
   homeDir: string;
+  /** Injected by tests; defaults to the global `fetch`. */
+  fetch?: FetchLike;
 }
 
 const HELP = `frontend-agent — install the Frontend Agent Kit into a project

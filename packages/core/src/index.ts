@@ -10,6 +10,8 @@ export * from './config.js';
 export * from './task-sources/mapping.js';
 export * from './task-sources/normalizer.js';
 export * from './task-sources/generic-mcp.js';
+export * from './task-sources/http.js';
+export * from './task-sources/native/index.js';
 export * from './ledger.js';
 export * from './git-prep.js';
 export * from './branch.js';

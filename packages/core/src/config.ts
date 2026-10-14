@@ -3,7 +3,7 @@ import { parse } from 'yaml';
 import { safeReadFile } from './safe-fs.js';
 import { findSecret } from './secrets.js';
 import type { WorkspaceConfig, WorkspaceRole } from './workspaces.js';
-import type { ItemField, SourceMapping, TaskSourceConfig, ToolKind, ToolRef } from './task-sources/types.js';
+import { NATIVE_ADAPTERS, isNativeAdapter, type ItemField, type NativeAdapterId, type SourceMapping, type TaskSourceConfig, type ToolKind, type ToolRef } from './task-sources/types.js';
 
 export const CONFIG_FILE = '.dev-agent/config.yml';
 
@@ -26,7 +26,7 @@ const WORKSPACE_KEYS = new Set(['path', 'role', 'dependsOn', 'baseBranch']);
 const WORKSPACE_ROLES: readonly WorkspaceRole[] = ['library', 'backend', 'api', 'frontend', 'infra', 'other'];
 const MAX_WORKSPACES = 30;
 const MAX_DEPENDS_ON = 30;
-const SOURCE_KEYS = new Set(['adapter', 'server', 'default', 'identifiers', 'tools', 'mapping']);
+const SOURCE_KEYS = new Set(['adapter', 'server', 'default', 'identifiers', 'tools', 'mapping', 'baseUrl', 'tokenEnv', 'emailEnv', 'auth', 'repo']);
 const SOURCE_ID_RE = /^[a-z][a-z0-9-]{0,31}$/;
 const ADAPTER_RE = /^[a-z][a-z0-9-]{0,31}$/;
 const SERVER_RE = /^[A-Za-z0-9._-]{1,64}$/;
@@ -143,6 +143,63 @@ function parseMapping(label: string, where: string, raw: unknown): SourceMapping
   return mapping;
 }
 
+const NATIVE_KEYS = ['baseUrl', 'tokenEnv', 'emailEnv', 'auth', 'repo'] as const;
+const ENV_NAME_RE = /^[A-Z][A-Z0-9_]{0,63}$/;
+const REPO_RE = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
+const NATIVE_RULES: Record<NativeAdapterId, { required: readonly string[]; allowed: readonly string[] }> = {
+  'github-issues': { required: ['tokenEnv', 'repo'], allowed: ['baseUrl', 'tokenEnv', 'repo'] },
+  linear: { required: ['tokenEnv'], allowed: ['tokenEnv'] },
+  jira: { required: ['baseUrl', 'tokenEnv'], allowed: ['baseUrl', 'tokenEnv', 'emailEnv', 'auth'] },
+  youtrack: { required: ['baseUrl', 'tokenEnv'], allowed: ['baseUrl', 'tokenEnv'] }
+};
+
+function parseBaseUrl(label: string, where: string, value: unknown): string {
+  if (typeof value !== 'string' || value.length > 200) fail(label, where, 'must be an https URL');
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    fail(label, where, 'must be an https URL');
+  }
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.hostname === '') {
+    fail(label, where, 'must be an https URL without credentials, query or fragment');
+  }
+  return value.replace(/\/+$/, '');
+}
+
+function parseEnvName(label: string, where: string, value: unknown): string {
+  if (typeof value !== 'string' || !ENV_NAME_RE.test(value)) fail(label, where, 'must be the NAME of an environment variable (uppercase letters, digits, underscore)');
+  return value;
+}
+
+type NativeFields = Pick<TaskSourceConfig, 'baseUrl' | 'tokenEnv' | 'emailEnv' | 'auth' | 'repo'>;
+
+function parseNativeSource(label: string, where: string, adapter: NativeAdapterId, raw: Record<string, unknown>): NativeFields {
+  if (raw.server !== undefined || raw.tools !== undefined || raw.mapping !== undefined) {
+    fail(label, where, `adapter "${adapter}" does not take server, tools or mapping (those are for generic-mcp)`);
+  }
+  const rules = NATIVE_RULES[adapter];
+  for (const key of NATIVE_KEYS) {
+    if (raw[key] !== undefined && !rules.allowed.includes(key)) fail(label, `${where}.${key}`, `is not valid for the ${adapter} adapter`);
+  }
+  for (const key of rules.required) if (raw[key] === undefined) fail(label, `${where}.${key}`, 'is required');
+  const out: NativeFields = {};
+  if (raw.baseUrl !== undefined) out.baseUrl = parseBaseUrl(label, `${where}.baseUrl`, raw.baseUrl);
+  out.tokenEnv = parseEnvName(label, `${where}.tokenEnv`, raw.tokenEnv);
+  if (raw.emailEnv !== undefined) out.emailEnv = parseEnvName(label, `${where}.emailEnv`, raw.emailEnv);
+  if (raw.repo !== undefined) {
+    if (typeof raw.repo !== 'string' || !REPO_RE.test(raw.repo)) fail(label, `${where}.repo`, 'must look like "owner/name"');
+    out.repo = raw.repo;
+  }
+  if (adapter === 'jira') {
+    if (raw.auth !== undefined && raw.auth !== 'cloud' && raw.auth !== 'bearer') fail(label, `${where}.auth`, 'must be "cloud" or "bearer"');
+    out.auth = raw.auth === 'bearer' ? 'bearer' : 'cloud';
+    if (out.auth === 'cloud' && out.emailEnv === undefined) fail(label, `${where}.emailEnv`, 'is required when auth is "cloud"');
+    if (out.auth === 'bearer' && out.emailEnv !== undefined) fail(label, `${where}.emailEnv`, 'is not used when auth is "bearer"');
+  }
+  return out;
+}
+
 function parseSource(label: string, id: string, raw: unknown): TaskSourceConfig {
   const where = `taskSources.${id}`;
   if (!SOURCE_ID_RE.test(id)) fail(label, where, 'has an invalid id (use a lowercase alias such as "company")');
@@ -151,6 +208,13 @@ function parseSource(label: string, id: string, raw: unknown): TaskSourceConfig 
   const adapter = raw.adapter;
   if (typeof adapter !== 'string' || !ADAPTER_RE.test(adapter)) fail(label, `${where}.adapter`, 'is required (e.g. "generic-mcp")');
   if (raw.default !== undefined && typeof raw.default !== 'boolean') fail(label, `${where}.default`, 'must be true or false');
+  if (isNativeAdapter(adapter)) {
+    const native = parseNativeSource(label, where, adapter, raw);
+    return { id, adapter, default: raw.default === true, identifiers: parseIdentifiers(label, `${where}.identifiers`, raw.identifiers), tools: {}, mapping: parseMapping(label, `${where}.mapping`, undefined), ...native };
+  }
+  for (const key of NATIVE_KEYS) {
+    if (raw[key] !== undefined) fail(label, `${where}.${key}`, `is only valid for the ${NATIVE_ADAPTERS.join(', ')} adapters`);
+  }
   let server: string | undefined;
   if (raw.server !== undefined) {
     if (typeof raw.server !== 'string' || !SERVER_RE.test(raw.server)) fail(label, `${where}.server`, 'must be an MCP server name');

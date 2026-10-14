@@ -16,8 +16,8 @@ Escolha uma das duas formas.
 ### A. Pelo tarball do release (mais simples)
 
 ```bash
-curl -LO https://github.com/andre-zaguette/dev-agent-kit/releases/download/v1.1.0/dev-agent-kit-1.1.0.tgz
-npm install -g ./dev-agent-kit-1.1.0.tgz
+curl -LO https://github.com/andre-zaguette/dev-agent-kit/releases/download/v1.2.0/dev-agent-kit-1.2.0.tgz
+npm install -g ./dev-agent-kit-1.2.0.tgz
 ```
 
 ### B. Pelo código-fonte
@@ -35,7 +35,7 @@ npm link
 dev-agent --version
 ```
 
-Deve imprimir `1.1.0`. Os comandos `frontend-agent` e `frontend-agent-kit` também foram instalados, como aliases de `install` e `verify`.
+Deve imprimir `1.2.0`. Os comandos `frontend-agent` e `frontend-agent-kit` também foram instalados, como aliases de `install` e `verify`.
 
 ## Passo 3 — Instalar o navegador (só para validação visual)
 

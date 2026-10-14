@@ -32,4 +32,6 @@ Every command accepts `--project <dir>` (default: the current directory) and, wh
 
 `install` and `verify` keep the exit codes of `frontend-agent` (1 when a check fails).
 
-`install [claude|codex ...] [--all] [--force] [--no-figma] [--with <id> ...] [--no-<id> ...]` can also wire optional integrations (Headroom, claude-mem, Cartographer, Graphify). See `docs/integrations.md` for the ids, the `verify` warn state and the `.dev-agent/integrations.json` state file.
+`install [claude|codex|cursor ...] [--all] [--force] [--no-figma] [--with <id> ...] [--no-<id> ...]` can also wire optional integrations (Headroom, claude-mem, Cartographer, Graphify). See `docs/integrations.md` for the ids, the `verify` warn state and the `.dev-agent/integrations.json` state file.
+
+Cursor installs `.agents/skills/` and the `AGENTS.md` block, both shared with Codex (installing either order is idempotent), and `.cursor/mcp.json`. `--all` selects Claude Code and Codex only. With no host named, detection includes Cursor (`~/.cursor` exists or `cursor` is on `PATH`), so a machine with Cursor installed now also gets Cursor on a plain `install`. `vscode` is not supported yet.

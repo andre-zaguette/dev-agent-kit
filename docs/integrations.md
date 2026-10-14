@@ -8,15 +8,16 @@ An integration is an optional tool the kit knows how to wire into a project or c
 
 | id | Hosts | What the kit writes | How `verify` checks it | Install command |
 |---|---|---|---|---|
-| `figma` (default on) | claude, codex | The remote HTTP MCP server entry, as before | Not checked by `verify` | none (remote server) |
-| `headroom` | claude, codex | An MCP entry `headroom` with the absolute path of the binary and `mcp serve` args | Entry present and well-formed: ok. Binary at the recorded path gone: warn. Entry missing and the binary absent from this machine: warn. Entry missing while the binary is present, or entry malformed: fail | `uv tool install "headroom-ai[all]"` |
+| `figma` (default on) | claude, codex, cursor | The remote HTTP MCP server entry, as before | Not checked by `verify` | none (remote server) |
+| `headroom` | claude, codex, cursor | An MCP entry `headroom` with the absolute path of the binary and `mcp serve` args | Entry present and well-formed: ok. Binary at the recorded path gone: warn. Entry missing and the binary absent from this machine: warn. Entry missing while the binary is present, or entry malformed: fail | `uv tool install "headroom-ai[all]"` |
 | `claude-mem` | claude | Nothing | Worker health on loopback (`127.0.0.1`): ok. Launcher present but worker down, or not installed: warn | `npx claude-mem install` |
 | `cartographer` | claude | Nothing | Skill found: ok. `docs/CODEBASE_MAP.md` or `.cartographer/manifest.json` (v2 index) present: extra ok. None of them: warn | `/plugin marketplace add kingbootoshi/cartographer` then `/plugin install cartographer` |
-| `graphify` | claude, codex | Nothing | Binary on `PATH`: ok. `graphify-out/GRAPH_REPORT.md` present: extra ok. Binary missing: warn | `uv tool install graphifyy` |
+| `graphify` | claude, codex, cursor | Nothing | Binary on `PATH`: ok. `graphify-out/GRAPH_REPORT.md` present: extra ok. Binary missing: warn | `uv tool install graphifyy` |
 
 Notes:
 
-- `--with headroom` when the `headroom` binary is not on `PATH` is a usage error (exit 1) that prints the install command. The Claude entry (`{"type":"stdio","command":"<abs path>","args":["mcp","serve"]}`) was checked on 2026-10-14 against Headroom 0.40.0: it is the same entry `headroom mcp install` writes (that command writes it to the user scope, `~/.claude.json`, while the kit writes it to the project's `.mcp.json`), and the server started from that entry answered with the tools `headroom_compress`, `headroom_retrieve` and `headroom_stats`. Registering the server is not enough to compress anything: Headroom also needs `headroom proxy` running and `ANTHROPIC_BASE_URL` pointing at it (see Headroom's own docs). The `[mcp]` extra (`uv tool install "headroom-ai[mcp]"`) is enough for `mcp serve`.
+- `--with headroom` when the `headroom` binary is not on `PATH` is a usage error (exit 1) that prints the install command. The Claude entry (`{"type":"stdio","command":"<abs path>","args":["mcp","serve"]}`) was checked on 2026-10-14 against Headroom 0.40.0: it is the same entry `headroom mcp install` writes (that command writes it to the user scope, `~/.claude.json`, while the kit writes it to the project's `.mcp.json`), and the server started from that entry answered with the tools `headroom_compress`, `headroom_retrieve` and `headroom_stats`. Registering the server is not enough to compress anything: Headroom also needs `headroom proxy` running and `ANTHROPIC_BASE_URL` pointing at it (see Headroom's own docs). The `[mcp]` extra (`uv tool install "headroom-ai[mcp]"`) is enough for `mcp serve`. The Cursor entry has the same typed stdio shape as the Claude one. As on Claude, an existing entry is kept, so if the binary moved, remove the `headroom` entry from `.cursor/mcp.json` before re-running `install --with headroom`.
+- The Cursor entries follow Cursor's documented MCP schema but were not exercised in a real Cursor.
 - Confirm the Graphify install source before using it; the kit does not point to a repository for it.
 
 ## Selecting integrations

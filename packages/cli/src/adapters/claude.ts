@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { HostAdapter } from './host-adapter.js';
 import type { AdapterContext, McpConfig, VerificationResult } from '../types.js';
@@ -6,10 +6,9 @@ import { which, assertRealDirInsideRoot } from '../util.js';
 import { syncSkills, readManifest, type SyncReport } from '../sync-skills.js';
 import { upsertMarkdownBlock, assertInsideRoot, preflightMarkdownFile, type BlockAction } from '../managed-block.js';
 import { instructionsContent } from '../instructions.js';
-import { SERVER_NAME, kitServerLaunch, type ServerLaunch } from '../mcp-launch.js';
+import { SERVER_NAME, kitServerLaunch } from '../mcp-launch.js';
+import { applyExtraServers, readConfiguredLaunch, readConfiguredServers, readMcpJsonFile } from '../mcp-json.js';
 import { checkInstructions, checkLaunchConfig, checkSkills, probeServer } from '../checks.js';
-
-type McpJson = { mcpServers?: Record<string, Record<string, unknown>> } & Record<string, unknown>;
 
 export class ClaudeCodeAdapter implements HostAdapter {
   readonly name = 'claude' as const;
@@ -38,7 +37,7 @@ export class ClaudeCodeAdapter implements HostAdapter {
     readManifest(this.skillsDir);
     preflightMarkdownFile(this.instructionsFile, this.ctx.projectRoot);
     assertInsideRoot(this.mcpFile, this.ctx.projectRoot);
-    this.readMcpJson();
+    readMcpJsonFile(this.mcpFile);
   }
 
   async installSkills(sourceDir: string): Promise<SyncReport> {
@@ -51,27 +50,9 @@ export class ClaudeCodeAdapter implements HostAdapter {
     return upsertMarkdownBlock(this.instructionsFile, content, this.ctx.projectRoot);
   }
 
-  private readMcpJson(): McpJson {
-    if (!existsSync(this.mcpFile)) return {};
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(readFileSync(this.mcpFile, 'utf8'));
-    } catch (error) {
-      throw new Error(`frontend-agent: cannot parse ${this.mcpFile}: ${(error as Error).message}`);
-    }
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new Error(`frontend-agent: ${this.mcpFile} must contain a JSON object`);
-    }
-    const json = parsed as McpJson;
-    if (json.mcpServers !== undefined && (typeof json.mcpServers !== 'object' || json.mcpServers === null || Array.isArray(json.mcpServers))) {
-      throw new Error(`frontend-agent: "mcpServers" in ${this.mcpFile} must be an object`);
-    }
-    return json;
-  }
-
   async installMcp(config: McpConfig): Promise<string[]> {
     assertInsideRoot(this.mcpFile, this.ctx.projectRoot);
-    const json = this.readMcpJson();
+    const json = readMcpJsonFile(this.mcpFile);
     const servers = { ...(json.mcpServers ?? {}) };
     const launch = kitServerLaunch(config);
     const actions: string[] = [];
@@ -79,47 +60,18 @@ export class ClaudeCodeAdapter implements HostAdapter {
     servers[SERVER_NAME] = { type: 'stdio', command: launch.command, args: launch.args, env: launch.env };
     actions.push(`${SERVER_NAME} MCP server registered in ${this.mcpFile}`);
 
-    for (const extra of config.extraServers) {
-      if (servers[extra.name]) {
-        actions.push(`${extra.name} MCP server already configured in ${this.mcpFile} — kept`);
-      } else {
-        servers[extra.name] = extra.entry;
-        actions.push(`${extra.name} MCP server registered in ${this.mcpFile}${extra.hint ? ` (${extra.hint})` : ''}`);
-      }
-    }
+    actions.push(...applyExtraServers(servers, config.extraServers, this.mcpFile));
 
     writeFileSync(this.mcpFile, `${JSON.stringify({ ...json, mcpServers: servers }, null, 2)}\n`);
     return actions;
   }
 
-  private configuredLaunch(): { launch: ServerLaunch | null; error?: string } {
-    let json: McpJson;
-    try {
-      json = this.readMcpJson();
-    } catch (error) {
-      return { launch: null, error: (error as Error).message };
-    }
-    const entry = json.mcpServers?.[SERVER_NAME];
-    if (!entry || typeof entry.command !== 'string') return { launch: null };
-    return {
-      launch: {
-        command: entry.command,
-        args: Array.isArray(entry.args) ? entry.args.map(String) : [],
-        env: (entry.env as Record<string, string> | undefined) ?? {}
-      }
-    };
-  }
-
   configuredServers(): Record<string, unknown> | null {
-    try {
-      return { ...(this.readMcpJson().mcpServers ?? {}) };
-    } catch {
-      return null;
-    }
+    return readConfiguredServers(this.mcpFile);
   }
 
   async verify(): Promise<VerificationResult> {
-    const { launch, error } = this.configuredLaunch();
+    const { launch, error } = readConfiguredLaunch(this.mcpFile);
     const configCheck = error
       ? { name: 'mcp-config', ok: false, detail: error }
       : checkLaunchConfig(launch, this.ctx.projectRoot, this.mcpFile);

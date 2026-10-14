@@ -1,4 +1,4 @@
-import { accessSync, constants, readFileSync, readdirSync, statSync, existsSync, realpathSync } from 'node:fs';
+import { accessSync, constants, readFileSync, readdirSync, statSync, existsSync, realpathSync, lstatSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,6 +69,15 @@ export function assertRealDirInsideRoot(dir: string, rootDir: string): void {
       real = realpathSync(current);
       break;
     } catch {
+      let dangling = false;
+      try {
+        dangling = lstatSync(current).isSymbolicLink();
+      } catch {
+        // not present at all: keep walking up
+      }
+      if (dangling) {
+        throw new Error(`frontend-agent: ${current} is a dangling symbolic link; remove or fix it before installing.`);
+      }
       const parent = path.dirname(current);
       if (parent === current) {
         throw new Error(`frontend-agent: ${dir} resolves outside the project root; refusing to write there.`);

@@ -7,7 +7,7 @@ import { project } from './integration-helpers.ts';
 test('figma is the only default-on integration and plans the same entries as before', async () => {
   assert.deepEqual(INTEGRATIONS.filter((i) => i.defaultOn).map((i) => i.id), ['figma']);
   const figma = integrationById('figma')!;
-  assert.deepEqual(figma.hosts, ['claude', 'codex']);
+  assert.deepEqual(figma.hosts, ['claude', 'codex', 'cursor']);
   assert.deepEqual(figma.plan('claude', { state: 'present' }), [{ name: 'figma', entry: { type: 'http', url: 'https://mcp.figma.com/mcp' } }]);
   assert.deepEqual(figma.plan('codex', { state: 'present' }), [
     { name: 'figma', entry: { url: 'https://mcp.figma.com/mcp' }, hint: 'authenticate with: codex mcp login figma' }

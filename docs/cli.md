@@ -1,6 +1,6 @@
 # The dev-agent CLI (v1.1)
 
-`dev-agent` makes the deterministic parts of the kit callable from a terminal. It never runs a model, opens a network connection or changes Git; a natural-language task still runs in Claude Code or Codex. `frontend-agent` is unchanged.
+`dev-agent` makes the deterministic parts of the kit callable from a terminal. It never runs a model, opens a network connection or changes Git; a natural-language task still runs in Claude Code, Codex or Cursor. `frontend-agent` is unchanged.
 
 Exit codes: `0` ok, `1` usage or environment error, `2` checked and not OK.
 
@@ -32,4 +32,6 @@ Every command accepts `--project <dir>` (default: the current directory) and, wh
 
 `install` and `verify` keep the exit codes of `frontend-agent` (1 when a check fails).
 
-`install [claude|codex ...] [--all] [--force] [--no-figma] [--with <id> ...] [--no-<id> ...]` can also wire optional integrations (Headroom, claude-mem, Cartographer, Graphify). See `docs/integrations.md` for the ids, the `verify` warn state and the `.dev-agent/integrations.json` state file.
+`install [claude|codex|cursor ...] [--all] [--force] [--no-figma] [--with <id> ...] [--no-<id> ...]` can also wire optional integrations (Headroom, claude-mem, Cartographer, Graphify). See `docs/integrations.md` for the ids, the `verify` warn state and the `.dev-agent/integrations.json` state file.
+
+Cursor installs `.agents/skills/` and the `AGENTS.md` block, both shared with Codex (installing either order is idempotent), and `.cursor/mcp.json`. `--all` selects Claude Code and Codex only. With no host named, detection includes Cursor (`~/.cursor` exists or `cursor` is on `PATH`), so a machine with Cursor installed now also gets Cursor on a plain `install`. A plain `verify` (no host named) also checks Cursor when it is detected, and reports it as not OK until `install cursor` has run; name the hosts you want, or run `install`, to clear it. `vscode` is not supported yet.

@@ -95,8 +95,8 @@ test('preflight fails closed: a corrupt .codex/config.toml + install --all write
 test('stub hosts, unknown hosts, a missing project dir and the kit checkout itself are rejected with exit 1', async () => {
   const { base, projectRoot, io, err, cleanup } = setup();
   try {
-    assert.equal(await run(['install', 'cursor', '--project', projectRoot], io), 1);
-    assert.match(err.join('\n'), /cursor is not supported yet/);
+    assert.equal(await run(['install', 'vscode', '--project', projectRoot], io), 1);
+    assert.match(err.join('\n'), /vscode is not supported yet/);
     assert.equal(await run(['install', 'emacs', '--project', projectRoot], io), 1);
     assert.match(err.join('\n'), /unknown host "emacs"/);
     assert.equal(await run(['install', 'claude', '--project', join(base, 'nope')], io), 1);

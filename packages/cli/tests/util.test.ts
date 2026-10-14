@@ -113,3 +113,21 @@ test('INIT_CWD is trusted only when npm ran the command from the kit checkout it
     rmSync(base, { recursive: true, force: true });
   }
 });
+
+test('assertRealDirInsideRoot refuses a dangling symlink (or a path under one) and still accepts a valid in-root symlink', () => {
+  const root = mkdtempSync(join(tmpdir(), 'frontend-agent-dangling-'));
+  try {
+    const dangling = join(root, 'dangling');
+    symlinkSync(join(root, '..', 'definitely-missing-target'), dangling);
+    assert.throws(() => assertRealDirInsideRoot(dangling, root), /dangling symbolic link/);
+    assert.throws(() => assertRealDirInsideRoot(join(dangling, 'nested', 'x'), root), /dangling symbolic link/);
+    assert.throws(() => assertRealDirInsideRoot(dangling, root), new RegExp(dangling.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    const real = join(root, 'real');
+    mkdirSync(real);
+    symlinkSync(real, join(root, 'valid-link'));
+    assert.doesNotThrow(() => assertRealDirInsideRoot(join(root, 'valid-link'), root));
+    assert.doesNotThrow(() => assertRealDirInsideRoot(join(root, 'nope', 'missing'), root));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

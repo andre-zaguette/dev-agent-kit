@@ -1,6 +1,6 @@
 # Dev Agent Kit
 
-Dev Agent Kit is a provider-neutral engineering agent kit for **Claude Code** and **Codex**. It gives an agent portable skills (frontend, backend, fullstack and shared engineering), a deterministic `dev-agent` CLI that inspects and verifies but never runs a model, and its own MCP server for visual validation. A work item from your tracker goes in; a resumable ledger, a safe Git branch, a verified change and a reviewed diff come out.
+Dev Agent Kit is a provider-neutral engineering agent kit for **Claude Code**, **Codex** and **Cursor**. It gives an agent portable skills (frontend, backend, fullstack and shared engineering), a deterministic `dev-agent` CLI that inspects and verifies but never runs a model, and its own MCP server for visual validation. A work item from your tracker goes in; a resumable ledger, a safe Git branch, a verified change and a reviewed diff come out.
 
 > This repository is the evolution of `andre-zaguette/frontend-agent-kit` (history restarted at v0.5). The design is in `docs/superpowers/specs/2026-09-24-dev-agent-kit-evolution.md`.
 
@@ -22,11 +22,11 @@ The visual-validation tools drive a browser. Install the one matching the kit's 
 Then, for each project:
 
 ```bash
-dev-agent install --project /path/to/project          # every detected host (Claude Code, Codex)
+dev-agent install --project /path/to/project          # every detected host (Claude Code, Codex, Cursor)
 dev-agent verify --project /path/to/project
 ```
 
-`install` writes only inside the project: skills (`.claude/skills/`, `.agents/skills/`), a managed block in `CLAUDE.md`/`AGENTS.md`, and the MCP server entries (`.mcp.json`, `.codex/config.toml`). Your own content and other MCP servers are preserved; a skill you edited locally is kept and reported (`--force` overwrites it); `--no-figma` skips the Figma server. Claude Code asks you to approve project MCP servers on first start, and Codex loads `.codex/config.toml` only for trusted projects. `.mcp.json` and `.codex/config.toml` contain absolute paths to the installed kit; keep them out of version control in shared repositories. Without the CLI, see `docs/manual-install.md`.
+`install` writes only inside the project: skills (`.claude/skills/`, `.agents/skills/`), a managed block in `CLAUDE.md`/`AGENTS.md`, and the MCP server entries (`.mcp.json`, `.codex/config.toml`, `.cursor/mcp.json`). Cursor reads `.agents/skills/` and `AGENTS.md`, shared with Codex. `--all` still selects Claude Code and Codex; name `cursor` to install it (or let detection pick it when you name no host). Your own content and other MCP servers are preserved; a skill you edited locally is kept and reported (`--force` overwrites it); `--no-figma` skips the Figma server. Claude Code asks you to approve project MCP servers on first start, and Codex loads `.codex/config.toml` only for trusted projects. `.mcp.json`, `.codex/config.toml` and `.cursor/mcp.json` contain absolute paths to the installed kit; keep them out of version control in shared repositories. Without the CLI, see `docs/manual-install.md`.
 
 Optional integrations (Headroom, claude-mem, Cartographer, Graphify): see docs/integrations.md.
 
@@ -53,7 +53,7 @@ Optional integrations (Headroom, claude-mem, Cartographer, Graphify): see docs/i
    ```
 
 2. Check it: `dev-agent sources verify`, then `dev-agent task resolve HEF-123`.
-3. In Claude Code or Codex, ask: *"Analyze and execute HEF-123."* The `task-orchestrator` skill reads the work item through your MCP server, writes a ledger to `.dev-agent/tasks/HEF-123.md`, prepares a branch (fast-forward only, never on a dirty tree), classifies the work as frontend, backend or fullstack and hands off to the matching skills.
+3. In Claude Code, Codex or Cursor, ask: *"Analyze and execute HEF-123."* The `task-orchestrator` skill reads the work item through your MCP server, writes a ledger to `.dev-agent/tasks/HEF-123.md`, prepares a branch (fast-forward only, never on a dirty tree), classifies the work as frontend, backend or fullstack and hands off to the matching skills.
 4. Before the agent reports done, it can run `dev-agent diff review`; `dev-agent task status HEF-123` tells you whether the repository still matches the saved state.
 
 ## What is in the box

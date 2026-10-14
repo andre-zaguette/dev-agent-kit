@@ -1,7 +1,7 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { ALL_HOSTS, REAL_HOSTS, createAdapter, type HostAdapter } from './adapters/index.js';
+import { ALL_FLAG_HOSTS, ALL_HOSTS, REAL_HOSTS, createAdapter, type HostAdapter } from './adapters/index.js';
 import { INTEGRATIONS, integrationChecks, type Detection, type IntegrationId } from './integrations/index.js';
 import { resolveSelection, wantedIds, type SelectionFlags } from './integrations/select.js';
 import { assertStateWritable, persistIntegrationState, readIntegrationState } from './integrations/state.js';
@@ -19,14 +19,14 @@ export interface CliIo {
 const HELP = `frontend-agent — install the Frontend Agent Kit into a project
 
 Usage:
-  frontend-agent install [claude|codex ...] [--all] [--project <dir>] [--force] [--no-figma] [--with <id> ...] [--no-<id> ...]
-  frontend-agent verify  [claude|codex ...] [--all] [--project <dir>]
+  frontend-agent install [claude|codex|cursor ...] [--all] [--project <dir>] [--force] [--no-figma] [--with <id> ...] [--no-<id> ...]
+  frontend-agent verify  [claude|codex|cursor ...] [--all] [--project <dir>]
   frontend-agent --help | --version
 
-With no host, install/verify use every detected host (claude, codex).
+With no host, install/verify use every detected host (claude, codex, cursor). --all selects claude and codex.
 --project defaults to the current directory. --force overwrites locally edited kit skills.
 Integrations: figma (default), headroom, claude-mem, cartographer, graphify. --with enables one, --no-<id> disables one. The kit never installs the tools; verify reports what is missing.
-Cursor and VS Code adapters are stubs in v0.4.`;
+Cursor shares .agents/skills and AGENTS.md with Codex and writes .cursor/mcp.json. VS Code is not supported yet.`;
 
 function resolveProjectRoot(value: string | undefined, io: CliIo, kitRoot: string): string {
   const resolved = path.resolve(io.cwd, value ?? '.');
@@ -46,7 +46,7 @@ async function selectAdapters(positionals: string[], all: boolean, ctx: AdapterC
       throw new Error(`frontend-agent: unknown host "${host}" (expected one of: ${ALL_HOSTS.join(', ')}).`);
     }
   }
-  const names: HostName[] = all ? REAL_HOSTS : (positionals as HostName[]);
+  const names: HostName[] = all ? ALL_FLAG_HOSTS : (positionals as HostName[]);
   if (names.length > 0) return names.map((name) => createAdapter(name, ctx));
 
   const detected: HostAdapter[] = [];
@@ -55,7 +55,7 @@ async function selectAdapters(positionals: string[], all: boolean, ctx: AdapterC
     if (await adapter.detect()) detected.push(adapter);
   }
   if (detected.length === 0) {
-    throw new Error('frontend-agent: no supported host detected — pass claude or codex explicitly (or --all).');
+    throw new Error('frontend-agent: no supported host detected — pass claude, codex or cursor explicitly (or --all).');
   }
   return detected;
 }

@@ -16,7 +16,7 @@ An integration is an optional tool the kit knows how to wire into a project or c
 
 Notes:
 
-- `--with headroom` when the `headroom` binary is not on `PATH` is a usage error (exit 1) that prints the install command. The Claude `.mcp.json` form of the Headroom entry is an assumption that still needs a manual check against a real install.
+- `--with headroom` when the `headroom` binary is not on `PATH` is a usage error (exit 1) that prints the install command. The Claude entry (`{"type":"stdio","command":"<abs path>","args":["mcp","serve"]}`) was checked on 2026-10-14 against Headroom 0.40.0: it is the same entry `headroom mcp install` writes (that command writes it to the user scope, `~/.claude.json`, while the kit writes it to the project's `.mcp.json`), and the server started from that entry answered with the tools `headroom_compress`, `headroom_retrieve` and `headroom_stats`. Registering the server is not enough to compress anything: Headroom also needs `headroom proxy` running and `ANTHROPIC_BASE_URL` pointing at it (see Headroom's own docs). The `[mcp]` extra (`uv tool install "headroom-ai[mcp]"`) is enough for `mcp serve`.
 - Confirm the Graphify install source before using it; the kit does not point to a repository for it.
 
 ## Selecting integrations

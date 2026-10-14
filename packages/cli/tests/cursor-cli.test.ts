@@ -49,6 +49,8 @@ test('with no host named, a detected Cursor (~/.cursor) is installed too', async
     assert.equal(await run(['install', '--project', projectRoot], io), 0, out.join('\n'));
     assert.ok(existsSync(join(projectRoot, '.cursor', 'mcp.json')));
     assert.equal(existsSync(join(projectRoot, '.mcp.json')), false);
+    assert.equal(existsSync(join(projectRoot, '.codex')), false);
+    assert.equal(existsSync(join(projectRoot, 'CLAUDE.md')), false);
   } finally {
     cleanup();
   }
@@ -85,6 +87,7 @@ test('an unparsable .cursor/mcp.json stops `install claude cursor` before anythi
     assert.equal(await run(['install', 'claude', 'cursor', '--project', projectRoot], io), 1);
     assert.match(err.join('\n'), /\[cursor\] .*cannot parse/);
     for (const absent of ['.mcp.json', 'CLAUDE.md', '.claude', '.agents', 'AGENTS.md']) assert.equal(existsSync(join(projectRoot, absent)), false, absent);
+    assert.equal(readFileSync(join(projectRoot, '.cursor', 'mcp.json'), 'utf8'), '{nope');
   } finally {
     cleanup();
   }
@@ -100,7 +103,8 @@ test('codex and cursor installed together: both verify ok and repeated installs 
     assert.equal(readFileSync(join(projectRoot, 'AGENTS.md'), 'utf8'), agents);
     assert.equal(readFileSync(join(projectRoot, '.agents', 'skills', '.frontend-agent-kit-manifest.json'), 'utf8'), manifest);
     out.length = 0;
-    await run(['verify', 'cursor', '--project', projectRoot], io);
+    const verifyCode = await run(['verify', 'cursor', '--project', projectRoot], io);
+    assert.equal(verifyCode, 0, out.join('\n'));
     assert.match(out.join('\n'), /\[cursor\] ok/);
   } finally {
     cleanup();

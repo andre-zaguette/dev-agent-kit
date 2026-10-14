@@ -1,7 +1,7 @@
 // packages/cli/tests/cursor-adapter.test.ts
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, symlinkSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { CursorAdapter } from '../src/adapters/cursor.ts';
 import { CodexAdapter } from '../src/adapters/codex.ts';
@@ -125,6 +125,9 @@ test('a .cursor symlink pointing outside the project, or a regular file named .c
   try {
     writeFileSync(join(second.projectRoot, '.cursor'), 'not a directory');
     await assert.rejects(() => new CursorAdapter(second.ctx).preflight(noExtras(second.ctx)));
+    await assert.rejects(() => new CursorAdapter(second.ctx).installMcp(noExtras(second.ctx)));
+    assert.equal(lstatSync(join(second.projectRoot, '.cursor')).isFile(), true);
+    assert.equal(readFileSync(join(second.projectRoot, '.cursor'), 'utf8'), 'not a directory');
   } finally {
     second.cleanup();
   }

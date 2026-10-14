@@ -70,7 +70,7 @@ Optional integrations (Headroom, claude-mem, Cartographer, Graphify): see docs/i
 
 Stack references load lazily: Python, Node.js, PHP, C#, Java and Ruby backends with their frameworks, databases, queues and caches (`docs/backend.md`), plus the frontend stacks.
 
-**The `dev-agent` CLI** is deterministic: no model, no network, no Git mutation beyond safe branch preparation. `inspect`, `context audit`, `sources`, `sources verify`, `task resolve|status|show`, `contract show|verify|usage`, `repo index`, `repo similar`, `diff review`, `workspaces`, `workspaces verify|order`, plus `install` and `verify`. Exit codes: 0 ok, 1 usage or environment error, 2 checked and not OK. See `docs/cli.md`.
+**The `dev-agent` CLI** is deterministic: no model, no Git mutation beyond safe branch preparation, and no network access except `task fetch`. `inspect`, `context audit`, `sources`, `sources verify`, `task resolve|fetch|status|show`, `contract show|verify|usage`, `repo index`, `repo similar`, `diff review`, `workspaces`, `workspaces verify|order`, plus `install` and `verify`. Exit codes: 0 ok, 1 usage or environment error, 2 checked and not OK. See `docs/cli.md`.
 
 **The MCP server** exposes five tools: `capture_screenshot`, `inspect_dom`, `compare_screenshots`, `run_responsive_suite`, `run_accessibility_audit`. See `docs/visual-validation.md`.
 

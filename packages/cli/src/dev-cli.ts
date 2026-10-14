@@ -5,7 +5,7 @@ import { CliError, PROJECT_JSON, projectRootOf, resolveTarget } from './dev-comm
 import { contractShow, contractUsage, contractVerify } from './dev-contract-commands.js';
 import { diffReview, repoIndex, repoSimilar } from './dev-repo-commands.js';
 import { workspacesList, workspacesOrder, workspacesVerify } from './dev-workspace-commands.js';
-import { sourcesList, sourcesVerify, taskResolve, taskShow, taskStatus } from './dev-task-commands.js';
+import { sourcesList, sourcesVerify, taskFetch, taskResolve, taskShow, taskStatus } from './dev-task-commands.js';
 import { readKitVersion } from './util.js';
 
 export { CliError, projectRootOf } from './dev-common.js';
@@ -20,6 +20,7 @@ Usage:
   dev-agent sources [--project <dir>] [--json]
   dev-agent sources verify [--project <dir>] [--json]
   dev-agent task resolve <identifier> [--source <id>] [--probe] [--project <dir>] [--json]
+  dev-agent task fetch <identifier> [--source <id>] [--project <dir>] [--json]
   dev-agent task status <KEY> [--project <dir>] [--json]
   dev-agent task show <KEY> [--project <dir>]
   dev-agent contract show <KEY> [--project <dir>]
@@ -104,6 +105,8 @@ export async function runDev(argv: string[], io: CliIo): Promise<number> {
         switch (rest[0]) {
           case 'resolve':
             return taskResolve(rest.slice(1), io);
+          case 'fetch':
+            return await taskFetch(rest.slice(1), io);
           case 'status':
             return taskStatus(rest.slice(1), io);
           case 'show':

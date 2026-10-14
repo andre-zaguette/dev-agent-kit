@@ -28,6 +28,18 @@ export const GUIDES: Guide[] = [
     name: 'nestjs',
     must: [/Test\.createTestingModule/, /ValidationPipe/, /whitelist/, /overrideProvider|overrideGuard/, /supertest/, /guards?.*interceptors?.*pipes?|middleware.*guards?/is, /Targets: .*NestJS/],
     mustNot: []
+  },
+  {
+    skill: 'frontend-architecture',
+    name: 'vue-stack',
+    must: [/<script setup/, /defineProps/, /defineEmits/, /storeToRefs|computed/, /:key/, /@vue\/test-utils|flushPromises/, /Targets: .*Vue/],
+    mustNot: [/\bmixins?\b.*recommended/i, /Vue\.component\(/, /new Vue\(/, /\bVuex\b.*(use|recommended)/i]
+  },
+  {
+    skill: 'frontend-architecture',
+    name: 'nuxt-stack',
+    must: [/useFetch|useAsyncData/, /\$fetch/, /runtimeConfig/, /defineEventHandler/, /createError/, /server\/api/, /ClientOnly|hydration/i, /Targets: .*Nuxt/],
+    mustNot: [/asyncData\s*\(/, /@nuxtjs\/axios/, /\bnuxtServerInit\b/, /nuxt\.config\.js\b/]
   }
 ];
 

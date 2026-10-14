@@ -1,4 +1,4 @@
-# The dev-agent CLI (v1.2)
+# The dev-agent CLI (v1.3)
 
 `dev-agent` makes the deterministic parts of the kit callable from a terminal. It never runs a model or changes Git, and the only command that opens a network connection is `task fetch` (to a configured native task source, with a token read from the environment); a natural-language task still runs in Claude Code, Codex or Cursor. `frontend-agent` is unchanged.
 

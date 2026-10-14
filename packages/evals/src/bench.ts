@@ -87,7 +87,7 @@ async function runCase(opts: BenchOptions, scenario: Scenario, host: HostId): Pr
     if (code !== 0) return errorResult(scenario, host, `kit install failed: ${installErr.join(' ')}`, transcriptPath, opts.keep ? ws : undefined);
 
     const tsx = path.join(opts.kitRoot, 'node_modules', '.bin', 'tsx');
-    const kit = kitServerLaunch({ kitRoot: opts.kitRoot, projectRoot: ws, includeFigma: false });
+    const kit = kitServerLaunch({ kitRoot: opts.kitRoot, projectRoot: ws });
     const servers: McpServerSpec[] = [{ name: 'frontend-agent', command: kit.command, args: kit.args, env: kit.env }];
     if (scenario.figma) {
       servers.push({

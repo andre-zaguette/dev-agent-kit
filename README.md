@@ -10,7 +10,7 @@ Requires Node.js 20.6 or newer. Step-by-step guide (Portuguese): `docs/instalaca
 
 ```bash
 # from the tarball attached to the GitHub release
-npm install -g dev-agent-kit-1.2.0.tgz
+npm install -g dev-agent-kit-1.3.0.tgz
 
 # or from a checkout
 git clone https://github.com/andre-zaguette/dev-agent-kit.git
@@ -128,6 +128,7 @@ MIT. See `LICENSE`.
 
 ## Version history
 
+- **v1.3.0** — native task sources: `github-issues`, `linear`, `jira` and `youtrack` adapters read over HTTP with a token from the environment, and `dev-agent task fetch`. See `docs/release-notes/v1.3.0.md`.
 - **v1.2.0** — integrations registry (Figma, Headroom, claude-mem, Cartographer, Graphify), Cursor as a third host, deeper FastAPI, NestJS, Vue, Nuxt and Next.js guides with the `frontend-architecture` skill. See `docs/release-notes/v1.2.0.md`.
 - **v1.1.0** — multi-repo workspaces: `workspaces` commands, `--workspace`, version-pin checks, producer/consumer contracts. See `docs/release-notes/v1.1.0.md`.
 - **v1.0.0** — installable package `dev-agent-kit`, compatibility policy, adapter, generic-MCP and migration guides. See `docs/release-notes/v1.0.0.md`.

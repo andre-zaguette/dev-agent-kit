@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "frontend-agent": {
+      "type": "stdio",
+      "command": "<KIT>/node_modules/.bin/tsx",
+      "args": [
+        "<KIT>/packages/mcp-server/src/index.ts"
+      ],
+      "env": {
+        "FRONTEND_AGENT_PROJECT_ROOT": "<PROJECT>"
+      }
+    },
+    "figma": {
+      "url": "https://mcp.figma.com/mcp"
+    }
+  }
+}

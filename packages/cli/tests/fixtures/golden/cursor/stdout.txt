@@ -1,0 +1,10 @@
+
+[cursor] installing into <PROJECT>
+  AGENTS.md: created
+  frontend-agent MCP server registered in <PROJECT>/.cursor/mcp.json
+  figma MCP server registered in <PROJECT>/.cursor/mcp.json
+  note: Cursor loads .cursor/mcp.json for this project and asks for approval before using MCP tools.
+  note: .cursor/mcp.json holds absolute paths to this kit checkout and the project — keep it out of version control if the repo is shared.
+  note: Skills (.agents/skills/) and AGENTS.md are shared with Codex: installing both hosts is safe and idempotent.
+
+Done. Run "frontend-agent verify cursor --project <PROJECT>" to check the setup.

@@ -3,11 +3,11 @@ import type { VerificationResult } from '../types.js';
 import type { SyncReport } from '../sync-skills.js';
 import type { BlockAction } from '../managed-block.js';
 
-/** Spec §6: Cursor and VS Code adapters exist in the interface but have no installation logic yet. */
+/** VS Code adapter exists in the interface but has no installation logic yet. */
 export class StubAdapter implements HostAdapter {
   readonly supported = false;
 
-  constructor(readonly name: 'cursor' | 'vscode') {}
+  constructor(readonly name: 'vscode') {}
 
   private unsupported(): Error {
     return new Error(`frontend-agent: ${this.name} is not supported yet (stub adapter in v0.4 — spec §6).`);

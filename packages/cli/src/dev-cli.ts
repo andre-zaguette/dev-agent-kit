@@ -13,8 +13,8 @@ export { CliError, projectRootOf } from './dev-common.js';
 export const DEV_HELP = `dev-agent — deterministic helpers for the Dev Agent Kit
 
 Usage:
-  dev-agent install [claude|codex ...] [--all] [--project <dir>] [--force] [--no-figma] [--with <id> ...] [--no-<id> ...]
-  dev-agent verify  [claude|codex ...] [--all] [--project <dir>]
+  dev-agent install [claude|codex|cursor ...] [--all] [--project <dir>] [--force] [--no-figma] [--with <id> ...] [--no-<id> ...]
+  dev-agent verify  [claude|codex|cursor ...] [--all] [--project <dir>]
   dev-agent inspect [--workspace <name>] [--project <dir>] [--json]
   dev-agent context audit [--project <dir>] [--json]
   dev-agent sources [--project <dir>] [--json]

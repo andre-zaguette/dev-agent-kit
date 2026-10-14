@@ -80,6 +80,17 @@ Guides: `docs/workspaces.md`, `docs/task-orchestrator.md`, `docs/fullstack.md`, 
 
 A task source is where work items live. Most trackers with an MCP server need only a declarative mapping: [docs/generic-mcp.md](docs/generic-mcp.md). When a source needs more (pagination, unusual authentication, computed fields), write an adapter against the contract in [docs/task-source-adapters.md](docs/task-source-adapters.md). Several sources can coexist and are routed by identifier pattern or an explicit `--source`. Read is separate from write: no shipped adapter writes to a tracker.
 
+Four trackers also have native adapters that need no MCP server, only a token in an environment variable: `github-issues`, `linear`, `jira` and `youtrack`. Configure one and read the item with `dev-agent task fetch ENG-123 --json`; see [docs/native-task-sources.md](docs/native-task-sources.md).
+
+```yaml
+taskSources:
+  work:
+    adapter: linear
+    tokenEnv: LINEAR_API_KEY
+    default: true
+    identifiers: ['^ENG-\d+$']
+```
+
 ## Repository patterns and diff review
 
 `dev-agent repo index --write` drafts repository knowledge from paths only; `dev-agent repo similar <words>` lists the existing features closest to a change so new code copies their structure; `dev-agent diff review` flags edited migrations, secrets in added lines, dependency changes, missing tests and new top-level directories. See `docs/patterns.md`.

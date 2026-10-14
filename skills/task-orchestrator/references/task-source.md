@@ -29,3 +29,5 @@ When declarative mapping is not enough (pagination, unusual auth, non-MCP transp
 ## Source ids
 
 User-defined lowercase aliases (`company`, `personal`). Persist the logical id in ledgers and state, never transport details.
+
+Native adapters (`github-issues`, `linear`, `jira`, `youtrack`) are read with `dev-agent task fetch`; see `native-sources.md`.

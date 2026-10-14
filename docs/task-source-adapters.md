@@ -71,3 +71,7 @@ Put a custom adapter under `integrations/task-sources/<source-id>/` in your proj
 - Degrade optional lookups (comments, links) into `metadata.partial` instead of failing the item.
 
 An adapter is done when: it returns a valid `WorkItem` for a normal item, a not-found item and a malformed payload (`NormalizationError`); capabilities match what it implements; error messages contain no credentials; and two sources with different payloads normalize to the same `WorkItem` shape. `packages/core/tests/generic-mcp.test.ts` and `task-source-registry.test.ts` are working examples of each check.
+
+## Native adapters
+
+Four trackers ship with adapters that call the tracker's HTTP API directly (`github-issues`, `linear`, `jira`, `youtrack`) and need no MCP server. They are configured with `tokenEnv` and read with `dev-agent task fetch`; see [native-task-sources.md](native-task-sources.md). Those four adapter names are reserved. Everything above (the contract, `normalizeWorkItem`, the registry) is unchanged, and a custom adapter still goes through the registry as before.

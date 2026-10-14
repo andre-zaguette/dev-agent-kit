@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { selectFrontendReferences } from '../src/frontend-references.ts';
+import type { ProjectProfile } from '../src/project-profile.ts';
 
 const kitRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -40,6 +42,12 @@ export const GUIDES: Guide[] = [
     name: 'nuxt-stack',
     must: [/useFetch|useAsyncData/, /\$fetch/, /runtimeConfig/, /defineEventHandler/, /createError/, /server\/api/, /ClientOnly|hydration/i, /Targets: .*Nuxt/],
     mustNot: [/asyncData\s*\(/, /@nuxtjs\/axios/, /\bnuxtServerInit\b/, /nuxt\.config\.js\b/]
+  },
+  {
+    skill: 'frontend-architecture',
+    name: 'next-stack',
+    must: [/Server Components?/, /'use client'/, /'use server'|Server Actions?/, /NEXT_PUBLIC_/, /revalidate(Path|Tag)/, /route\.ts/, /await params|params: Promise/, /Targets: .*Next\.js/],
+    mustNot: [/getServerSideProps/, /getStaticProps/, /getInitialProps/, /pages\/api/]
   }
 ];
 
@@ -80,3 +88,11 @@ for (const guide of GUIDES) {
     assert.match(read(guide), /do not (assume|add|introduce)|if the project (does not|doesn't)|only if the project/i);
   });
 }
+
+test('every hint the frontend selector can produce points at a real guide, and every frontend guide is reachable', () => {
+  const everything: ProjectProfile = { languages: ['typescript'], frameworks: ['vue', 'nuxt', 'next', 'react'], testCommands: [], lintCommands: [], typecheckCommands: [], docker: false };
+  const hints = selectFrontendReferences(everything);
+  for (const hint of hints) assert.ok(existsSync(join(kitRoot, 'skills', hint.skill, 'references', `${hint.reference}.md`)), `${hint.skill}/${hint.reference}`);
+  const frontend = GUIDES.filter((g) => g.skill === 'frontend-architecture').map((g) => g.name).sort();
+  assert.deepEqual(hints.map((h) => h.reference).sort(), frontend);
+});

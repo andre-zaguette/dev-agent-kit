@@ -149,7 +149,7 @@ dev-agent workspaces order  --project /caminho/meu-workspace
 dev-agent diff review --workspace all --project /caminho/meu-workspace
 ```
 
-Guia completo, com os exemplos Altave e Pumpkin: `docs/workspaces.md`.
+Guia completo, com os exemplos edge-platform e layered-suite: `docs/workspaces.md`.
 
 ## Atualizar
 

@@ -3,8 +3,8 @@
 One workspace root holds several projects, each its own Git repository, so a single work item can span them. The root is a plain folder, not a repository.
 
 ```text
-altave/   cloud-back  cloud-front  edge-back  edge-front
-pumpkin/  models  backend  policy-api  client  admin
+edge-platform/   cloud-back  cloud-front  edge-back  edge-front
+layered-suite/  models  backend  policy-api  client  admin
 ```
 
 ## Configuration
@@ -66,7 +66,7 @@ Understood constraints: `==x.y.z`, `>=x.y.z`, `~=x.y[.z]`, `^x.y.z`, `~x.y.z` an
 
 An API contract may name `producer` and `consumers` (workspace names). `dev-agent contract usage <KEY>` then scans each consumer workspace without `--client` and exits 2 if any consumer never calls the route with the method. An explicit `--client` still wins.
 
-## Worked example: Altave
+## Worked example: edge-platform
 
 Four repositories, no `dependsOn`: Cloud and Edge talk over HTTP.
 
@@ -86,7 +86,7 @@ The contract for a route that Cloud serves and Edge calls:
 
 Flow: order the touched workspaces (`dev-agent workspaces order --only cloud-back,edge-back`), create the same branch name in each, implement the producer, then the consumer, run `dev-agent contract verify <KEY> --exchange <file>`, then `dev-agent contract usage <KEY> --strict`, and finish with `dev-agent diff review --workspace all`.
 
-## Worked example: Pumpkin
+## Worked example: layered-suite
 
 Five repositories in a chain: `models` ← `backend` ← `policy-api` ← `client` and `admin`. `models` and `backend` are packages pinned in `pyproject.toml`.
 

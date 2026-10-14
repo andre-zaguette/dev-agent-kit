@@ -13,8 +13,8 @@
 **Spec:** `docs/superpowers/specs/2026-09-24-dev-agent-kit-evolution.md` (§10 resume, §12 Git safety, §26 project inspector, §43 compatibility). Driven by two real layouts, both one repository per folder under a non-Git parent:
 
 ```text
-altave/  cloud-back  cloud-front  edge-back  edge-front      (cloud and edge talk to each other)
-pumpkin/ models  backend  policy-api  client  admin          (models ← backend ← policy-api ← client/admin;
+edge-platform/  cloud-back  cloud-front  edge-back  edge-front      (cloud and edge talk to each other)
+layered-suite/ models  backend  policy-api  client  admin          (models ← backend ← policy-api ← client/admin;
                                                               models and backend are pyproject-pinned packages)
 ```
 
@@ -71,7 +71,7 @@ pumpkin/ models  backend  policy-api  client  admin          (models ← backend
     client:     { path: client, role: frontend, dependsOn: [policy-api], baseBranch: develop }
   ```
 
-- [ ] **Step 1: Failing tests.** Config: the Pumpkin and Altave examples parse (Altave has no `dependsOn` at all); absent key → `workspaces: []`; errors (each names the workspace or key and is asserted by message): unknown key, non-string or empty `path`, absolute path, `..`, backslash, duplicate names, duplicate or nested paths, name `all`, invalid name, more than 30, `dependsOn` naming an unknown workspace, self-dependency, a cycle (`a→b→a`), non-array `dependsOn`, invalid `role`. `workspaceRoot`: returns the realpath for a real directory; throws for a missing directory, a file, a symlink workspace directory and a symlinked parent. `orderWorkspaces`: Pumpkin order is `models, backend, policy-api, admin, client` (alphabetical tie-break between `admin` and `client`); `only: ['client']` alone returns `client`; with `withDeps` returns the chain `models, backend, policy-api, client`; unknown name in `only` throws.
+- [ ] **Step 1: Failing tests.** Config: the layered-suite and edge-platform examples parse (edge-platform has no `dependsOn` at all); absent key → `workspaces: []`; errors (each names the workspace or key and is asserted by message): unknown key, non-string or empty `path`, absolute path, `..`, backslash, duplicate names, duplicate or nested paths, name `all`, invalid name, more than 30, `dependsOn` naming an unknown workspace, self-dependency, a cycle (`a→b→a`), non-array `dependsOn`, invalid `role`. `workspaceRoot`: returns the realpath for a real directory; throws for a missing directory, a file, a symlink workspace directory and a symlinked parent. `orderWorkspaces`: layered-suite order is `models, backend, policy-api, admin, client` (alphabetical tie-break between `admin` and `client`); `only: ['client']` alone returns `client`; with `withDeps` returns the chain `models, backend, policy-api, client`; unknown name in `only` throws.
 - [ ] **Step 2: Run, watch them fail.**
 - [ ] **Step 3: Implement** the parser section, `workspaces.ts` and the index export. Ordering is an iterative topological sort (no recursion) with the alphabetical tie-break.
 - [ ] **Step 4: Run core suite and typecheck; commit** — `git commit -m "core: workspace configuration, safe paths and dependency order"`.
@@ -118,7 +118,7 @@ pumpkin/ models  backend  policy-api  client  admin          (models ← backend
   ```
 - Rules: with no `workspaces` in the state, resume behaves as in v1.0 (root branch and base checks). With `workspaces`, each recorded workspace is checked in its own directory: repository present, branch equals `workingBranch`, `baseSha` an ancestor of `HEAD`; the root is not required to be a repository. Uncommitted work never blocks (existing rule) but is reported as a note per workspace. A recorded workspace missing from the config is a reason.
 
-- [ ] **Step 1: Failing tests.** `parseTaskState`: accepts a state with `workspaces`, rejects bad names, bad status, non-object, more than 30 entries, over-long strings; a v1.0 JSON without the field parses to a state without it and round-trips unchanged. Ledger: a v1.0 ledger without a `Workspaces` section is parsed and `setLedgerSection(md, 'Workspaces', …)` appends it in the right position without disturbing other sections; a new ledger renders the section as `_Not yet recorded._`. Resume: Pumpkin-shaped temp tree with three repositories, all on the right branches → ok with three reports; one on `main` → `client: on branch "main" but the task recorded "feat/…"`; one whose `baseSha` was rewritten → reason; one directory that is not a repository → reason; a workspace absent from the config → reason; the root itself not a repository → still ok.
+- [ ] **Step 1: Failing tests.** `parseTaskState`: accepts a state with `workspaces`, rejects bad names, bad status, non-object, more than 30 entries, over-long strings; a v1.0 JSON without the field parses to a state without it and round-trips unchanged. Ledger: a v1.0 ledger without a `Workspaces` section is parsed and `setLedgerSection(md, 'Workspaces', …)` appends it in the right position without disturbing other sections; a new ledger renders the section as `_Not yet recorded._`. Resume: layered-suite-shaped temp tree with three repositories, all on the right branches → ok with three reports; one on `main` → `client: on branch "main" but the task recorded "feat/…"`; one whose `baseSha` was rewritten → reason; one directory that is not a repository → reason; a workspace absent from the config → reason; the root itself not a repository → still ok.
 - [ ] **Step 2: Run, fail.**
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run core suite and typecheck; commit** — `git commit -m "core: per-workspace task state, ledger section and resume"`.
@@ -154,7 +154,7 @@ pumpkin/ models  backend  policy-api  client  admin          (models ← backend
   - `diff review --workspace all`: reviews every workspace that is a repository, prints a section per workspace, prints `skipped <name>: not a repository` for the others, and exits 2 if any workspace has an error finding, 1 if none could be reviewed.
   - `dev-agent task status <KEY>` prints the per-workspace reports from `checkResume` when the state has workspaces.
 
-- [ ] **Step 1: Failing tests** over a Pumpkin-shaped temporary root (three real repositories and two plain directories), asserting each command's output lines and exit codes above, `--json` parses, the help lists the new commands (the docs test then requires them documented), and the v1.0 behavior of every touched command without `workspaces` is unchanged (existing tests stay green).
+- [ ] **Step 1: Failing tests** over a layered-suite-shaped temporary root (three real repositories and two plain directories), asserting each command's output lines and exit codes above, `--json` parses, the help lists the new commands (the docs test then requires them documented), and the v1.0 behavior of every touched command without `workspaces` is unchanged (existing tests stay green).
 - [ ] **Step 2: Run, fail.**
 - [ ] **Step 3: Implement** with a single `resolveTarget(values, io)` helper in `dev-common.ts` used by the four per-project commands.
 - [ ] **Step 4: Run core and cli suites and typecheck; commit** — `git commit -m "cli: workspaces commands and --workspace for per-project commands"`.
@@ -167,7 +167,7 @@ pumpkin/ models  backend  policy-api  client  admin          (models ← backend
 
 Content:
 - `references/workspaces.md`: read the `workspaces:` map; classify per workspace; order by `dependsOn`; one branch name in every touched repository, created with the safe procedure one repository at a time (a refusal in one stops and reports, never forces); the ledger and state live at the root and the `Workspaces` section lists each workspace's step in order; run `dev-agent diff review --workspace <name>` after each step and `--workspace all` at the end; before touching a dependent, run `dev-agent workspaces verify` and treat `ahead`/`behind` as a pin to fix, never as done; **never publish a package version: stop and ask the user**, then continue once the new version exists; local pre-publish testing may use an editable install that is not committed; contract producer and consumers name workspaces.
-- `docs/workspaces.md`: the concept, the config, every command, and two complete worked examples — **Altave** (four repositories, cloud↔edge contract with `producer`/`consumers`, config with no `dependsOn`) and **Pumpkin** (five repositories, dependency chain, pyproject pins, publish-then-bump flow, one tracker item per feature with the ledger split per workspace) — plus limits (what is not covered: in-process contracts, monorepos with one Git root, automatic release).
+- `docs/workspaces.md`: the concept, the config, every command, and two complete worked examples — **edge-platform** (four repositories, cloud↔edge contract with `producer`/`consumers`, config with no `dependsOn`) and **layered-suite** (five repositories, dependency chain, pyproject pins, publish-then-bump flow, one tracker item per feature with the ledger split per workspace) — plus limits (what is not covered: in-process contracts, monorepos with one Git root, automatic release).
 - README: a short "Workspaces" section and a v1.1 history line. Release notes: what is new, compatibility statement (a config without `workspaces` is unchanged), limits.
 - Skill tests: the six-reference assertion in `shared-skills.test.ts` becomes seven and requires `workspaces`; `SKILL.md` stays ≤ 60 lines and neutral; the new reference passes the contract-reference frontmatter check.
 
@@ -180,7 +180,7 @@ Content:
 
 ## Self-review
 
-**Coverage of the request:** Altave (four sibling repositories, Cloud ↔ Edge) → Tasks 1, 3, 4, 5 and the worked example; Pumpkin (layered packages with `pyproject`-pinned `models` and `backend`) → Tasks 1, 2, 3, 5 and the worked example; "each folder is its own repository under a non-Git parent" → Decision 1, Tasks 3 and 5; tracker items → Decision 5 and the reference.
+**Coverage of the request:** edge-platform (four sibling repositories, Cloud ↔ Edge) → Tasks 1, 3, 4, 5 and the worked example; layered-suite (layered packages with `pyproject`-pinned `models` and `backend`) → Tasks 1, 2, 3, 5 and the worked example; "each folder is its own repository under a non-Git parent" → Decision 1, Tasks 3 and 5; tracker items → Decision 5 and the reference.
 
 **Deliberately not in this release:** creating branches or publishing from the CLI; an in-process (non-HTTP) contract between Python packages; monorepo-aware detection inside one repository; automatic version bumps; benchmark scenarios spanning several repositories; a tracker adapter that creates child items.
 

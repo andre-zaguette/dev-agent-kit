@@ -31,7 +31,7 @@ function repo(root: string, name: string, files: Record<string, string>): string
 }
 
 /** models, backend and client are repositories (client's base is `develop`); policy-api and admin are plain folders. */
-function pumpkin(config: string | null = CONFIG) {
+function layeredSuite(config: string | null = CONFIG) {
   const t = setup(config === null ? {} : { '.dev-agent/config.yml': config });
   const root = t.projectRoot;
   repo(root, 'models', { 'pyproject.toml': '[project]\nname = "models"\nversion = "1.2.0"\ndependencies = []\n' });
@@ -49,7 +49,7 @@ function pumpkin(config: string | null = CONFIG) {
 }
 
 test('workspaces lists every workspace in dependency order with its Git state', async () => {
-  const t = pumpkin();
+  const t = layeredSuite();
   try {
     assert.equal(await runDev(['workspaces', '--project', t.projectRoot], t.io), 0);
     const lines = t.out;
@@ -64,7 +64,7 @@ test('workspaces lists every workspace in dependency order with its Git state', 
 });
 
 test('workspaces --json is parseable and reports missing directories and dirty trees', async () => {
-  const t = pumpkin();
+  const t = layeredSuite();
   try {
     writeFileSync(join(t.projectRoot, 'backend', 'wip.py'), 'x');
     rmSync(join(t.projectRoot, 'admin'), { recursive: true });
@@ -82,7 +82,7 @@ test('workspaces --json is parseable and reports missing directories and dirty t
 });
 
 test('without workspaces configured the three commands say so and exit 0', async () => {
-  const t = pumpkin(null);
+  const t = layeredSuite(null);
   try {
     for (const argv of [['workspaces'], ['workspaces', 'verify'], ['workspaces', 'order']]) {
       t.out.length = 0;
@@ -95,7 +95,7 @@ test('without workspaces configured the three commands say so and exit 0', async
 });
 
 test('workspaces verify reports paths, repositories and one pin line per edge', async () => {
-  const t = pumpkin();
+  const t = layeredSuite();
   try {
     assert.equal(await runDev(['workspaces', 'verify', '--project', t.projectRoot], t.io), 0);
     const text = t.text();
@@ -115,7 +115,7 @@ test('workspaces verify reports paths, repositories and one pin line per edge', 
 });
 
 test('workspaces verify exits 2 for a missing directory or a bad config, naming it', async () => {
-  const t = pumpkin();
+  const t = layeredSuite();
   try {
     rmSync(join(t.projectRoot, 'models'), { recursive: true });
     assert.equal(await runDev(['workspaces', 'verify', '--project', t.projectRoot], t.io), 2);
@@ -123,7 +123,7 @@ test('workspaces verify exits 2 for a missing directory or a bad config, naming 
   } finally {
     t.cleanup();
   }
-  const u = pumpkin('workspaces:\n  a: { path: ../x }\n');
+  const u = layeredSuite('workspaces:\n  a: { path: ../x }\n');
   try {
     assert.equal(await runDev(['workspaces', 'verify', '--project', u.projectRoot], u.io), 2);
     assert.match(u.text(), /workspaces\.a\.path/);
@@ -133,7 +133,7 @@ test('workspaces verify exits 2 for a missing directory or a bad config, naming 
 });
 
 test('workspaces order prints one name per line, with --only and --with-deps', async () => {
-  const t = pumpkin();
+  const t = layeredSuite();
   try {
     assert.equal(await runDev(['workspaces', 'order', '--project', t.projectRoot], t.io), 0);
     assert.deepEqual(t.out, ['models', 'backend', 'policy-api', 'admin', 'client']);
@@ -152,7 +152,7 @@ test('workspaces order prints one name per line, with --only and --with-deps', a
 });
 
 test('--workspace runs inspect, repo index and repo similar inside that workspace', async () => {
-  const t = pumpkin();
+  const t = layeredSuite();
   try {
     assert.equal(await runDev(['inspect', '--workspace', 'client', '--project', t.projectRoot], t.io), 0);
     assert.match(t.text(), /languages: .*(javascript|typescript)/i);
@@ -173,7 +173,7 @@ test('--workspace runs inspect, repo index and repo similar inside that workspac
 });
 
 test('--workspace errors: unknown name, no workspaces configured, "all" outside diff review', async () => {
-  const t = pumpkin();
+  const t = layeredSuite();
   try {
     assert.equal(await runDev(['inspect', '--workspace', 'ghost', '--project', t.projectRoot], t.io), 1);
     assert.match(t.err.join('\n'), /unknown workspace "ghost".*models/);
@@ -183,7 +183,7 @@ test('--workspace errors: unknown name, no workspaces configured, "all" outside 
   } finally {
     t.cleanup();
   }
-  const u = pumpkin(null);
+  const u = layeredSuite(null);
   try {
     assert.equal(await runDev(['inspect', '--workspace', 'models', '--project', u.projectRoot], u.io), 1);
     assert.match(u.err.join('\n'), /no workspaces configured/);
@@ -193,7 +193,7 @@ test('--workspace errors: unknown name, no workspaces configured, "all" outside 
 });
 
 test('diff review --workspace uses the workspace baseBranch', async () => {
-  const t = pumpkin();
+  const t = layeredSuite();
   try {
     assert.equal(await runDev(['diff', 'review', '--workspace', 'client', '--json', '--project', t.projectRoot], t.io), 0);
     assert.equal(JSON.parse(t.text()).files.length, 0);
@@ -206,7 +206,7 @@ test('diff review --workspace uses the workspace baseBranch', async () => {
 });
 
 test('diff review --workspace all reviews repositories and skips the rest with a note', async () => {
-  const t = pumpkin();
+  const t = layeredSuite();
   try {
     assert.equal(await runDev(['diff', 'review', '--workspace', 'all', '--project', t.projectRoot], t.io), 0);
     const text = t.text();
@@ -239,7 +239,7 @@ test('diff review --workspace all exits 1 when no workspace is a repository', as
 });
 
 test('task status prints the per-workspace reports', async () => {
-  const t = pumpkin();
+  const t = layeredSuite();
   const cfg = { ...dirs, knowledgeDir: '.dev-agent/knowledge' };
   try {
     const item = { source: 'company', id: '1', key: 'APP-1', title: 'T', description: 'd', acceptanceCriteria: [], comments: [], attachments: [], links: [] };

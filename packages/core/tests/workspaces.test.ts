@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { parseDevAgentConfig } from '../src/config.ts';
 import { findWorkspace, orderWorkspaces, workspaceRoot } from '../src/workspaces.ts';
 
-const PUMPKIN = `
+const LAYERED_SUITE = `
 workspaces:
   models:     { path: models, role: library }
   backend:    { path: backend, role: backend, dependsOn: [models] }
@@ -15,7 +15,7 @@ workspaces:
   admin:      { path: admin, role: frontend, dependsOn: [policy-api] }
 `;
 
-const ALTAVE = `
+const EDGE_PLATFORM = `
 workspaces:
   cloud-back: { path: cloud-back }
   cloud-front: { path: cloud-front }
@@ -23,13 +23,13 @@ workspaces:
   edge-front: { path: edge-front }
 `;
 
-test('parses the Pumpkin and Altave layouts', () => {
-  const p = parseDevAgentConfig(PUMPKIN);
+test('parses the layered-suite and edge-platform layouts', () => {
+  const p = parseDevAgentConfig(LAYERED_SUITE);
   assert.equal(p.workspaces.length, 5);
   const client = findWorkspace(p, 'client');
   assert.deepEqual(client, { name: 'client', path: 'client', role: 'frontend', dependsOn: ['policy-api'], baseBranch: 'develop' });
   assert.deepEqual(findWorkspace(p, 'models').dependsOn, []);
-  const a = parseDevAgentConfig(ALTAVE);
+  const a = parseDevAgentConfig(EDGE_PLATFORM);
   assert.equal(a.workspaces.length, 4);
   assert.ok(a.workspaces.every((w) => w.dependsOn.length === 0));
 });
@@ -96,18 +96,18 @@ test('workspaceRoot refuses missing, file, symlinked and symlink-parented direct
 });
 
 test('orderWorkspaces puts dependencies first with an alphabetical tie-break', () => {
-  const cfg = parseDevAgentConfig(PUMPKIN);
+  const cfg = parseDevAgentConfig(LAYERED_SUITE);
   assert.deepEqual(orderWorkspaces(cfg).map((w) => w.name), ['models', 'backend', 'policy-api', 'admin', 'client']);
-  assert.deepEqual(orderWorkspaces(parseDevAgentConfig(ALTAVE)).map((w) => w.name), ['cloud-back', 'cloud-front', 'edge-back', 'edge-front']);
+  assert.deepEqual(orderWorkspaces(parseDevAgentConfig(EDGE_PLATFORM)).map((w) => w.name), ['cloud-back', 'cloud-front', 'edge-back', 'edge-front']);
 });
 
 test('orderWorkspaces --only and --with-deps', () => {
-  const cfg = parseDevAgentConfig(PUMPKIN);
+  const cfg = parseDevAgentConfig(LAYERED_SUITE);
   assert.deepEqual(orderWorkspaces(cfg, { only: ['client'] }).map((w) => w.name), ['client']);
   assert.deepEqual(orderWorkspaces(cfg, { only: ['client'], withDeps: true }).map((w) => w.name), ['models', 'backend', 'policy-api', 'client']);
   assert.throws(() => orderWorkspaces(cfg, { only: ['ghost'] }), /unknown workspace "ghost".*admin/);
 });
 
 test('findWorkspace lists the known names on a miss', () => {
-  assert.throws(() => findWorkspace(parseDevAgentConfig(PUMPKIN), 'x'), /unknown workspace "x".*models/);
+  assert.throws(() => findWorkspace(parseDevAgentConfig(LAYERED_SUITE), 'x'), /unknown workspace "x".*models/);
 });

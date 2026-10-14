@@ -104,12 +104,12 @@ test('a symlinked knowledge directory is reported instead of being read', () => 
   }
 });
 
-// ---- multi-workspace (Pumpkin-shaped: a plain root holding one repository per folder) ----
+// ---- multi-workspace (layered-suite-shaped: a plain root holding one repository per folder) ----
 
 const wsCfg = (names: string[]) => ({ ...cfg, workspaces: names.map((n) => ({ name: n, path: n, dependsOn: [] as string[] })) });
 
-function pumpkin(): { root: string; bases: Record<string, string> } {
-  const root = mkdtempSync(join(tmpdir(), 'dak-pumpkin-'));
+function layeredSuite(): { root: string; bases: Record<string, string> } {
+  const root = mkdtempSync(join(tmpdir(), 'dak-suite-'));
   const bases: Record<string, string> = {};
   for (const name of ['models', 'backend', 'client']) {
     const dir = join(root, name);
@@ -129,7 +129,7 @@ function pumpkin(): { root: string; bases: Record<string, string> } {
 }
 
 test('every recorded workspace on its branch resumes, and the plain root is fine', () => {
-  const { root } = pumpkin();
+  const { root } = layeredSuite();
   const r = checkResume(root, wsCfg(['models', 'backend', 'client']), 'HEF-1');
   assert.equal(r.ok, true);
   if (!r.ok) return;
@@ -137,7 +137,7 @@ test('every recorded workspace on its branch resumes, and the plain root is fine
 });
 
 test('uncommitted work in a workspace is a note, not a blocker', () => {
-  const { root } = pumpkin();
+  const { root } = layeredSuite();
   writeFileSync(join(root, 'backend', 'wip.txt'), 'x');
   const r = checkResume(root, wsCfg(['models', 'backend', 'client']), 'HEF-1');
   assert.equal(r.ok, true);
@@ -145,7 +145,7 @@ test('uncommitted work in a workspace is a note, not a blocker', () => {
 });
 
 test('a workspace on the wrong branch is named in the reason', () => {
-  const { root } = pumpkin();
+  const { root } = layeredSuite();
   sh(join(root, 'client'), 'switch', '-q', 'main');
   const r = checkResume(root, wsCfg(['models', 'backend', 'client']), 'HEF-1');
   assert.equal(r.ok, false);
@@ -156,7 +156,7 @@ test('a workspace on the wrong branch is named in the reason', () => {
 });
 
 test('a rewritten base, a non-repository and a workspace missing from the config are reasons', () => {
-  const { root } = pumpkin();
+  const { root } = layeredSuite();
   const models = join(root, 'models');
   sh(models, 'checkout', '-q', '--orphan', 'rewritten');
   commitFile(models, 'b.txt');
@@ -173,7 +173,7 @@ test('a rewritten base, a non-repository and a workspace missing from the config
 });
 
 test('a workspace that is a plain folder inside a repository is not its own repository', () => {
-  const { root } = pumpkin();
+  const { root } = layeredSuite();
   rmSync(join(root, 'backend', '.git'), { recursive: true });
   sh(root, 'init', '-q', '-b', 'main');
   const r = checkResume(root, wsCfg(['models', 'backend', 'client']), 'HEF-1');

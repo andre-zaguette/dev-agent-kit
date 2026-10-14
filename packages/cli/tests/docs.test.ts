@@ -88,7 +88,7 @@ test('the guides exist and cover their essentials', () => {
 
 test('the workspaces guide, release notes and README cover multi-repo workspaces', () => {
   const guide = read('docs/workspaces.md');
-  for (const needle of ['Altave', 'Pumpkin', 'dependsOn', 'workspaces verify', 'workspaces order', '--workspace', 'producer', 'consumers', 'not covered']) assert.ok(guide.toLowerCase().includes(needle.toLowerCase()), `workspaces guide needs ${needle}`);
+  for (const needle of ['edge-platform', 'layered-suite', 'dependsOn', 'workspaces verify', 'workspaces order', '--workspace', 'producer', 'consumers', 'not covered']) assert.ok(guide.toLowerCase().includes(needle.toLowerCase()), `workspaces guide needs ${needle}`);
   const notes = read('docs/release-notes/v1.1.0.md');
   assert.match(notes, /without `workspaces`[^\n]*unchanged/i);
   assert.match(read('README.md'), /\n## Workspaces\n/);

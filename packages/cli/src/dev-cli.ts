@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util';
-import { auditContext, detectProjectProfile, selectBackendReferences } from '../../core/src/index.js';
+import { auditContext, detectProjectProfile, selectBackendReferences, selectFrontendReferences } from '../../core/src/index.js';
 import { run, type CliIo } from './cli.js';
 import { CliError, PROJECT_JSON, projectRootOf, resolveTarget } from './dev-common.js';
 import { contractShow, contractUsage, contractVerify } from './dev-contract-commands.js';
@@ -42,8 +42,9 @@ function inspect(args: string[], io: CliIo): number {
   const root = resolveTarget(values, io).dir;
   const profile = detectProjectProfile(root);
   const references = selectBackendReferences(profile);
+  const frontend = selectFrontendReferences(profile);
   if (values.json) {
-    io.stdout(JSON.stringify({ profile, backendReferences: references }, null, 2));
+    io.stdout(JSON.stringify({ profile, backendReferences: references, frontendReferences: frontend }, null, 2));
     return 0;
   }
   const list = (items: string[] | undefined): string => (items && items.length > 0 ? items.join(', ') : '-');
@@ -60,6 +61,7 @@ function inspect(args: string[], io: CliIo): number {
   io.stdout(`docker: ${profile.docker ? 'yes' : 'no'}`);
   io.stdout(`base branch: ${profile.baseBranch ?? '-'}`);
   io.stdout(`backend references: ${references.length === 0 ? '-' : references.map((r) => `${r.skill}/${r.reference}`).join(', ')}`);
+  io.stdout(`frontend references: ${frontend.length === 0 ? '-' : frontend.map((r) => `${r.skill}/${r.reference}`).join(', ')}`);
   return 0;
 }
 

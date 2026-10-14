@@ -58,11 +58,11 @@ Optional integrations (Headroom, claude-mem, Cartographer, Graphify): see docs/i
 
 ## What is in the box
 
-**26 skills** under `skills/`, loaded on demand:
+**27 skills** under `skills/`, loaded on demand:
 
 | Domain | Skills |
 |---|---|
-| Frontend (7) | `figma-to-code`, `component-selection`, `frontend-design`, `responsive-design`, `motion-design`, `accessibility`, `visual-validation` |
+| Frontend (8) | `figma-to-code`, `component-selection`, `frontend-design`, `frontend-architecture`, `responsive-design`, `motion-design`, `accessibility`, `visual-validation` |
 | Shared engineering (7) | `engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory` |
 | Task orchestration (1) | `task-orchestrator` |
 | Backend (10) | `backend-architecture`, `api-design`, `data-modeling`, `database-migrations`, `backend-testing`, `auth-security`, `external-integrations`, `async-jobs`, `observability`, `backend-performance` |

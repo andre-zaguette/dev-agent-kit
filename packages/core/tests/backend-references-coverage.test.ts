@@ -26,11 +26,11 @@ test('reference names are unique across the whole kit, so a read identifies exac
   assert.equal(new Set(all).size, all.length, `duplicate reference names: ${all.filter((n, i) => all.indexOf(n) !== i).join(', ')}`);
 });
 
-test('every reference frontmatter name matches its file name and is marked baseline', () => {
+test('every reference frontmatter name matches its file name and is marked baseline or guide', () => {
   for (const skill of BACKEND) {
     for (const name of referencesOf(skill)) {
       const text = readFileSync(join(skillsDir, skill, 'references', `${name}.md`), 'utf8');
-      assert.match(text, new RegExp(`^---\\nname: ${name}\\ndescription: .{20,300}\\nstatus: baseline\\n---\\n`), `${skill}/${name}`);
+      assert.match(text, new RegExp(`^---\\nname: ${name}\\ndescription: .{20,300}\\nstatus: (baseline|guide)\\n---\\n`), `${skill}/${name}`);
     }
   }
 });

@@ -7,7 +7,7 @@ Exit codes: `0` ok, `1` usage or environment error, `2` checked and not OK.
 | Command | What it does |
 |---|---|
 | `install`, `verify` | Aliases of `frontend-agent install` and `frontend-agent verify`, with identical behavior and output. |
-| `inspect [--json]` | Detected languages, frameworks, commands, database, queues, cache, Docker, base branch, and the backend references that apply. |
+| `inspect [--json]` | Detected languages, frameworks, commands, database, queues, cache, Docker, base branch, and the backend and frontend references that apply. |
 | `context audit [--json]` | Always-on token size and the findings that waste context. |
 | `sources [--json]` | The task sources configured in `.dev-agent/config.yml`. |
 | `sources verify` | Checks the config parses, each `generic-mcp` adapter builds, and warns about ambiguous patterns, missing defaults and adapters that cannot be loaded. Exit 2 on errors. |

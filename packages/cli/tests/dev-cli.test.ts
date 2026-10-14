@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { run } from '../src/cli.ts';
 import { runDev } from '../src/dev-cli.ts';
+import { findKitRoot } from '../src/util.ts';
 import { setup } from './dev-helpers.ts';
 
 const packageRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -84,8 +85,48 @@ test('inspect on a project with no backend signal recommends nothing', async () 
   try {
     assert.equal(await runDev(['inspect', '--project', t.projectRoot, '--json'], t.io), 0);
     assert.deepEqual(JSON.parse(t.text()).backendReferences, []);
+    assert.deepEqual(JSON.parse(t.text()).frontendReferences, []);
   } finally {
     t.cleanup();
+  }
+});
+
+test('inspect shows the frontend references for the Vue, Nuxt and Next.js eval fixtures', async () => {
+  const fixtures = join(findKitRoot(), 'evals', 'fixtures');
+  const expected: Array<[string, string[]]> = [
+    ['vue-app', ['vue-stack']],
+    ['nuxt-app', ['nuxt-stack', 'vue-stack']],
+    ['nextjs-app', ['next-stack']]
+  ];
+  for (const [fixture, names] of expected) {
+    const t = setup({});
+    try {
+      assert.equal(await runDev(['inspect', '--project', join(fixtures, fixture), '--json'], t.io), 0);
+      const json = JSON.parse(t.text());
+      assert.deepEqual(json.frontendReferences.map((r: { reference: string }) => r.reference), names, fixture);
+      assert.ok(Array.isArray(json.backendReferences), 'existing field kept');
+      t.out.length = 0;
+      assert.equal(await runDev(['inspect', '--project', join(fixtures, fixture)], t.io), 0);
+      for (const name of names) assert.match(t.text(), new RegExp(`frontend references: .*frontend-architecture/${name}`), fixture);
+    } finally {
+      t.cleanup();
+    }
+  }
+});
+
+test('inspect on backend-only fixtures lists no frontend references', async () => {
+  const fixtures = join(findKitRoot(), 'evals', 'fixtures');
+  for (const fixture of ['fastapi-app', 'nest-app']) {
+    const t = setup({});
+    try {
+      assert.equal(await runDev(['inspect', '--project', join(fixtures, fixture), '--json'], t.io), 0);
+      assert.deepEqual(JSON.parse(t.text()).frontendReferences, [], fixture);
+      t.out.length = 0;
+      assert.equal(await runDev(['inspect', '--project', join(fixtures, fixture)], t.io), 0);
+      assert.match(t.text(), /frontend references: -/, fixture);
+    } finally {
+      t.cleanup();
+    }
   }
 });
 

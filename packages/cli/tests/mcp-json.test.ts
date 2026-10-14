@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readMcpJsonFile, applyExtraServers, readConfiguredServers, readConfiguredLaunch } from '../src/mcp-json.ts';
@@ -52,7 +52,15 @@ test('applyExtraServers: adds with the registered line, keeps an existing entry,
 
 test('readConfiguredServers: {} without a file, a copy of the servers, null on an error', () => {
   withFile(null, (file) => assert.deepEqual(readConfiguredServers(file), {}));
-  withFile('{"mcpServers":{"a":{"command":"x"}}}', (file) => assert.deepEqual(readConfiguredServers(file), { a: { command: 'x' } }));
+  withFile('{"mcpServers":{"a":{"command":"x"}}}', (file) => {
+    const first = readConfiguredServers(file)!;
+    assert.deepEqual({ ...first }, { a: { command: 'x' } });
+    const loose = first as Record<string, unknown>;
+    loose.a = { command: 'mutated' };
+    loose.b = { command: 'added' };
+    assert.equal(readFileSync(file, 'utf8'), '{"mcpServers":{"a":{"command":"x"}}}');
+    assert.deepEqual(readConfiguredServers(file), { a: { command: 'x' } });
+  });
   withFile('{nope', (file) => assert.equal(readConfiguredServers(file), null));
 });
 

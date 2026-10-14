@@ -199,6 +199,41 @@ test('verify: all ok after a full install; a missing server entry fails mcp-conf
   }
 });
 
+test('verify: missing skills fails the skills check while instructions and mcp stay ok', async () => {
+  const { ctx, cleanup } = project();
+  try {
+    const adapter = new CursorAdapter(ctx);
+    await adapter.installInstructions();
+    await adapter.installMcp(noExtras(ctx));
+    const r = await adapter.verify();
+    assert.equal(r.ok, false);
+    assert.equal(r.checks.find((c) => c.name === 'skills')?.ok, false);
+    assert.equal(r.checks.find((c) => c.name === 'instructions')?.ok, true);
+    assert.equal(r.checks.find((c) => c.name === 'mcp-config')?.ok, true);
+  } finally {
+    cleanup();
+  }
+});
+
+test('verify: broken JSON in .cursor/mcp.json fails mcp-config with the parse error and skips mcp-server', async () => {
+  const { projectRoot, ctx, cleanup } = project();
+  try {
+    const adapter = new CursorAdapter(ctx);
+    await adapter.installSkills(join(ctx.kitRoot, 'skills'));
+    await adapter.installInstructions();
+    await adapter.installMcp(noExtras(ctx));
+    writeFileSync(join(projectRoot, '.cursor', 'mcp.json'), '{nope');
+    const r = await adapter.verify();
+    assert.equal(r.ok, false);
+    const cfg = r.checks.find((c) => c.name === 'mcp-config');
+    assert.equal(cfg?.ok, false);
+    assert.match(cfg?.detail ?? '', /cannot parse/);
+    assert.match(r.checks.find((c) => c.name === 'mcp-server')?.detail ?? '', /skipped/);
+  } finally {
+    cleanup();
+  }
+});
+
 test('configuredServers: {} without a file, the servers with one, null when unparsable', async () => {
   const { projectRoot, ctx, cleanup } = project();
   try {

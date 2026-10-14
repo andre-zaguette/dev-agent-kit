@@ -41,6 +41,23 @@ test('headroom hints name .cursor/mcp.json on cursor, .mcp.json on claude, and n
   }
 });
 
+test('headroom verify on cursor: missing entry with the binary present fails, malformed fails, missing with no binary warns', () => {
+  const { ctx, cleanup } = project();
+  try {
+    const present = { state: 'present', binPath: '/abs/headroom' } as const;
+    const missing = headroom.verify('cursor', ctx, present, {});
+    assert.equal(missing[0].ok, false);
+    const bad = headroom.verify('cursor', ctx, present, { headroom: { command: 5 } });
+    assert.equal(bad[0].ok, false);
+    assert.match(bad[0].detail, /malformed/);
+    const absent = headroom.verify('cursor', ctx, { state: 'absent' }, {});
+    assert.equal(absent[0].ok, true);
+    assert.equal(absent[0].warn, true);
+  } finally {
+    cleanup();
+  }
+});
+
 test('graphify verifies on cursor like on the other hosts', () => {
   const { ctx, cleanup } = project();
   try {

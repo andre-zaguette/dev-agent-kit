@@ -27,9 +27,11 @@ test('e2e: install cursor --with headroom writes the entry, verify is ok, a re-i
     assert.match(out.join('\n'), /✔ integration:headroom/);
     const before = readFileSync(file, 'utf8');
     io.env.PATH = '';
-    assert.equal(await run(['install', 'cursor', '--project', projectRoot], io), 0);
+    out.length = 0;
+    assert.equal(await run(['install', 'cursor', '--project', projectRoot], io), 0, out.join('\n'));
+    assert.doesNotMatch(out.join('\n'), /✖|fail|error/i);
     assert.equal(readFileSync(file, 'utf8'), before);
-    assert.match(readFileSync(join(projectRoot, '.dev-agent', 'integrations.json'), 'utf8'), /headroom/);
+    assert.ok(JSON.parse(readFileSync(join(projectRoot, '.dev-agent', 'integrations.json'), 'utf8')).enabled.includes('headroom'));
   } finally {
     cleanup();
   }
@@ -54,7 +56,7 @@ test('e2e: --with claude-mem on cursor alone is a usage error naming claude; not
   const { projectRoot, io, err, cleanup } = harness({ PATH: '' });
   try {
     assert.equal(await run(['install', 'cursor', '--with', 'claude-mem', '--project', projectRoot], io), 1);
-    assert.match(err.join('\n'), /claude-mem.*claude/);
+    assert.match(err.join('\n'), /needs one of these hosts: claude \(selected: cursor\)/);
     assert.equal(existsSync(join(projectRoot, '.cursor')), false);
     assert.equal(existsSync(join(projectRoot, 'AGENTS.md')), false);
   } finally {

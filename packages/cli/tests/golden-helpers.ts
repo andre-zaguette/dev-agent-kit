@@ -13,6 +13,7 @@ export const goldenRoot = join(fileURLToPath(new URL('.', import.meta.url)), 'fi
  * skill-count lines) and each file in `files` (golden name → path relative to the project), with machine
  * specific paths replaced by placeholders. Every path in `absent` must not exist afterwards.
  */
+// `argv` must not contain `--project`: it is appended here.
 export async function captureGolden(argv: string[], files: Record<string, string>, absent: string[] = []): Promise<Record<string, string>> {
   const base = mkdtempSync(join(tmpdir(), 'dev-agent-golden-'));
   const projectRoot = join(base, 'project');

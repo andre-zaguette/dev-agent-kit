@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { run, type CliIo } from '../src/cli.ts';
 import { project } from './integration-helpers.ts';
@@ -110,3 +110,20 @@ test('codex and cursor installed together: both verify ok and repeated installs 
     cleanup();
   }
 });
+
+for (const [dirName, hosts] of [['.cursor', ['claude', 'cursor']], ['.codex', ['claude', 'codex']]] as const) {
+  test(`a dangling ${dirName} symlink stops install ${hosts.join(' ')} before anything is written`, async () => {
+    const { base, projectRoot, io, err, cleanup } = harness();
+    try {
+      mkdirSync(join(base, 'outside'));
+      symlinkSync(join(base, 'outside', 'missing'), join(projectRoot, dirName));
+      assert.equal(await run(['install', ...hosts, '--project', projectRoot], io), 1);
+      assert.match(err.join('\n'), /dangling symbolic link/);
+      for (const absent of ['.mcp.json', 'CLAUDE.md', '.claude', '.agents', 'AGENTS.md', '.dev-agent']) {
+        assert.equal(existsSync(join(projectRoot, absent)), false, absent);
+      }
+    } finally {
+      cleanup();
+    }
+  });
+}

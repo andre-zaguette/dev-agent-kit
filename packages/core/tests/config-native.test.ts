@@ -39,6 +39,8 @@ test('native adapters reject missing, foreign and malformed keys', () => {
     ['adapter: linear\ntokenEnv: LINEAR_KEY\nbaseUrl: https://api.example.com', /baseUrl is not valid for the linear adapter/],
     ['adapter: github-issues\ntokenEnv: GH_TOKEN', /taskSources\.work\.repo is required/],
     ['adapter: github-issues\ntokenEnv: GH_TOKEN\nrepo: not-a-repo', /repo must look like "owner\/name"/],
+    ['adapter: github-issues\ntokenEnv: GH_TOKEN\nrepo: ../..', /repo must look like "owner\/name"/],
+    ['adapter: github-issues\ntokenEnv: GH_TOKEN\nrepo: acme/..', /repo must look like "owner\/name"/],
     ['adapter: github-issues\ntokenEnv: GH_TOKEN\nrepo: acme/app\nbaseUrl: http://ghe.example.com', /baseUrl must be an https URL/],
     ['adapter: jira\ntokenEnv: T\nbaseUrl: https://u@jira.example.net\nemailEnv: E', /baseUrl must be an https URL without credentials/],
     ['adapter: jira\ntokenEnv: T\nbaseUrl: https://jira.example.net?x=1\nemailEnv: E', /baseUrl must be an https URL without credentials/],

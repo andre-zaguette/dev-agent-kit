@@ -58,3 +58,11 @@ test('errors: null issue, GraphQL errors, HTTP errors and invalid identifiers', 
   for (const bad of ['', 'ENG', '123', 'ENG-1/../2', 'ENG-1 OR 1=1', 'ENG-1"}', '../ENG-1', 'ENG-12345678901']) await assert.rejects(adapter.getWorkItem(bad), WorkItemNotFoundError, bad);
   assert.equal(calls.length, 0);
 });
+
+test('connections with a next page mark links and attachments partial', async () => {
+  const more = { ...ISSUE, children: { ...ISSUE.children, pageInfo: { hasNextPage: true } }, attachments: { ...ISSUE.attachments, pageInfo: { hasNextPage: true } } };
+  const item = await make([{ match: () => true, json: { data: { issue: more } } }]).adapter.getWorkItem('ENG-123');
+  assert.deepEqual(item.metadata?.partial, ['links', 'attachments']);
+  const none = await make([{ match: () => true, json: { data: { issue: ISSUE } } }]).adapter.getWorkItem('ENG-123');
+  assert.equal(none.metadata?.partial, undefined);
+});

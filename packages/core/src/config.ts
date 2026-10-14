@@ -145,7 +145,12 @@ function parseMapping(label: string, where: string, raw: unknown): SourceMapping
 
 const NATIVE_KEYS = ['baseUrl', 'tokenEnv', 'emailEnv', 'auth', 'repo'] as const;
 const ENV_NAME_RE = /^[A-Z][A-Z0-9_]{0,63}$/;
-const REPO_RE = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
+const REPO_OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
+const REPO_NAME_RE = /^(?!\.\.?$)[A-Za-z0-9_.-]{1,100}$/;
+const isRepo = (value: string): boolean => {
+  const parts = value.split('/');
+  return parts.length === 2 && REPO_OWNER_RE.test(parts[0]) && REPO_NAME_RE.test(parts[1]);
+};
 const NATIVE_RULES: Record<NativeAdapterId, { required: readonly string[]; allowed: readonly string[] }> = {
   'github-issues': { required: ['tokenEnv', 'repo'], allowed: ['baseUrl', 'tokenEnv', 'repo'] },
   linear: { required: ['tokenEnv'], allowed: ['tokenEnv'] },
@@ -188,7 +193,7 @@ function parseNativeSource(label: string, where: string, adapter: NativeAdapterI
   out.tokenEnv = parseEnvName(label, `${where}.tokenEnv`, raw.tokenEnv);
   if (raw.emailEnv !== undefined) out.emailEnv = parseEnvName(label, `${where}.emailEnv`, raw.emailEnv);
   if (raw.repo !== undefined) {
-    if (typeof raw.repo !== 'string' || !REPO_RE.test(raw.repo)) fail(label, `${where}.repo`, 'must look like "owner/name"');
+    if (typeof raw.repo !== 'string' || !isRepo(raw.repo)) fail(label, `${where}.repo`, 'must look like "owner/name"');
     out.repo = raw.repo;
   }
   if (adapter === 'jira') {

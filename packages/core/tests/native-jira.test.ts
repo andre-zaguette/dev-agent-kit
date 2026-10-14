@@ -94,3 +94,11 @@ test('adfToText covers the common nodes and never throws on hostile input', () =
   assert.doesNotThrow(() => adfToText(deep));
   assert.equal(adfToText({ type: 'doc', content: 'not-an-array' }), '');
 });
+
+test('more links than the normalizer keeps are reported as partial', async () => {
+  const many = Array.from({ length: 101 }, (_, i) => ({ type: { name: 'Relates', inward: 'relates to', outward: 'relates to' }, outwardIssue: { key: `PROJ-${i + 100}`, fields: { summary: 'x' } } }));
+  const { adapter } = make([{ match: (c) => c.url.includes('?fields='), json: { ...ISSUE, fields: { ...ISSUE.fields, issuelinks: many, parent: undefined, subtasks: [] } } }, { match: () => true, json: { total: 0, comments: [] } }]);
+  const item = await adapter.getWorkItem('PROJ-7');
+  assert.equal(item.links.length, 100);
+  assert.deepEqual(item.metadata?.partial, ['links']);
+});

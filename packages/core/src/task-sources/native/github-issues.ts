@@ -3,6 +3,9 @@ import { WorkItemNotFoundError, type TaskSourceAdapter } from '../types.js';
 import { buildWorkItem, ledgerKey, makeAdapter, optional, type NativeDeps } from './common.js';
 
 const REF_RE = /^(?:([A-Za-z0-9_.-]{1,100})\/([A-Za-z0-9_.-]{1,100})#|#)?(\d{1,9})$/;
+// GitHub's real rules; `.` and `..` would let the path climb out of /repos/.
+const OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
+const NAME_RE = /^(?!\.\.?$)[A-Za-z0-9_.-]{1,100}$/;
 const PAGE = 100;
 type Obj = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -21,6 +24,7 @@ export function createGithubIssuesAdapter(deps: NativeDeps): TaskSourceAdapter {
     if (!match) throw new WorkItemNotFoundError(`"${identifier.slice(0, 64)}" is not a GitHub issue reference (use owner/name#123, #123 or 123)`);
     const [owner, name] = match[1] ? [match[1], match[2]] : (config.repo ?? '/').split('/');
     if (!owner || !name) throw new WorkItemNotFoundError(`source "${config.id}" has no default repository for "${identifier}"`);
+    if (!OWNER_RE.test(owner) || !NAME_RE.test(name)) throw new WorkItemNotFoundError(`"${identifier.slice(0, 64)}" is not a valid GitHub repository reference`);
     return { owner, name, number: match[3] };
   }
 

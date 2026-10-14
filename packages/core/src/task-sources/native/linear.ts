@@ -13,10 +13,10 @@ const QUERY = `query WorkItem($id: String!) {
     assignee { id name }
     labels { nodes { name } }
     parent { identifier title url }
-    children(first: 50) { nodes { identifier title url } }
-    relations(first: 50) { nodes { type relatedIssue { identifier title url } } }
-    inverseRelations(first: 50) { nodes { type issue { identifier title url } } }
-    attachments(first: 50) { nodes { id title url } }
+    children(first: 50) { nodes { identifier title url } pageInfo { hasNextPage } }
+    relations(first: 50) { nodes { type relatedIssue { identifier title url } } pageInfo { hasNextPage } }
+    inverseRelations(first: 50) { nodes { type issue { identifier title url } } pageInfo { hasNextPage } }
+    attachments(first: 50) { nodes { id title url } pageInfo { hasNextPage } }
     comments(first: 100) { nodes { id body createdAt user { name } } pageInfo { hasNextPage } }
   }
 }`;
@@ -38,7 +38,10 @@ export function createLinearAdapter(deps: NativeDeps): TaskSourceAdapter {
     const issue = payload.data?.issue as Obj | null | undefined;
     if (!issue) throw new WorkItemNotFoundError(`work item "${identifier}" was not found in source "${config.id}"`);
     const partial: string[] = [];
-    if (issue.comments?.pageInfo?.hasNextPage) partial.push('comments');
+    const more = (connection: unknown): boolean => Boolean((connection as Obj | undefined)?.pageInfo?.hasNextPage);
+    if (more(issue.comments)) partial.push('comments');
+    if (more(issue.children) || more(issue.relations) || more(issue.inverseRelations)) partial.push('links');
+    if (more(issue.attachments)) partial.push('attachments');
     return buildWorkItem(config.id, {
       item: {
         id: issue.id,

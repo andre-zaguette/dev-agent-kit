@@ -48,7 +48,7 @@ test('accepts #n, n and owner/name#n, and rejects anything else before any reque
   await adapter.getWorkItem('#42');
   assert.equal((await adapter.getWorkItem('other/lib#7')).key, 'lib-7');
   const before = calls.length;
-  for (const bad of ['abc', '../x', '42?a=b', '42/../43', 'a/b/c#1', '4%2f2', '', '#', '1234567890']) {
+  for (const bad of ['../..#1', 'acme/..#1', './.#1', '.../x#1', 'abc', '../x', '42?a=b', '42/../43', 'a/b/c#1', '4%2f2', '', '#', '1234567890']) {
     await assert.rejects(adapter.getWorkItem(bad), WorkItemNotFoundError, bad);
   }
   assert.equal(calls.length, before);

@@ -27,10 +27,16 @@ const IDENTITY_MAPPING: SourceMapping = {
   links: {}
 };
 
+/** `normalizeWorkItem` keeps at most this many links and attachments (MAX_LINKS, MAX_ATTACHMENTS). */
+const NORMALIZER_LIST_CAP = 100;
+
 export function buildWorkItem(sourceId: string, parts: NativeParts): WorkItem {
   const item = normalizeWorkItem(sourceId, IDENTITY_MAPPING, { item: parts.item, comments: parts.comments ?? [], attachments: parts.attachments ?? [], links: parts.links ?? [] });
+  const partial = [...(parts.partial ?? [])];
+  if ((parts.links?.length ?? 0) > NORMALIZER_LIST_CAP && !partial.includes('links')) partial.push('links');
+  if ((parts.attachments?.length ?? 0) > NORMALIZER_LIST_CAP && !partial.includes('attachments')) partial.push('attachments');
   const extra: Record<string, unknown> = {};
-  if (parts.partial && parts.partial.length > 0) extra.partial = parts.partial;
+  if (partial.length > 0) extra.partial = partial;
   if (parts.reference) extra.reference = parts.reference;
   if (Object.keys(extra).length > 0) item.metadata = { ...item.metadata, ...extra };
   return item;

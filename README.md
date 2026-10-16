@@ -58,12 +58,12 @@ Optional integrations (Headroom, claude-mem, Cartographer, Graphify): see docs/i
 
 ## What is in the box
 
-**27 skills** under `skills/`, loaded on demand:
+**28 skills** under `skills/`, loaded on demand:
 
 | Domain | Skills |
 |---|---|
 | Frontend (8) | `figma-to-code`, `component-selection`, `frontend-design`, `frontend-architecture`, `responsive-design`, `motion-design`, `accessibility`, `visual-validation` |
-| Shared engineering (7) | `engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory` |
+| Shared engineering (8) | `engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory`, `ponytail` |
 | Task orchestration (1) | `task-orchestrator` |
 | Backend (10) | `backend-architecture`, `api-design`, `data-modeling`, `database-migrations`, `backend-testing`, `auth-security`, `external-integrations`, `async-jobs`, `observability`, `backend-performance` |
 | Fullstack (1) | `fullstack-contract` |
@@ -125,6 +125,8 @@ Skills stay under 60 lines and name no framework, host or tracker; detail lives 
 ## License
 
 MIT. See `LICENSE`.
+
+The `ponytail` skill is vendored unchanged from [dietrichgebert/ponytail](https://github.com/dietrichgebert/ponytail) (MIT, © 2026 DietrichGebert); its license is in `skills/ponytail/LICENSE`.
 
 ## Version history
 

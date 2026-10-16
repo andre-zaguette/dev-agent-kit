@@ -4,7 +4,7 @@ Rule: use the minimum context required to make the correct decision — not the 
 
 ## What v0.6 adds
 
-- **Seven shared skills** (`engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory`). They are framework-, host- and task-source-neutral and are installed with the frontend skills.
+- **Eight shared skills** (`engineering-architecture`, `repository-investigation`, `verification`, `root-cause-analysis`, `surgical-diff`, `context-efficiency`, `repo-memory`, `ponytail`). They are framework-, host- and task-source-neutral and are installed with the frontend skills.
 - **Short managed instructions.** `CLAUDE.md` / `AGENTS.md` blocks hold only the generic principles and a compact frontend section. Detailed workflows live in skills, loaded on demand.
 - **`packages/core`.** Deterministic helpers: `detectProjectProfile`, `headSha`/`changedSince`/`detectBaseBranch`, repo-memory read/write/freshness, and `auditContext`.
 

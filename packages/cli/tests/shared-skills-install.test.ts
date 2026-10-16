@@ -21,7 +21,7 @@ test('install puts the 8 frontend, 8 shared, 10 backend and 1 fullstack skills i
     const io: CliIo = { stdout: (l) => out.push(l), stderr: () => {}, env: { PATH: '', CODEX_HOME: join(base, 'codex-home') }, cwd: projectRoot, homeDir };
     assert.equal(await run(['install', 'claude', '--project', projectRoot], io), 0);
     for (const name of [...FRONTEND, ...SHARED, ...BACKEND, ...FULLSTACK]) assert.ok(existsSync(join(projectRoot, '.claude', 'skills', name, 'SKILL.md')), name);
-    assert.equal(readdirSync(join(projectRoot, '.claude', 'skills'), { withFileTypes: true }).filter((e) => e.isDirectory()).length, 27);
+    assert.equal(readdirSync(join(projectRoot, '.claude', 'skills'), { withFileTypes: true }).filter((e) => e.isDirectory()).length, 28);
     assert.ok(existsSync(join(projectRoot, '.claude', 'skills', 'fullstack-contract', 'references', 'contract-format.md')));
     assert.ok(existsSync(join(projectRoot, '.claude', 'skills', 'task-orchestrator', 'references', 'git-workflow.md')));
     assert.ok(existsSync(join(projectRoot, '.claude', 'skills', 'backend-architecture', 'references', 'django.md')));
